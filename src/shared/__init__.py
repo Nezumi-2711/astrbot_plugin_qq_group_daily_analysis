@@ -1,5 +1,5 @@
 """
-共享模块 - 通用工具和常量
+Mô-đun chia sẻ - Công cụ dùng chung và hằng số.
 """
 
 from .constants import ContentType, Platform, ReportFormat, TaskStatus
