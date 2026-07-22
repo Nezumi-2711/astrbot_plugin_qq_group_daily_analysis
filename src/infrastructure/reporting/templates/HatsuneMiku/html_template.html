@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>群聊日常分析看板 · {{current_date}}</title>
+    <title>Bảng phân tích nhóm hàng ngày · {{current_date}}</title>
     <link rel="preconnect" href="{{ t2i_google_fonts_mirror }}">
     <link rel="preconnect" href="{{ t2i_gstatic_mirror }}" crossorigin>
     <link
@@ -1077,7 +1077,7 @@
                 height: clamp(38px, 12vw, 52px) !important;
             }
 
-            .miku-topic-card img[alt="装饰图"] {
+            .miku-topic-card img[alt="Ảnh trang trí"] {
                 max-width: clamp(76px, 24vw, 112px) !important;
                 height: 100% !important;
                 object-fit: contain !important;
@@ -1282,7 +1282,7 @@
                 height: clamp(34px, 11vw, 46px) !important;
             }
 
-            .miku-topic-card img[alt="装饰图"] {
+            .miku-topic-card img[alt="Ảnh trang trí"] {
                 max-width: clamp(68px, 22vw, 96px) !important;
             }
 
@@ -1364,7 +1364,7 @@
                 opacity: 0.92 !important;
             }
 
-            .miku-topic-card img[alt="装饰图"] {
+            .miku-topic-card img[alt="Ảnh trang trí"] {
                 max-width: clamp(58px, 19vw, 86px) !important;
                 height: 100% !important;
                 object-fit: contain !important;
@@ -1465,7 +1465,7 @@
                 height: clamp(26px, 8.5vw, 36px) !important;
             }
 
-            .miku-topic-card img[alt="装饰图"] {
+            .miku-topic-card img[alt="Ảnh trang trí"] {
                 max-width: clamp(50px, 17vw, 74px) !important;
             }
 
@@ -1504,7 +1504,7 @@
                 height: 24px !important;
             }
 
-            .miku-topic-card img[alt="装饰图"] {
+            .miku-topic-card img[alt="Ảnh trang trí"] {
                 max-width: 56px !important;
             }
 
@@ -1653,36 +1653,36 @@
         <div class="deco-image"></div>
 
         <div class="header">
-            <h1>群聊日常分析看板</h1>
-            <div class="date-line">分析日志 // {{current_date}}</div>
+            <h1>Bảng phân tích nhóm hàng ngày</h1>
+            <div class="date-line">NHẬT KÝ PHÂN TÍCH // {{current_date}}</div>
         </div>
 
         <div class="stats-row">
             <div class="stat-box">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 5px;">
                     <i data-lucide="message-square" class="stat-icon"></i>
-                    <div class="stat-txt" style="margin: 0;">今日消息数</div>
+                    <div class="stat-txt" style="margin: 0;">Tin nhắn hôm nay</div>
                 </div>
                 <div class="stat-num">{{message_count}}</div>
             </div>
             <div class="stat-box">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 5px;">
                     <i data-lucide="users" class="stat-icon"></i>
-                    <div class="stat-txt" style="margin: 0;">活跃成员数</div>
+                    <div class="stat-txt" style="margin: 0;">Thành viên hoạt động</div>
                 </div>
                 <div class="stat-num">{{participant_count}}</div>
             </div>
             <div class="stat-box">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 5px;">
                     <i data-lucide="smile" class="stat-icon"></i>
-                    <div class="stat-txt" style="margin: 0;">表情互动</div>
+                    <div class="stat-txt" style="margin: 0;">Tương tác biểu cảm</div>
                 </div>
                 <div class="stat-num">{{emoji_count}}</div>
             </div>
             <div class="stat-box">
                 <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 5px;">
                     <i data-lucide="type" class="stat-icon"></i>
-                    <div class="stat-txt" style="margin: 0;">今日字数累计</div>
+                    <div class="stat-txt" style="margin: 0;">Ký tự hôm nay</div>
                 </div>
                 <div class="stat-num">{{total_characters}}</div>
             </div>
@@ -1692,7 +1692,7 @@
             <div>
                 <div class="peak-label">
                     <i data-lucide="trending-up" style="width: 20px; height: 20px;"></i>
-                    峰值活跃时间段
+                    Khung giờ hoạt động cao điểm
                 </div>
                 <div class="peak-time-text">{{most_active_period}}</div>
             </div>
@@ -1709,7 +1709,7 @@
                 <div class="v-bar"></div>
                 <div class="section-title-text">
                     <i data-lucide="line-chart" style="width: 24px; height: 24px; color: var(--miku-dark);"></i>
-                    24小时活动
+                    Hoạt động 24 giờ
                 </div>
             </div>
             <div class="card-common" style="padding: 20px 10px;">
@@ -1725,7 +1725,7 @@
                 <div class="v-bar" style="background: var(--miku-pink-light);"></div>
                 <div class="section-title-text">
                     <i data-lucide="message-square" style="width: 24px; height: 24px; color: var(--miku-dark);"></i>
-                    话题总结
+                    Tổng hợp chủ đề
                 </div>
             </div>
             {{topics_html | safe}}
@@ -1739,7 +1739,7 @@
                 <div class="v-bar"></div>
                 <div class="section-title-text">
                     <i data-lucide="users" style="width: 24px; height: 24px; color: var(--miku-dark);"></i>
-                    群友画像
+                    Chân dung thành viên
                 </div>
             </div>
             {{titles_html | safe}}
@@ -1753,7 +1753,7 @@
                 <div class="v-bar" style="background: var(--miku-pink-light);"></div>
                 <div class="section-title-text">
                     <i data-lucide="quote" style="width: 24px; height: 24px; color: var(--miku-dark);"></i>
-                    今日圣经
+                    Trích dẫn hôm nay
                 </div>
             </div>
             {{quotes_html | safe}}
@@ -1767,7 +1767,7 @@
                 <div class="v-bar"></div>
                 <div class="section-title-text">
                     <i data-lucide="award" style="width: 24px; height: 24px; color: var(--miku-dark);"></i>
-                    群聊锐评
+                    Đánh giá trò chuyện
                 </div>
             </div>
             {{chat_quality_html | safe}}

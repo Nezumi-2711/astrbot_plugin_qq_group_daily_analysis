@@ -129,7 +129,7 @@ class AnalysisApplicationService:
             # 1. 获取适配器
             adapter = self.bot_manager.get_adapter(platform_id)
             if not adapter:
-                raise ValueError(f"未找到平台 {platform_id} 的适配器")
+                raise ValueError(f"Không tìm thấy adapter cho nền tảng {platform_id}")
 
             # 检查群聊是否被禁言（包括全体禁言或对 Bot 自身禁言）
             if hasattr(adapter, "is_group_muted"):
@@ -160,7 +160,8 @@ class AnalysisApplicationService:
                     )
                 except Exception as e:
                     raise ValueError(
-                        f"飞书成员信息预检查失败，请先完成应用权限授权：{e}"
+                        "Kiểm tra trước thông tin thành viên Feishu thất bại; "
+                        f"vui lòng cấp đủ quyền cho ứng dụng: {e}"
                     ) from e
 
             # 2. 拉取消息
@@ -347,7 +348,9 @@ class AnalysisApplicationService:
         """
         async with self.group_lock(group_id, "incremental"):
             if not self.incremental_store:
-                raise RuntimeError("增量分析未初始化：缺少 IncrementalStore")
+                raise RuntimeError(
+                    "Phân tích tăng cường chưa được khởi tạo: thiếu IncrementalStore"
+                )
 
             logger.info(
                 f"开始增量分析用例: 群 {group_id}, 平台 {platform_id or '默认'}"
@@ -356,7 +359,7 @@ class AnalysisApplicationService:
             # 1. 获取适配器
             adapter = self.bot_manager.get_adapter(platform_id)
             if not adapter:
-                raise ValueError(f"未找到平台 {platform_id} 的适配器")
+                raise ValueError(f"Không tìm thấy adapter cho nền tảng {platform_id}")
 
             # 检查群聊是否被禁言（包括全体禁言或对 Bot 自身禁言）
             if hasattr(adapter, "is_group_muted"):
@@ -626,7 +629,8 @@ class AnalysisApplicationService:
         async with self.group_lock(group_id, "final"):
             if not self.incremental_store or not self.incremental_merge_service:
                 raise RuntimeError(
-                    "增量分析未初始化：缺少 IncrementalStore 或 IncrementalMergeService"
+                    "Phân tích tăng cường chưa được khởi tạo: thiếu "
+                    "IncrementalStore hoặc IncrementalMergeService"
                 )
 
             logger.info(
@@ -658,7 +662,7 @@ class AnalysisApplicationService:
             # 5. 获取适配器（报告发送需要）
             adapter = self.bot_manager.get_adapter(platform_id)
             if not adapter:
-                raise ValueError(f"未找到平台 {platform_id} 的适配器")
+                raise ValueError(f"Không tìm thấy adapter cho nền tảng {platform_id}")
 
             # 检查群聊是否被禁言（包括全体禁言或对 Bot 自身禁言）
             if hasattr(adapter, "is_group_muted"):

@@ -387,7 +387,7 @@ class GroupDailyAnalysis(Star):
             if (".jpg" in image_url.lower() or ".jpeg" in image_url.lower())
             else ".png"
         )
-        nice_filename = f"群分析报告_{group_id}_{date_str}_{timestamp}{ext}"
+        nice_filename = f"bao_cao_phan_tich_nhom_{group_id}_{date_str}_{timestamp}{ext}"
 
         try:
             # 尝试通过适配器获取群名称，使文件名更具辨识度
@@ -396,9 +396,7 @@ class GroupDailyAnalysis(Star):
                 # 过滤非法文件名字符：\ / : * ? " < > |
                 safe_name = re.sub(r'[\\/:*?"<>|]', "", group_info.group_name).strip()
                 if safe_name:
-                    nice_filename = (
-                        f"群分析报告_{safe_name}_{date_str}_{timestamp}{ext}"
-                    )
+                    nice_filename = f"bao_cao_phan_tich_nhom_{safe_name}_{date_str}_{timestamp}{ext}"
         except Exception:
             pass
 
@@ -493,7 +491,7 @@ class GroupDailyAnalysis(Star):
                 except OSError:
                     pass
 
-    @filter.command("群分析", alias={"group_analysis"})
+    @filter.command("phantichnhom", alias={"group_analysis", "群分析"})
     @filter.permission_type(PermissionType.ADMIN)
     async def analyze_group_daily(
         self, event: AstrMessageEvent, days: int | None = None
@@ -515,7 +513,7 @@ class GroupDailyAnalysis(Star):
             platform_id = self._get_platform_id_from_event(event)
 
             if not group_id:
-                yield event.plain_result("❌ 请在群聊中使用此命令")
+                yield event.plain_result("❌ Vui lòng sử dụng lệnh này trong nhóm chat")
                 return
 
             # 更新bot实例
@@ -531,7 +529,9 @@ class GroupDailyAnalysis(Star):
                 # But if list item HAS colon, we need precise match.
                 # If prompt fails, try simple ID as fallback for permissive cases?
                 # No, config_manager.is_group_allowed already handles simple ID matching if whitelist item is simple ID.
-                yield event.plain_result("❌ 此群未启用日常分析功能")
+                yield event.plain_result(
+                    "❌ Nhóm này chưa bật tính năng phân tích hàng ngày"
+                )
                 return
 
             # 获取群名以生成语义化的 TraceID
@@ -565,7 +565,9 @@ class GroupDailyAnalysis(Star):
             )
 
             if use_text_reply:
-                yield event.plain_result("🔍 正在启动分析引擎，正在拉取最近消息...")
+                yield event.plain_result(
+                    "🔍 Đang khởi động phân tích và lấy các tin nhắn gần đây..."
+                )
             elif adapter and orig_msg_id:
                 await adapter.set_reaction(
                     event.get_group_id(), orig_msg_id, "analysis_started"
@@ -579,13 +581,17 @@ class GroupDailyAnalysis(Star):
             if not result.get("success"):
                 reason = result.get("reason")
                 if reason == "no_messages":
-                    yield event.plain_result("❌ 未找到足够的群聊记录")
+                    yield event.plain_result(
+                        "❌ Không tìm thấy đủ dữ liệu chat trong nhóm"
+                    )
                 elif reason == "muted":
                     logger.warning(
                         f"群 {group_id} 开启了全群禁言或对 Bot 禁言，跳过回复以防抛出发送异常"
                     )
                 else:
-                    yield event.plain_result("❌ 分析失败，原因未知")
+                    yield event.plain_result(
+                        "❌ Phân tích thất bại, không rõ nguyên nhân"
+                    )
                 return
 
             if not use_text_reply and adapter and orig_msg_id:
@@ -597,13 +603,16 @@ class GroupDailyAnalysis(Star):
                 yield res
 
         except DuplicateGroupTaskError:
-            yield event.plain_result("📊 该群的分析任务正在执行中，请稍后再试哦~")
+            yield event.plain_result(
+                "📊 Phân tích cho nhóm này đang chạy, vui lòng thử lại sau nhé~"
+            )
         except asyncio.CancelledError:
             logger.info("群分析任务被取消 (插件重载或卸载)")
         except Exception as e:
             logger.error(f"群分析失败: {e}", exc_info=True)
             yield event.plain_result(
-                f"❌ 分析失败: {str(e)}。请检查网络连接和LLM配置，或联系管理员"
+                f"❌ Phân tích thất bại: {str(e)}. Vui lòng kiểm tra kết nối "
+                "mạng, cấu hình LLM hoặc liên hệ quản trị viên"
             )
         finally:
             if current_task:
@@ -699,7 +708,7 @@ class GroupDailyAnalysis(Star):
                         report_url = f"{base_url.rstrip('/')}/{url_path.lstrip('/')}"
 
                         yield event.plain_result(
-                            f"📊 今日群聊分析报告已生成：\n{report_url}"
+                            f"📊 Báo cáo phân tích nhóm hôm nay đã sẵn sàng:\n{report_url}"
                         )
                         return  # 拦截成功，直接退出，不再发文件
                     else:
@@ -731,7 +740,7 @@ class GroupDailyAnalysis(Star):
                     if caption:
                         yield event.plain_result(caption)
             else:
-                yield event.plain_result("⚠️ HTML 生成失败。")
+                yield event.plain_result("⚠️ Tạo báo cáo HTML thất bại.")
 
         else:
             await self._send_text_reports(
@@ -763,7 +772,7 @@ class GroupDailyAnalysis(Star):
             return await adapter.send_text_report(group_id, tr, fallback_content=fr)
         return await adapter.send_text_report(group_id, tr)
 
-    @filter.command("设置格式", alias={"set_format"})
+    @filter.command("dinhdang", alias={"set_format", "设置格式"})
     @filter.permission_type(PermissionType.ADMIN)
     async def set_output_format(self, event: AstrMessageEvent, format_input: str = ""):
         """
@@ -775,9 +784,9 @@ class GroupDailyAnalysis(Star):
 
         available_formats = ["image", "text", "html"]
         format_display_names = {
-            "image": "图片格式 (默认)",
-            "text": "文本格式",
-            "html": "交互式 HTML 网页",
+            "image": "Định dạng ảnh (mặc định)",
+            "text": "Định dạng văn bản",
+            "html": "Trang web HTML tương tác",
         }
 
         if not format_input:
@@ -788,12 +797,12 @@ class GroupDailyAnalysis(Star):
                     for i, f in enumerate(available_formats, start=1)
                 ]
             )
-            yield event.plain_result(f"""📊 当前输出格式: {current}
+            yield event.plain_result(f"""📊 Định dạng đầu ra hiện tại: {current}
 
-可用格式:
+Các định dạng khả dụng:
 {format_list_str}
 
-用法: /设置格式 [名称或序号] 如 /设置格式 image,html""")
+Cách dùng: /dinhdang [tên hoặc số thứ tự], ví dụ: /dinhdang image,html""")
             return
 
         target_format = None
@@ -815,24 +824,30 @@ class GroupDailyAnalysis(Star):
             if all(p in available_formats for p in parts) and len(parts) > 1:
                 try:
                     self.config_manager.set_output_format(parts)
-                    yield event.plain_result(f"✅ 输出格式已设置为: {', '.join(parts)}")
+                    yield event.plain_result(
+                        f"✅ Định dạng đầu ra đã đặt thành: {', '.join(parts)}"
+                    )
                 except Exception as e:
-                    yield event.plain_result(f"❌ 设置失败: {e}")
+                    yield event.plain_result(f"❌ Cài đặt thất bại: {e}")
                 return
 
         if not target_format:
             yield event.plain_result(
-                f"❌ 无效的格式类型 '{format_input}'。可用: {', '.join(available_formats)} 或序号 1-{len(available_formats)}"
+                f"❌ Định dạng '{format_input}' không hợp lệ. Có sẵn: "
+                f"{', '.join(available_formats)} hoặc số thứ tự "
+                f"1-{len(available_formats)}"
             )
             return
 
         try:
             self.config_manager.set_output_format(target_format)  # type: ignore[arg-type]
-            yield event.plain_result(f"✅ 输出格式已设置为: {target_format}")
+            yield event.plain_result(
+                f"✅ Định dạng đầu ra đã đặt thành: {target_format}"
+            )
         except Exception as e:
-            yield event.plain_result(f"❌ 设置失败: {e}")
+            yield event.plain_result(f"❌ Cài đặt thất bại: {e}")
 
-    @filter.command("设置模板", alias={"set_template"})
+    @filter.command("maubc", alias={"set_template", "设置模板"})
     @filter.permission_type(PermissionType.ADMIN)
     async def set_report_template(
         self, event: AstrMessageEvent, template_input: str = ""
@@ -853,13 +868,13 @@ class GroupDailyAnalysis(Star):
             template_list_str = "\n".join(
                 [f"【{i}】{t}" for i, t in enumerate(available_templates, start=1)]
             )
-            yield event.plain_result(f"""🎨 当前报告模板: {current_template}
+            yield event.plain_result(f"""🎨 Mẫu báo cáo hiện tại: {current_template}
 
-可用模板:
+Các mẫu khả dụng:
 {template_list_str}
 
-用法: /设置模板 [模板名称或序号]
-💡 使用 /查看模板 查看预览图""")
+Cách dùng: /maubc [tên mẫu hoặc số thứ tự]
+💡 Sử dụng /xemmau để xem ảnh xem trước""")
             return
 
         template_name, parse_error = self.template_command_service.parse_template_input(
@@ -870,17 +885,19 @@ class GroupDailyAnalysis(Star):
             return
 
         if not template_name:
-            yield event.plain_result(f"❌ 无法解析模板输入: {template_input}")
+            yield event.plain_result(
+                f"❌ Không thể phân tích đầu vào mẫu: {template_input}"
+            )
             return
 
         if not await self.template_command_service.template_exists(template_name):
-            yield event.plain_result(f"❌ 模板 '{template_name}' 不存在")
+            yield event.plain_result(f"❌ Mẫu '{template_name}' không tồn tại")
             return
 
         self.config_manager.set_report_template(template_name)
-        yield event.plain_result(f"✅ 报告模板已设置为: {template_name}")
+        yield event.plain_result(f"✅ Mẫu báo cáo đã đặt thành: {template_name}")
 
-    @filter.command("查看模板", alias={"view_templates"})
+    @filter.command("xemmau", alias={"view_templates", "查看模板"})
     @filter.permission_type(PermissionType.ADMIN)
     async def view_templates(self, event: AstrMessageEvent):
         """
@@ -895,7 +912,7 @@ class GroupDailyAnalysis(Star):
         )
 
         if not available_templates:
-            yield event.plain_result("❌ 未找到任何可用的报告模板")
+            yield event.plain_result("❌ Không tìm thấy mẫu báo cáo nào khả dụng")
             return
 
         platform_id = self._get_platform_id_from_event(event)
@@ -922,7 +939,7 @@ class GroupDailyAnalysis(Star):
         )
         yield event.chain_result([preview_nodes])
 
-    @filter.command("分析设置", alias={"analysis_settings"})
+    @filter.command("caidat", alias={"analysis_settings", "分析设置"})
     @filter.permission_type(PermissionType.ADMIN)
     async def analysis_settings(self, event: AstrMessageEvent, action: str = "status"):
         """
@@ -939,7 +956,7 @@ class GroupDailyAnalysis(Star):
         group_id = self._get_group_id_from_event(event)
 
         if not group_id:
-            yield event.plain_result("❌ 请在群聊中使用此命令")
+            yield event.plain_result("❌ Vui lòng sử dụng lệnh này trong nhóm chat")
             return
 
         if action == "enable":
@@ -951,7 +968,9 @@ class GroupDailyAnalysis(Star):
 
         elif action == "reload":
             self.auto_scheduler.schedule_jobs(self.context)
-            yield event.plain_result("✅ 已重新加载配置并重启定时任务")
+            yield event.plain_result(
+                "✅ Đã tải lại cấu hình và khởi động lại tác vụ định kỳ"
+            )
 
         elif action == "test":
             check_target = getattr(event, "unified_msg_origin", None)
@@ -961,35 +980,45 @@ class GroupDailyAnalysis(Star):
                 )
 
             if not self.config_manager.is_group_allowed(check_target):
-                yield event.plain_result("❌ 请先启用当前群的分析功能")
+                yield event.plain_result(
+                    "❌ Vui lòng bật tính năng phân tích cho nhóm này trước"
+                )
                 return
 
-            yield event.plain_result("🧪 开始测试自动分析功能...")
+            yield event.plain_result("🧪 Đang kiểm tra tính năng phân tích tự động...")
 
             # 更新bot实例（用于测试）
             self.bot_manager.update_from_event(event)
 
             try:
                 await self.auto_scheduler._perform_auto_analysis_for_group(group_id)
-                yield event.plain_result("✅ 自动分析测试完成，请查看群消息")
+                yield event.plain_result(
+                    "✅ Kiểm tra phân tích tự động hoàn tất, vui lòng xem tin nhắn nhóm"
+                )
             except DuplicateGroupTaskError:
-                yield event.plain_result("📊 该群的分析任务正在执行中，请稍后再试哦~")
+                yield event.plain_result(
+                    "📊 Phân tích cho nhóm này đang chạy, vui lòng thử lại sau nhé~"
+                )
             except Exception as e:
-                yield event.plain_result(f"❌ 自动分析测试失败: {str(e)}")
+                yield event.plain_result(
+                    f"❌ Kiểm tra phân tích tự động thất bại: {str(e)}"
+                )
 
         elif action == "incremental_debug":
             current_state = self.config_manager.get_incremental_report_immediately()
             new_state = not current_state
             self.config_manager.set_incremental_report_immediately(new_state)
-            status_text = "已启用" if new_state else "已禁用"
-            yield event.plain_result(f"✅ 增量分析立即报告模式: {status_text}")
+            status_text = "Đã bật" if new_state else "Đã tắt"
+            yield event.plain_result(
+                f"✅ Chế độ báo cáo ngay phân tích gia tăng: {status_text}"
+            )
 
         elif action == "filter_bot":
             current = self.config_manager.get_filter_bot_messages()
             new_state = not current
             self.config_manager.set_filter_bot_messages(new_state)
-            status_text = "已启用" if new_state else "已禁用"
-            yield event.plain_result(f"✅ 过滤机器人消息: {status_text}")
+            status_text = "Đã bật" if new_state else "Đã tắt"
+            yield event.plain_result(f"✅ Lọc tin nhắn bot: {status_text}")
 
         else:  # status
             check_target = getattr(event, "unified_msg_origin", None)
@@ -999,11 +1028,13 @@ class GroupDailyAnalysis(Star):
                 )
 
             is_allowed = self.config_manager.is_group_allowed(check_target)
-            status = "已启用" if is_allowed else "未启用"
+            status = "Đã bật" if is_allowed else "Chưa bật"
             mode = self.config_manager.get_group_list_mode()
 
             auto_status = (
-                "已启用" if self.config_manager.is_auto_analysis_enabled() else "未启用"
+                "Đã bật"
+                if self.config_manager.is_auto_analysis_enabled()
+                else "Chưa bật"
             )
             auto_time = self.config_manager.get_auto_analysis_time()
 
@@ -1012,46 +1043,48 @@ class GroupDailyAnalysis(Star):
 
             # 增量分析状态
             incremental_enabled = self.config_manager.get_incremental_enabled()
-            incremental_status_text = "未启用"
+            incremental_status_text = "Chưa bật"
             if incremental_enabled:
                 interval = self.config_manager.get_incremental_interval_minutes()
                 max_daily = self.config_manager.get_incremental_max_daily_analyses()
                 active_start = self.config_manager.get_incremental_active_start_hour()
                 active_end = self.config_manager.get_incremental_active_end_hour()
                 incremental_status_text = (
-                    f"已启用 (间隔{interval}分钟, 最多{max_daily}次/天, "
-                    f"活跃时段{active_start}:00-{active_end}:00)"
+                    f"Đã bật (mỗi {interval} phút, tối đa {max_daily} lần/ngày, "
+                    f"khung giờ hoạt động {active_start}:00-{active_end}:00)"
                 )
 
         debug_report = self.config_manager.get_incremental_report_immediately()
-        debug_status = "✅ 开启" if debug_report else "❌ 关闭"
+        debug_status = "✅ Bật" if debug_report else "❌ Tắt"
         filter_bot = self.config_manager.get_filter_bot_messages()
-        filter_bot_status = "✅ 开启" if filter_bot else "❌ 关闭"
+        filter_bot_status = "✅ Bật" if filter_bot else "❌ Tắt"
 
-        yield event.plain_result(f"""📊 当前群分析功能状态:
-• 群分析功能: {status} (模式: {mode})
-• 自动分析: {auto_status} ({auto_time})
-        • 增量分析: {incremental_status_text}
-        • 调试模式: {debug_status} (增量立即报告)
-        • 过滤机器人: {filter_bot_status}
-        • 输出格式: {output_format}
-• 最小消息数: {min_threshold}
+        yield event.plain_result(f"""📊 Trạng thái phân tích của nhóm hiện tại:
+    • Phân tích nhóm: {status} (chế độ: {mode})
+    • Phân tích tự động: {auto_status} ({auto_time})
+        • Phân tích gia tăng: {incremental_status_text}
+        • Chế độ gỡ lỗi: {debug_status} (báo cáo gia tăng ngay lập tức)
+        • Lọc bot: {filter_bot_status}
+        • Định dạng đầu ra: {output_format}
+    • Số tin nhắn tối thiểu: {min_threshold}
 
-💡 可用命令: enable, disable, status, reload, test, filter_bot, incremental_debug
-💡 支持的输出格式: image, text (图片包含活跃度可视化)
-💡 其他命令: /设置格式, /增量状态""")
+    💡 Lệnh khả dụng: enable, disable, status, reload, test, filter_bot, incremental_debug
+    💡 Định dạng đầu ra được hỗ trợ: image, text (ảnh có biểu đồ hoạt động)
+    💡 Lệnh khác: /dinhdang, /tangcuong""")
 
-    @filter.command("增量状态", alias={"incremental_status"})
+    @filter.command("tangcuong", alias={"incremental_status", "增量状态"})
     @filter.permission_type(PermissionType.ADMIN)
     async def incremental_status(self, event: AstrMessageEvent):
         """查看当前增量分析状态（滑动窗口）"""
         group_id = self._get_group_id_from_event(event)
         if not group_id:
-            yield event.plain_result("❌ 请在群聊中使用此命令")
+            yield event.plain_result("❌ Vui lòng sử dụng lệnh này trong nhóm chat")
             return
 
         if not self.config_manager.get_incremental_enabled():
-            yield event.plain_result("ℹ️ 增量分析模式未启用，请在插件配置中开启")
+            yield event.plain_result(
+                "ℹ️ Chế độ phân tích gia tăng chưa bật, vui lòng bật trong cấu hình plugin"
+            )
             return
 
         import time as time_mod
@@ -1072,7 +1105,8 @@ class GroupDailyAnalysis(Star):
             start_str = datetime.fromtimestamp(window_start).strftime("%m-%d %H:%M")
             end_str = datetime.fromtimestamp(window_end).strftime("%m-%d %H:%M")
             yield event.plain_result(
-                f"📊 滑动窗口 ({start_str} ~ {end_str}) 内尚无增量分析数据"
+                f"📊 Chưa có dữ liệu phân tích gia tăng trong cửa sổ "
+                f"({start_str} ~ {end_str})"
             )
             return
 
@@ -1083,13 +1117,13 @@ class GroupDailyAnalysis(Star):
         summary = state.get_summary()
 
         yield event.plain_result(
-            f"📊 增量分析状态 (窗口: {summary['window']})\n"
-            f"• 分析次数: {summary['total_analyses']}\n"
-            f"• 累计消息: {summary['total_messages']}\n"
-            f"• 话题数: {summary['topics_count']}\n"
-            f"• 金句数: {summary['quotes_count']}\n"
-            f"• 参与者: {summary['participants']}\n"
-            f"• 高峰时段: {summary['peak_hours']}"
+            f"📊 Trạng thái phân tích gia tăng (cửa sổ: {summary['window']})\n"
+            f"• Số lần phân tích: {summary['total_analyses']}\n"
+            f"• Tổng số tin nhắn: {summary['total_messages']}\n"
+            f"• Số chủ đề: {summary['topics_count']}\n"
+            f"• Số trích dẫn nổi bật: {summary['quotes_count']}\n"
+            f"• Người tham gia: {summary['participants']}\n"
+            f"• Khung giờ cao điểm: {summary['peak_hours']}"
         )
 
     async def _handle_settings_enable(self, event: AstrMessageEvent, group_id: str):
@@ -1102,10 +1136,12 @@ class GroupDailyAnalysis(Star):
             if not self.config_manager.is_group_allowed(target_id):
                 glist.append(target_id)
                 self.config_manager.set_group_list(glist)
-                yield event.plain_result(f"✅ 已将当前群加入白名单\nID: {target_id}")
+                yield event.plain_result(
+                    f"✅ Đã thêm nhóm hiện tại vào whitelist\nID: {target_id}"
+                )
                 self.auto_scheduler.schedule_jobs(self.context)
             else:
-                yield event.plain_result("ℹ️ 当前群已在白名单中")
+                yield event.plain_result("ℹ️ Nhóm hiện tại đã có trong whitelist")
         elif mode == "blacklist":
             glist = self.config_manager.get_group_list()
             removed = False
@@ -1118,12 +1154,14 @@ class GroupDailyAnalysis(Star):
 
             if removed:
                 self.config_manager.set_group_list(glist)
-                yield event.plain_result("✅ 已将当前群从黑名单移除")
+                yield event.plain_result("✅ Đã xóa nhóm hiện tại khỏi blacklist")
                 self.auto_scheduler.schedule_jobs(self.context)
             else:
-                yield event.plain_result("ℹ️ 当前群不在黑名单中")
+                yield event.plain_result("ℹ️ Nhóm hiện tại không có trong blacklist")
         else:
-            yield event.plain_result("ℹ️ 当前为无限制模式，所有群聊默认启用")
+            yield event.plain_result(
+                "ℹ️ Đang ở chế độ không giới hạn, tất cả nhóm mặc định được bật"
+            )
 
     async def _handle_settings_disable(self, event: AstrMessageEvent, group_id: str):
         """协助逻辑：处理禁用设置的分支逻辑"""
@@ -1142,18 +1180,22 @@ class GroupDailyAnalysis(Star):
 
             if removed:
                 self.config_manager.set_group_list(glist)
-                yield event.plain_result("✅ 已将当前群从白名单移除")
+                yield event.plain_result("✅ Đã xóa nhóm hiện tại khỏi whitelist")
                 self.auto_scheduler.schedule_jobs(self.context)
             else:
-                yield event.plain_result("ℹ️ 当前群不在白名单中")
+                yield event.plain_result("ℹ️ Nhóm hiện tại không có trong whitelist")
         elif mode == "blacklist":
             glist = self.config_manager.get_group_list()
             if self.config_manager.is_group_allowed(target_id):
                 glist.append(target_id)
                 self.config_manager.set_group_list(glist)
-                yield event.plain_result(f"✅ 已将当前群加入黑名单\nID: {target_id}")
+                yield event.plain_result(
+                    f"✅ Đã thêm nhóm hiện tại vào blacklist\nID: {target_id}"
+                )
                 self.auto_scheduler.schedule_jobs(self.context)
             else:
-                yield event.plain_result("ℹ️ 当前群已在黑名单中")
+                yield event.plain_result("ℹ️ Nhóm hiện tại đã có trong blacklist")
         else:
-            yield event.plain_result("ℹ️ 当前为无限制模式，如需禁用请切换到黑名单模式")
+            yield event.plain_result(
+                "ℹ️ Đang ở chế độ không giới hạn; để tắt, hãy chuyển sang chế độ blacklist"
+            )

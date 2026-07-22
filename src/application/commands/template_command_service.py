@@ -67,7 +67,7 @@ class TemplateCommandService:
     ) -> tuple[str | None, str | None]:
         """解析模板输入（支持模板名或序号）。"""
         if not template_input:
-            return None, "❌ 模板参数不能为空"
+            return None, "❌ Tham số mẫu không được để trống"
 
         if template_input.isdigit():
             index = int(template_input)
@@ -75,7 +75,8 @@ class TemplateCommandService:
                 return available_templates[index - 1], None
             return (
                 None,
-                f"❌ 无效的序号 '{template_input}'，有效范围: 1-{len(available_templates)}",
+                f"❌ Số thứ tự '{template_input}' không hợp lệ; phạm vi hợp lệ: "
+                f"1-{len(available_templates)}",
             )
 
         return template_input, None
@@ -91,10 +92,12 @@ class TemplateCommandService:
 
         header_content = [
             Plain(
-                f"🎨 可用报告模板列表\n📌 当前使用: {current_template}\n💡 使用 /设置模板 [序号] 切换"
+                "🎨 Danh sách mẫu báo cáo khả dụng\n"
+                f"📌 Đang sử dụng: {current_template}\n"
+                "💡 Dùng /maubc [số thứ tự] để chuyển mẫu"
             )
         ]
-        node_list.append(Node(uin=bot_id, name="模板预览", content=header_content))
+        node_list.append(Node(uin=bot_id, name="Xem trước mẫu", content=header_content))
 
         for index, template_name in enumerate(available_templates):
             current_mark = " ✅" if template_name == current_template else ""

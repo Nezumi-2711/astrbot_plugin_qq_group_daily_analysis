@@ -28,9 +28,9 @@
         </div>
         <div class="item-content">
             {% if topic.topic.count is defined %}
-            <p><strong>讨论热度:</strong> {{ topic.topic.count }} 次提及</p>
+            <p><strong>Độ sôi nổi:</strong> {{ topic.topic.count }} lượt nhắc</p>
             {% endif %}
-            <p><strong>参与的群友:</strong> {{ topic.contributors }}</p>
+            <p><strong>Thành viên tham gia:</strong> {{ topic.contributors }}</p>
             {% if topic.detail %}
             <div
                 style="margin-top: 8px; padding: 12px 18px; background: linear-gradient(180deg, rgba(245,250,255,0.95), rgba(236,247,255,0.88)); border-radius: 16px; border: 1.5px solid rgba(255, 255, 255, 0.8); box-shadow: 0 4px 12px rgba(85,126,169,0.03); color: var(--text-main); line-height: 1.6;">
@@ -39,6 +39,6 @@
             {% endif %}
         </div>
     </div>
-    <img class="item-emoji topic-emoji" src="{{ topic_emojis | random }}" alt="话题表情">
+    <img class="item-emoji topic-emoji" src="{{ topic_emojis | random }}" alt="Biểu cảm chủ đề">
 </li>
 {% endfor %}

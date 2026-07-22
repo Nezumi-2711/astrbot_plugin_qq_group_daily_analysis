@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>春节特供 · 群聊日报</title>
+    <title>Đặc biệt Tết · Báo cáo nhóm hàng ngày</title>
     <link rel="preconnect" href="{{ t2i_google_fonts_mirror }}">
     <link rel="preconnect" href="{{ t2i_gstatic_mirror }}" crossorigin>
     <link
@@ -592,27 +592,27 @@
 
         <div class="sf-header">
             <div class="sf-title-wrap">
-                <h1>🧧 春节特供日报 🧧</h1>
+                <h1>🧧 Báo cáo đặc biệt ngày Tết 🧧</h1>
             </div>
-            <div class="sf-date">—— {{current_date}} · 岁在丙午 ——</div>
+            <div class="sf-date">—— {{current_date}} · Năm Bính Ngọ ——</div>
         </div>
 
         <div class="sf-stats-wrapper">
             <div class="sf-stats-grid">
                 <div class="sf-hongbao">
-                    <div class="hb-label">消息总数</div>
+                    <div class="hb-label">Tổng tin nhắn</div>
                     <div class="hb-value">{{message_count}}</div>
                 </div>
                 <div class="sf-hongbao">
-                    <div class="hb-label">参与群友</div>
+                    <div class="hb-label">Người tham gia</div>
                     <div class="hb-value">{{participant_count}}</div>
                 </div>
                 <div class="sf-hongbao">
-                    <div class="hb-label">表情统计</div>
+                    <div class="hb-label">Biểu cảm</div>
                     <div class="hb-value">{{emoji_count}}</div>
                 </div>
                 <div class="sf-hongbao">
-                    <div class="hb-label">总字符数</div>
+                    <div class="hb-label">Tổng ký tự</div>
                     <div class="hb-value" style="font-size: 1.8rem;">{{total_characters}}</div>
                 </div>
             </div>
@@ -620,14 +620,14 @@
             <div class="sf-peak-badge">
                 <div
                     style="font-family: var(--font-calligraphy); font-size: 2rem; color: var(--red-festive); margin-bottom: 5px;">
-                    巅峰时刻
+                    Khoảnh khắc cao điểm
                 </div>
                 <div
                     style="font-family: var(--font-heading); font-size: 3.2rem; color: var(--wood-dark); font-weight: 800; line-height: 1;">
                     {{most_active_period}}
                 </div>
-                <div style="font-size: 0.9rem; margin-top: 12px; font-weight: bold; color: var(--red-festive);">🏮 鸿运齐天
-                    · 众友云集 🏮</div>
+                <div style="font-size: 0.9rem; margin-top: 12px; font-weight: bold; color: var(--red-festive);">🏮 May mắn ngập tràn
+                    · Bạn bè hội tụ 🏮</div>
             </div>
         </div>
 
@@ -635,7 +635,7 @@
             <!-- 0. Chat Quality Analysis -->
             {% if chat_quality_html %}
             <div class="sf-section-box">
-                <div class="sf-section-title"><span>🏺</span> 聊天质量锐评</div>
+                <div class="sf-section-title"><span>🏺</span> Đánh giá chất lượng trò chuyện</div>
                 {{ chat_quality_html | safe }}
             </div>
             {% endif %}
@@ -643,7 +643,7 @@
             <!-- 1. Topics: Full Width -->
             {% if topics_html %}
             <div class="sf-section-box">
-                <div class="sf-section-title"><span>&#127982;</span> 核心话题回顾</div>
+                <div class="sf-section-title"><span>&#127982;</span> Nhìn lại chủ đề chính</div>
                 <div class="sf-topic-list">
                     {{topics_html | safe}}
                 </div>
@@ -652,7 +652,7 @@
  
             <!-- 2. Chart: Full Width with SF window -->
             <div class="sf-section-box">
-                <div class="sf-section-title"><span>📈</span> 活跃时序图</div>
+                <div class="sf-section-title"><span>📈</span> Biểu đồ hoạt động</div>
                 <div class="sf-window">
                     <div class="sf-window-title">ACTIVITY CHRONICLE</div>
                     {{hourly_chart_html | safe}}
@@ -662,7 +662,7 @@
             <!-- 3. Characters: Masonry 2-Column Grid -->
             {% if titles_html %}
             <div class="sf-section-box">
-                <div class="sf-section-title"><span>🎖️</span> 群友风云榜</div>
+                <div class="sf-section-title"><span>🎖️</span> Bảng vàng thành viên</div>
                 {{titles_html | safe}}
             </div>
             {% endif %}
@@ -670,7 +670,7 @@
             <!-- 4. Quotes: Staggered Timeline -->
             {% if quotes_html %}
             <div class="sf-section-box">
-                <div class="sf-section-title"><span>✨</span> 每日金句回响</div>
+                <div class="sf-section-title"><span>✨</span> Trích dẫn nổi bật trong ngày</div>
                 <div class="sf-quote-timeline">
                     {{quotes_html | safe}}
                 </div>
@@ -679,8 +679,8 @@
         </div>
 
         <footer>
-            <div>宜 · 总结分析 // {{current_datetime}}</div>
-            <div style="font-size: 0.85rem; margin-top: 8px; opacity: 0.7;">Token 消耗：{{total_tokens}} (Prompt: {{prompt_tokens}}, Completion: {{completion_tokens}})</div>
+            <div>Tổng kết phân tích // {{current_datetime}}</div>
+            <div style="font-size: 0.85rem; margin-top: 8px; opacity: 0.7;">Token đã dùng: {{total_tokens}} (Prompt: {{prompt_tokens}}, Completion: {{completion_tokens}})</div>
             <div class="sf-footer-tag">SXP-Simon / astrbot_plugin_qq_group_daily_analysis</div>
         </footer>
     </div>

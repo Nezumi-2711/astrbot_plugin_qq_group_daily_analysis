@@ -39,59 +39,110 @@ TRANSPARENT_IMAGE_DATA_URI = (
 
 DEFAULT_PROFILE_MAPPING = {
     "mbti": {
-        "INTJ": {"code": "INTJ", "name_zh": "建筑师"},
-        "INTP": {"code": "INTP", "name_zh": "逻辑学家"},
-        "ENTJ": {"code": "ENTJ", "name_zh": "指挥官"},
-        "ENTP": {"code": "ENTP", "name_zh": "辩论家"},
-        "INFJ": {"code": "INFJ", "name_zh": "提倡者"},
-        "INFP": {"code": "INFP", "name_zh": "调停者"},
-        "ENFJ": {"code": "ENFJ", "name_zh": "主人公"},
-        "ENFP": {"code": "ENFP", "name_zh": "竞选者"},
-        "ISTJ": {"code": "ISTJ", "name_zh": "物流师"},
-        "ISFJ": {"code": "ISFJ", "name_zh": "守卫者"},
-        "ESTJ": {"code": "ESTJ", "name_zh": "总经理"},
-        "ESTP": {"code": "ESTP", "name_zh": "企业家"},
-        "ISTP": {"code": "ISTP", "name_zh": "鉴赏家"},
-        "ISFP": {"code": "ISFP", "name_zh": "探险家"},
-        "ESFJ": {"code": "ESFJ", "name_zh": "执政官"},
-        "ESFP": {"code": "ESFP", "name_zh": "表演者"},
+        "INTJ": {"code": "INTJ", "name_zh": "Kiến trúc sư"},
+        "INTP": {"code": "INTP", "name_zh": "Nhà logic học"},
+        "ENTJ": {"code": "ENTJ", "name_zh": "Nhà chỉ huy"},
+        "ENTP": {"code": "ENTP", "name_zh": "Nhà tranh biện"},
+        "INFJ": {"code": "INFJ", "name_zh": "Người cố vấn"},
+        "INFP": {"code": "INFP", "name_zh": "Người hòa giải"},
+        "ENFJ": {"code": "ENFJ", "name_zh": "Người truyền cảm hứng"},
+        "ENFP": {"code": "ENFP", "name_zh": "Người vận động"},
+        "ISTJ": {"code": "ISTJ", "name_zh": "Nhà hậu cần"},
+        "ISFJ": {"code": "ISFJ", "name_zh": "Người bảo vệ"},
+        "ESTJ": {"code": "ESTJ", "name_zh": "Nhà điều hành"},
+        "ESTP": {"code": "ESTP", "name_zh": "Doanh nhân"},
+        "ISTP": {"code": "ISTP", "name_zh": "Nhà kỹ thuật"},
+        "ISFP": {"code": "ISFP", "name_zh": "Nhà thám hiểm"},
+        "ESFJ": {"code": "ESFJ", "name_zh": "Người lãnh sự"},
+        "ESFP": {"code": "ESFP", "name_zh": "Người trình diễn"},
     },
     "sbti": {
-        "INTJ": {"code": "CTRL", "name_zh": "拿捏者", "asset_code": "CTRL"},
-        "INTP": {"code": "THIN-K", "name_zh": "思考者", "asset_code": "THIN-K"},
-        "ENTJ": {"code": "BOSS", "name_zh": "领导者", "asset_code": "BOSS"},
-        "ENTP": {"code": "JOKE-R", "name_zh": "小丑", "asset_code": "JOKE-R"},
-        "INFJ": {"code": "LOVE-R", "name_zh": "多情者", "asset_code": "LOVE-R"},
-        "INFP": {"code": "SOLO", "name_zh": "孤儿", "asset_code": "SOLO"},
-        "ENFJ": {"code": "THAN-K", "name_zh": "感恩者", "asset_code": "THAN-K"},
-        "ENFP": {"code": "GOGO", "name_zh": "行者", "asset_code": "GOGO"},
-        "ISTJ": {"code": "OH-NO", "name_zh": "哦不人", "asset_code": "OH-NO"},
-        "ISTP": {"code": "POOR", "name_zh": "贫困者", "asset_code": "POOR"},
-        "ESTJ": {"code": "SHIT", "name_zh": "愤世者", "asset_code": "SHIT"},
-        "ESTP": {"code": "WOC!", "name_zh": "握草人", "asset_code": "WOC"},
-        "ISFJ": {"code": "MUM", "name_zh": "妈妈", "asset_code": "MUM"},
-        "ISFP": {"code": "MALO", "name_zh": "吗喽", "asset_code": "MALO"},
-        "ESFJ": {"code": "ATM-er", "name_zh": "送钱者", "asset_code": "ATM-er"},
-        "ESFP": {"code": "SEXY", "name_zh": "尤物", "asset_code": "SEXY"},
+        "INTJ": {"code": "CTRL", "name_zh": "Người kiểm soát", "asset_code": "CTRL"},
+        "INTP": {"code": "THIN-K", "name_zh": "Người suy tư", "asset_code": "THIN-K"},
+        "ENTJ": {"code": "BOSS", "name_zh": "Thủ lĩnh", "asset_code": "BOSS"},
+        "ENTP": {"code": "JOKE-R", "name_zh": "Chú hề", "asset_code": "JOKE-R"},
+        "INFJ": {"code": "LOVE-R", "name_zh": "Người đa tình", "asset_code": "LOVE-R"},
+        "INFP": {"code": "SOLO", "name_zh": "Kẻ cô độc", "asset_code": "SOLO"},
+        "ENFJ": {"code": "THAN-K", "name_zh": "Người biết ơn", "asset_code": "THAN-K"},
+        "ENFP": {"code": "GOGO", "name_zh": "Lữ khách", "asset_code": "GOGO"},
+        "ISTJ": {"code": "OH-NO", "name_zh": "Người hay lo", "asset_code": "OH-NO"},
+        "ISTP": {"code": "POOR", "name_zh": "Người khốn khó", "asset_code": "POOR"},
+        "ESTJ": {"code": "SHIT", "name_zh": "Người bất mãn", "asset_code": "SHIT"},
+        "ESTP": {"code": "WOC!", "name_zh": "Người kinh ngạc", "asset_code": "WOC"},
+        "ISFJ": {"code": "MUM", "name_zh": "Người chăm sóc", "asset_code": "MUM"},
+        "ISFP": {"code": "MALO", "name_zh": "Chú khỉ", "asset_code": "MALO"},
+        "ESFJ": {"code": "ATM-er", "name_zh": "Nhà tài trợ", "asset_code": "ATM-er"},
+        "ESFP": {"code": "SEXY", "name_zh": "Người quyến rũ", "asset_code": "SEXY"},
     },
     "acgti": {
         "INTJ": {"code": "MRTS-X", "name_zh": "Mortis"},
-        "INTP": {"code": "KNAN", "name_zh": "江户川柯南"},
-        "ENTJ": {"code": "SAKI", "name_zh": "丰川祥子"},
-        "ENTP": {"code": "CHKA", "name_zh": "藤原千花"},
-        "INFJ": {"code": "DLRS", "name_zh": "三角初华"},
-        "INFP": {"code": "BCHI", "name_zh": "后藤一里"},
-        "ENFJ": {"code": "YCYO", "name_zh": "月见八千代"},
-        "ENFP": {"code": "HTMK", "name_zh": "初音未来"},
-        "ISTJ": {"code": "MRTS", "name_zh": "若叶睦"},
-        "ISTP": {"code": "AYRE", "name_zh": "绫波丽"},
-        "ESTJ": {"code": "MIKT", "name_zh": "御坂美琴"},
-        "ESTP": {"code": "ASKA", "name_zh": "明日香"},
-        "ISFJ": {"code": "SOYO", "name_zh": "长崎爽世"},
-        "ISFP": {"code": "LTYI", "name_zh": "洛天依"},
-        "ESFJ": {"code": "ANON", "name_zh": "千早爱音"},
-        "ESFP": {"code": "FRNA", "name_zh": "芙宁娜"},
+        "INTP": {"code": "KNAN", "name_zh": "Edogawa Conan"},
+        "ENTJ": {"code": "SAKI", "name_zh": "Togawa Sakiko"},
+        "ENTP": {"code": "CHKA", "name_zh": "Fujiwara Chika"},
+        "INFJ": {"code": "DLRS", "name_zh": "Misumi Uika"},
+        "INFP": {"code": "BCHI", "name_zh": "Gotoh Hitori"},
+        "ENFJ": {"code": "YCYO", "name_zh": "Tsukimi Yachiyo"},
+        "ENFP": {"code": "HTMK", "name_zh": "Hatsune Miku"},
+        "ISTJ": {"code": "MRTS", "name_zh": "Wakaba Mutsumi"},
+        "ISTP": {"code": "AYRE", "name_zh": "Ayanami Rei"},
+        "ESTJ": {"code": "MIKT", "name_zh": "Misaka Mikoto"},
+        "ESTP": {"code": "ASKA", "name_zh": "Asuka"},
+        "ISFJ": {"code": "SOYO", "name_zh": "Nagasaki Soyo"},
+        "ISFP": {"code": "LTYI", "name_zh": "Luo Tianyi"},
+        "ESFJ": {"code": "ANON", "name_zh": "Chihaya Anon"},
+        "ESFP": {"code": "FRNA", "name_zh": "Furina"},
     },
+}
+
+
+DEFAULT_PROFILE_NAME_TRANSLATIONS = {
+    "建筑师": "Kiến trúc sư",
+    "逻辑学家": "Nhà logic học",
+    "指挥官": "Nhà chỉ huy",
+    "辩论家": "Nhà tranh biện",
+    "提倡者": "Người cố vấn",
+    "调停者": "Người hòa giải",
+    "主人公": "Người truyền cảm hứng",
+    "竞选者": "Người vận động",
+    "物流师": "Nhà hậu cần",
+    "守卫者": "Người bảo vệ",
+    "总经理": "Nhà điều hành",
+    "企业家": "Doanh nhân",
+    "鉴赏家": "Nhà kỹ thuật",
+    "探险家": "Nhà thám hiểm",
+    "执政官": "Người lãnh sự",
+    "表演者": "Người trình diễn",
+    "拿捏者": "Người kiểm soát",
+    "思考者": "Người suy tư",
+    "领导者": "Thủ lĩnh",
+    "小丑": "Chú hề",
+    "多情者": "Người đa tình",
+    "孤儿": "Kẻ cô độc",
+    "感恩者": "Người biết ơn",
+    "行者": "Lữ khách",
+    "哦不人": "Người hay lo",
+    "贫困者": "Người khốn khó",
+    "愤世者": "Người bất mãn",
+    "握草人": "Người kinh ngạc",
+    "妈妈": "Người chăm sóc",
+    "吗喽": "Chú khỉ",
+    "送钱者": "Nhà tài trợ",
+    "尤物": "Người quyến rũ",
+    "江户川柯南": "Edogawa Conan",
+    "丰川祥子": "Togawa Sakiko",
+    "藤原千花": "Fujiwara Chika",
+    "三角初华": "Misumi Uika",
+    "后藤一里": "Gotoh Hitori",
+    "月见八千代": "Tsukimi Yachiyo",
+    "初音未来": "Hatsune Miku",
+    "若叶睦": "Wakaba Mutsumi",
+    "绫波丽": "Ayanami Rei",
+    "御坂美琴": "Misaka Mikoto",
+    "明日香": "Asuka",
+    "长崎爽世": "Nagasaki Soyo",
+    "洛天依": "Luo Tianyi",
+    "千早爱音": "Chihaya Anon",
+    "芙宁娜": "Furina",
 }
 
 
@@ -162,6 +213,18 @@ class ReportGenerator(IReportGenerator):
         try:
             data = json.loads(raw)
             if isinstance(data, dict):
+                for profiles in data.values():
+                    if not isinstance(profiles, dict):
+                        continue
+                    for profile in profiles.values():
+                        if not isinstance(profile, dict):
+                            continue
+                        current_name = str(profile.get("name_zh", "")).strip()
+                        translated_name = DEFAULT_PROFILE_NAME_TRANSLATIONS.get(
+                            current_name
+                        )
+                        if translated_name:
+                            profile["name_zh"] = translated_name
                 return data
         except Exception as e:
             logger.warning(f"人格映射配置 JSON 解析失败，已回退到默认映射: {e}")
@@ -649,7 +712,7 @@ class ReportGenerator(IReportGenerator):
     def build_html_caption(self, html_path: str) -> str:
         """根据 html_base_url 生成 HTML 报告链接 caption。由调用方决定是否发送。"""
 
-        caption = "📊 每日群聊分析报告已生成"
+        caption = "📊 Đã tạo báo cáo phân tích nhóm hàng ngày"
         base_url = self.config_manager.get_html_base_url()
         if not base_url or not html_path:
             return caption
@@ -676,33 +739,33 @@ class ReportGenerator(IReportGenerator):
         user_titles = analysis_result["user_titles"]
 
         report = f"""
-🎯 群聊日常分析报告
-📅 {datetime.now().strftime("%Y年%m月%d日")}
+🎯 Báo cáo phân tích nhóm hàng ngày
+📅 {datetime.now().strftime("%d/%m/%Y")}
 
-📊 基础统计
-• 消息总数: {stats.message_count}
-• 参与人数: {stats.participant_count}
-• 总字符数: {stats.total_characters}
-• 表情数量: {stats.emoji_count}
-• 最活跃时段: {stats.most_active_period}
+📊 Thống kê cơ bản
+• Tổng số tin nhắn: {stats.message_count}
+• Số người tham gia: {stats.participant_count}
+• Tổng số ký tự: {stats.total_characters}
+• Số biểu cảm: {stats.emoji_count}
+• Khung giờ sôi nổi nhất: {stats.most_active_period}
 
-💬 热门话题
+💬 Chủ đề nổi bật
 """
 
         max_topics = self.config_manager.get_max_topics()
         for i, topic in enumerate(topics[:max_topics], 1):
-            contributors_str = "、".join(topic.contributors)
+            contributors_str = ", ".join(topic.contributors)
             report += f"{i}. {topic.topic}\n"
-            report += f"   参与者: {contributors_str}\n"
+            report += f"   Người tham gia: {contributors_str}\n"
             report += f"   {topic.detail}\n\n"
 
-        report += "🏆 群友称号\n"
+        report += "🏆 Danh hiệu thành viên\n"
         max_user_titles = self.config_manager.get_max_user_titles()
         for title in user_titles[:max_user_titles]:
             report += f"• {title.name} - {title.title} ({title.mbti})\n"
             report += f"  {title.reason}\n\n"
 
-        report += "💬 群圣经\n"
+        report += "💬 Trích dẫn nổi bật\n"
         max_golden_quotes = self.config_manager.get_max_golden_quotes()
         for i, golden_quote in enumerate(stats.golden_quotes[:max_golden_quotes], 1):
             report += f'{i}. "{golden_quote.content}" —— {golden_quote.sender}\n'

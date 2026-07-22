@@ -27,25 +27,25 @@
 </head>
 
 <body>
-    <h1>群聊日报 - {{current_date}}</h1>
+    <h1>Báo cáo nhóm hàng ngày - {{current_date}}</h1>
 
     <div class="section">
-        <h2>基础统计</h2>
-        <p>消息数: {{message_count}}</p>
-        <p>参与人数: {{participant_count}}</p>
-        <p>总字符数: {{total_characters}}</p>
-        <p>表情数: {{emoji_count}}</p>
-        <p>最活跃时段: {{most_active_period}}</p>
+        <h2>Thống kê cơ bản</h2>
+        <p>Số tin nhắn: {{message_count}}</p>
+        <p>Người tham gia: {{participant_count}}</p>
+        <p>Tổng ký tự: {{total_characters}}</p>
+        <p>Số biểu cảm: {{emoji_count}}</p>
+        <p>Khung giờ sôi nổi nhất: {{most_active_period}}</p>
     </div>
 
     <div class="section">
-        <h2>活跃度图表</h2>
+        <h2>Biểu đồ hoạt động</h2>
         {{hourly_chart_html | safe}}
     </div>
  
     {% if chat_quality_html %}
     <div class="section">
-        <h2>群聊质量分析</h2>
+        <h2>Phân tích chất lượng trò chuyện</h2>
         {{ chat_quality_html | safe }}
     </div>
     {% endif %}

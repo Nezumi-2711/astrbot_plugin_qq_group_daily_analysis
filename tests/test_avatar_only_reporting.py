@@ -87,7 +87,7 @@ def test_standard_text_report_keeps_existing_identity_format():
     assert openid in report
     assert "测试内容" in report
     assert "龙王" in report
-    assert f"参与者: {openid}" in report
+    assert f"Người tham gia: {openid}" in report
     assert f"• {openid} - 龙王 (ENTP)" in report
     assert f'1. "测试内容" —— {openid}' in report
 
@@ -118,7 +118,7 @@ def test_non_qq_text_report_does_not_use_qq_histogram_path():
 
     report = generator.generate_text_report(analysis_result)
 
-    assert "🎯 群聊日常分析报告" in report
+    assert "🎯 Báo cáo phân tích nhóm hàng ngày" in report
     assert "## ⏰ 活跃时间分布" not in report
     assert "████" not in report
     assert "![24小时活跃分布" not in report
