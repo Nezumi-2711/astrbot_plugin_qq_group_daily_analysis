@@ -24,7 +24,7 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
 
     def get_data_type(self) -> str:
         """获取数据类型标识"""
-        return "用户称号"
+        return "Danh hiệu thành viên"
 
     def get_max_count(self) -> int:
         """获取最大用户称号数量"""

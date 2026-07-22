@@ -1,6 +1,6 @@
 ﻿{% if topics %}
 <div class="section">
-    <h2 class="section-title">热门话题</h2>
+    <h2 class="section-title">Chủ đề nổi bật</h2>
     <div class="topics-grid">
         {% for topic in topics %}
         <div class="topic-item">
@@ -8,7 +8,7 @@
                 <span class="topic-number">{{ topic.index }}</span>
                 <span class="topic-title">{{ topic.topic.topic }}</span>
             </div>
-            <div class="topic-contributors">参与者: {{ topic.contributors }}</div>
+            <div class="topic-contributors">Người tham gia: {{ topic.contributors }}</div>
             <div class="topic-detail">{{ topic.detail | safe }}</div>
         </div>
         {% endfor %}

@@ -1,11 +1,11 @@
 {
     "basic": {
-        "description": "基础设置",
+        "description": "Cài đặt cơ bản",
         "type": "object",
-        "hint": "群聊分析插件的基础配置项，包括群聊权限、消息数量、输出格式等。注意：基础群权限是第一道门槛，不通过就不会进入定时/增量流程。",
+        "hint": "Các cài đặt cơ bản của plugin phân tích nhóm, gồm quyền sử dụng, số lượng tin nhắn và định dạng đầu ra. Lưu ý: quyền nhóm là điều kiện đầu tiên; nhóm không vượt qua bước này sẽ không được phân tích định kỳ hoặc tăng cường.",
         "items": {
             "group_list_mode": {
-                "description": "群聊权限模式",
+                "description": "Chế độ phân quyền nhóm",
                 "type": "string",
                 "options": [
                     "whitelist",
@@ -13,70 +13,70 @@
                     "none"
                 ],
                 "default": "none",
-                "hint": "先决定“哪些群可以用这个插件”。这是第一道门槛：不通过这里，后面的定时/增量都不会触发。whitelist=只允许列表里的群；blacklist=屏蔽列表里的群；none=所有群都可以。示例：whitelist + [\"onebot:GroupMessage:123456\"] 表示只有这个群能用。"
+                "hint": "Xác định nhóm nào được dùng plugin. Đây là điều kiện đầu tiên: whitelist = chỉ cho phép nhóm trong danh sách; blacklist = chặn nhóm trong danh sách; none = cho phép mọi nhóm. Ví dụ: whitelist + [\"onebot:GroupMessage:123456\"] chỉ cho phép nhóm này sử dụng."
             },
             "group_list": {
                 "type": "list",
-                "description": "群组白/黑名单列表",
+                "description": "Danh sách trắng/đen của nhóm",
                 "default": [],
-                "hint": "要填的群列表。可以填完整会话ID（如 onebot:GroupMessage:123456）或只填群号。QQ 官方机器人使用 group_openid，不是群号，务必优先通过 /sid 获取并填写完整 UMO。",
+                "hint": "Danh sách nhóm áp dụng. Có thể nhập ID phiên đầy đủ (ví dụ onebot:GroupMessage:123456) hoặc chỉ ID nhóm. Bot QQ Official dùng group_openid thay vì số nhóm; nên dùng /sid để lấy và nhập UMO đầy đủ.",
                 "items": {
                     "type": "string"
                 }
             },
             "analysis_days": {
                 "type": "int",
-                "description": "默认分析天数",
+                "description": "Số ngày phân tích mặc định",
                 "default": 1,
-                "hint": "默认分析最近几天的消息，增量分析也基于此数据保存分析情况。QQ 官方 API 无历史拉取接口，只能分析插件启用后实时缓存到 AstrBot 本地库的消息。"
+                "hint": "Số ngày tin nhắn gần nhất được phân tích mặc định; phân tích tăng cường cũng dùng phạm vi này. API QQ Official không hỗ trợ truy xuất lịch sử nên chỉ phân tích được tin nhắn đã lưu cục bộ sau khi bật plugin."
             },
             "max_messages": {
                 "type": "int",
-                "description": "单次分析的获取最大消息条数基准",
+                "description": "Giới hạn tin nhắn cơ sở mỗi lần phân tích",
                 "default": 1000,
-                "hint": "单次分析的获取最大消息条数基准值，如果当天群聊消息过多，已经获取到足够的消息(达到 max_messages)，停止获取，获取到的消息数量是最新一次获取到的超过 max_messages 的消息数量，建议500-2000"
+                "hint": "Số tin nhắn tối đa làm mốc cho một lần phân tích. Khi đã lấy đủ max_messages, plugin sẽ dừng sau lô truy xuất hiện tại nên tổng số có thể vượt nhẹ giới hạn. Khuyến nghị 500-2000."
             },
             "min_messages_threshold": {
                 "type": "int",
-                "description": "最小消息数阈值",
+                "description": "Ngưỡng tin nhắn tối thiểu",
                 "default": 200,
-                "hint": "进行分析所需的最小消息数量"
+                "hint": "Số tin nhắn tối thiểu cần có để bắt đầu phân tích."
             },
             "bot_self_ids": {
                 "type": "list",
-                "description": "群分析时屏蔽的用户ID列表",
+                "description": "Danh sách ID bị loại khỏi phân tích",
                 "default": [],
-                "hint": "填写后可启用自动分析功能。可以填写用于自动分析的机器人 ID（在不同平台上可能是数字或字符串）、多消息平台 ID、不希望出现于群分析中的其他人的 ID 等。",
+                "hint": "Có thể nhập ID bot dùng cho phân tích tự động (dạng số hoặc chuỗi tùy nền tảng), ID trên nhiều nền tảng hoặc ID người dùng không muốn xuất hiện trong báo cáo.",
                 "items": {
                     "type": "string"
                 }
             },
             "filter_bot_messages": {
                 "type": "bool",
-                "description": "分析时是否过滤机器人自己的消息",
+                "description": "Lọc tin nhắn của bot khi phân tích",
                 "default": true,
-                "hint": "默认开启，bot 自身的发言不会出现在分析报告中。关闭后 bot 的发言也会被纳入话题分析、金句提取等。"
+                "hint": "Mặc định bật để loại tin nhắn của bot khỏi báo cáo. Khi tắt, tin nhắn bot cũng được đưa vào phân tích chủ đề, trích dẫn nổi bật, v.v."
             },
             "enable_user_card": {
                 "type": "bool",
-                "description": "使用用户群名片",
+                "description": "Dùng biệt danh trong nhóm",
                 "default": true,
-                "hint": "在分析中优先使用用户的群名片作为昵称显示"
+                "hint": "Ưu tiên dùng biệt danh của thành viên trong nhóm làm tên hiển thị."
             },
             "output_format": {
                 "type": "list",
-                "description": "输出格式（可多选）",
+                "description": "Định dạng đầu ra (có thể chọn nhiều)",
                 "options": [
                     "image",
                     "text",
                     "html"
                 ],
                 "default": ["image"],
-                "hint": "选择分析报告的输出方式（可多选）。image=图片、text=纯文本摘要、html=可交互式网页文件。多选仅在定时分析发送时时报告按顺序依次发送，手动触发时只发送第一个选中的格式，例如 image+html 会发送图片并通过外链提供 HTML 报告。QQ 官方图片/HTML 报告优先显示事件昵称，昵称缺失时使用群内稳定匿名名；文本报告由独立 Markdown 模块使用成员艾特展示身份。其他平台保持原有昵称文本格式。"
+                "hint": "Chọn cách xuất báo cáo: image = ảnh, text = văn bản, html = trang web tương tác. Khi phân tích định kỳ, các định dạng đã chọn được gửi lần lượt; khi chạy thủ công chỉ gửi định dạng đầu tiên. Báo cáo ảnh/HTML trên QQ Official ưu tiên biệt danh sự kiện và dùng tên ẩn danh ổn định nếu thiếu; báo cáo Markdown dùng đề cập thành viên."
             },
             "report_template": {
                 "type": "string",
-                "description": "报告模板",
+                "description": "Mẫu báo cáo",
                 "options": [
                     "ATRI",
                     "BlueArchive",
@@ -89,223 +89,223 @@
                     "format"
                 ],
                 "default": "scrapbook",
-                "hint": "分析报告使用的HTML模板名称，QQ 端可以使用 `/设置模板` 查看使用指南，使用`/查看模板` 命令查看模板样式效果。其他平台不支持合并转发，可以到 [模板](https://github.com/SXP-Simon/astrbot_plugin_qq_group_daily_analysis/tree/main/assets) 文件夹中查看模板样式效果"
+                "hint": "Tên mẫu HTML dùng cho báo cáo. Dùng `/maubc` để chọn mẫu và `/xemmau` để xem trước. Trên nền tảng không hỗ trợ chuyển tiếp gộp, có thể xem mẫu trong thư mục [templates](https://github.com/SXP-Simon/astrbot_plugin_qq_group_daily_analysis/tree/main/assets)."
             },
             "profile_display_mode": {
                 "type": "string",
-                "description": "人格标签展示模式",
+                "description": "Chế độ hiển thị nhãn tính cách",
                 "options": [
                     "mbti",
                     "sbti",
                     "acgti"
                 ],
                 "default": "mbti",
-                "hint": "只影响群友画像卡片的角色主题展示，不影响实际 MBTI 分析结果。mbti=原始 MBTI，sbti=映射为 SBTI 人格，acgti=映射为 ACGTI 角色。"
+                "hint": "Chỉ thay đổi chủ đề nhân vật trên thẻ chân dung, không ảnh hưởng kết quả MBTI. mbti = MBTI gốc, sbti = ánh xạ tính cách SBTI, acgti = ánh xạ nhân vật ACGTI."
             },
             "profile_image_opacity": {
                 "type": "float",
-                "description": "人格背景图透明度",
+                "description": "Độ trong suốt ảnh nền tính cách",
                 "default": 0.12,
-                "hint": "建议 0.08~0.18，仅作为卡片底层装饰，避免遮挡正文。"
+                "hint": "Khuyến nghị 0.08-0.18 để ảnh chỉ đóng vai trò trang trí và không che nội dung."
             },
             "profile_image_size_mode": {
                 "type": "string",
-                "description": "人格背景图尺寸模式",
+                "description": "Chế độ kích thước ảnh nền tính cách",
                 "options": [
                     "contain",
                     "cover"
                 ],
                 "default": "contain",
-                "hint": "建议默认 contain，减少角色图被裁切过多的问题。"
+                "hint": "Khuyến nghị dùng contain để hạn chế cắt mất nội dung ảnh nhân vật."
             },
             "profile_mapping_config": {
                 "type": "text",
-                "description": "人格映射配置(JSON)",
+                "description": "Cấu hình ánh xạ tính cách (JSON)",
                 "editor_mode": true,
                 "editor_language": "json",
                 "default": "{\n    \"mbti\": {\n        \"INTJ\": {\n            \"code\": \"INTJ\",\n            \"name_zh\": \"建筑师\"\n        },\n        \"INTP\": {\n            \"code\": \"INTP\",\n            \"name_zh\": \"逻辑学家\"\n        },\n        \"ENTJ\": {\n            \"code\": \"ENTJ\",\n            \"name_zh\": \"指挥官\"\n        },\n        \"ENTP\": {\n            \"code\": \"ENTP\",\n            \"name_zh\": \"辩论家\"\n        },\n        \"INFJ\": {\n            \"code\": \"INFJ\",\n            \"name_zh\": \"提倡者\"\n        },\n        \"INFP\": {\n            \"code\": \"INFP\",\n            \"name_zh\": \"调停者\"\n        },\n        \"ENFJ\": {\n            \"code\": \"ENFJ\",\n            \"name_zh\": \"主人公\"\n        },\n        \"ENFP\": {\n            \"code\": \"ENFP\",\n            \"name_zh\": \"竞选者\"\n        },\n        \"ISTJ\": {\n            \"code\": \"ISTJ\",\n            \"name_zh\": \"物流师\"\n        },\n        \"ISFJ\": {\n            \"code\": \"ISFJ\",\n            \"name_zh\": \"守卫者\"\n        },\n        \"ESTJ\": {\n            \"code\": \"ESTJ\",\n            \"name_zh\": \"总经理\"\n        },\n        \"ESTP\": {\n            \"code\": \"ESTP\",\n            \"name_zh\": \"企业家\"\n        },\n        \"ISTP\": {\n            \"code\": \"ISTP\",\n            \"name_zh\": \"鉴赏家\"\n        },\n        \"ISFP\": {\n            \"code\": \"ISFP\",\n            \"name_zh\": \"探险家\"\n        },\n        \"ESFJ\": {\n            \"code\": \"ESFJ\",\n            \"name_zh\": \"执政官\"\n        },\n        \"ESFP\": {\n            \"code\": \"ESFP\",\n            \"name_zh\": \"表演者\"\n        }\n    },\n    \"sbti\": {\n        \"INTJ\": {\n            \"code\": \"CTRL\",\n            \"name_zh\": \"拿捏者\",\n            \"asset_code\": \"CTRL\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/CTRL.png\"\n        },\n        \"INTP\": {\n            \"code\": \"THIN-K\",\n            \"name_zh\": \"思考者\",\n            \"asset_code\": \"THIN-K\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/THIN-K.png\"\n        },\n        \"ENTJ\": {\n            \"code\": \"BOSS\",\n            \"name_zh\": \"领导者\",\n            \"asset_code\": \"BOSS\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/BOSS.png\"\n        },\n        \"ENTP\": {\n            \"code\": \"JOKE-R\",\n            \"name_zh\": \"小丑\",\n            \"asset_code\": \"JOKE-R\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/JOKE-R.jpg\"\n        },\n        \"INFJ\": {\n            \"code\": \"LOVE-R\",\n            \"name_zh\": \"多情者\",\n            \"asset_code\": \"LOVE-R\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/LOVE-R.png\"\n        },\n        \"INFP\": {\n            \"code\": \"SOLO\",\n            \"name_zh\": \"孤儿\",\n            \"asset_code\": \"SOLO\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/SOLO.png\"\n        },\n        \"ENFJ\": {\n            \"code\": \"THAN-K\",\n            \"name_zh\": \"感恩者\",\n            \"asset_code\": \"THAN-K\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/THAN-K.png\"\n        },\n        \"ENFP\": {\n            \"code\": \"GOGO\",\n            \"name_zh\": \"行者\",\n            \"asset_code\": \"GOGO\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/GOGO.png\"\n        },\n        \"ISTJ\": {\n            \"code\": \"OH-NO\",\n            \"name_zh\": \"哦不人\",\n            \"asset_code\": \"OH-NO\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/OH-NO.png\"\n        },\n        \"ISTP\": {\n            \"code\": \"POOR\",\n            \"name_zh\": \"贫困者\",\n            \"asset_code\": \"POOR\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/POOR.png\"\n        },\n        \"ESTJ\": {\n            \"code\": \"SHIT\",\n            \"name_zh\": \"愤世者\",\n            \"asset_code\": \"SHIT\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/SHIT.png\"\n        },\n        \"ESTP\": {\n            \"code\": \"WOC!\",\n            \"name_zh\": \"握草人\",\n            \"asset_code\": \"WOC\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/WOC.png\"\n        },\n        \"ISFJ\": {\n            \"code\": \"MUM\",\n            \"name_zh\": \"妈妈\",\n            \"asset_code\": \"MUM\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/MUM.png\"\n        },\n        \"ISFP\": {\n            \"code\": \"MALO\",\n            \"name_zh\": \"吗喽\",\n            \"asset_code\": \"MALO\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/MALO.png\"\n        },\n        \"ESFJ\": {\n            \"code\": \"ATM-er\",\n            \"name_zh\": \"送钱者\",\n            \"asset_code\": \"ATM-er\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/ATM-er.png\"\n        },\n        \"ESFP\": {\n            \"code\": \"SEXY\",\n            \"name_zh\": \"尤物\",\n            \"asset_code\": \"SEXY\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/sbti/SEXY.png\"\n        }\n    },\n    \"acgti\": {\n        \"INTJ\": {\n            \"code\": \"MRTS-X\",\n            \"name_zh\": \"Mortis\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/MRTS-X.png\"\n        },\n        \"INTP\": {\n            \"code\": \"KNAN\",\n            \"name_zh\": \"江户川柯南\"\n        },\n        \"ENTJ\": {\n            \"code\": \"SAKI\",\n            \"name_zh\": \"丰川祥子\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/SAKI.png\"\n        },\n        \"ENTP\": {\n            \"code\": \"CHKA\",\n            \"name_zh\": \"藤原千花\"\n        },\n        \"INFJ\": {\n            \"code\": \"DLRS\",\n            \"name_zh\": \"三角初华\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/DLRS.png\"\n        },\n        \"INFP\": {\n            \"code\": \"BCHI\",\n            \"name_zh\": \"后藤一里\"\n        },\n        \"ENFJ\": {\n            \"code\": \"YCYO\",\n            \"name_zh\": \"月见八千代\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/YCYO.png\"\n        },\n        \"ENFP\": {\n            \"code\": \"HTMK\",\n            \"name_zh\": \"初音未来\"\n        },\n        \"ISTJ\": {\n            \"code\": \"MRTS\",\n            \"name_zh\": \"若叶睦\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/MRTS.png\"\n        },\n        \"ISTP\": {\n            \"code\": \"AYRE\",\n            \"name_zh\": \"绫波丽\"\n        },\n        \"ESTJ\": {\n            \"code\": \"MIKT\",\n            \"name_zh\": \"御坂美琴\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/MIKT.png\"\n        },\n        \"ESTP\": {\n            \"code\": \"ASKA\",\n            \"name_zh\": \"明日香\"\n        },\n        \"ISFJ\": {\n            \"code\": \"SOYO\",\n            \"name_zh\": \"长崎爽世\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/SOYO.png\"\n        },\n        \"ISFP\": {\n            \"code\": \"LTYI\",\n            \"name_zh\": \"洛天依\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/LTYI.png\"\n        },\n        \"ESFJ\": {\n            \"code\": \"ANON\",\n            \"name_zh\": \"千早爱音\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/ANON.png\"\n        },\n        \"ESFP\": {\n            \"code\": \"FRNA\",\n            \"name_zh\": \"芙宁娜\",\n            \"image\": \"https://fastly.jsdelivr.net/gh/SXP-Simon/profile_assets@main/acgti/characters/FRNA.png\"\n        }\n    }\n}",
-                "hint": "按 MBTI 覆盖当前展示模式的人格名称与图片地址。留空时自动使用插件内置默认映射和 manifest。插件不负责校验图片链接可访问性。"
+                "hint": "Ghi đè tên tính cách và URL ảnh theo MBTI cho chế độ hiện tại. Để trống để dùng ánh xạ và manifest tích hợp. Plugin không kiểm tra khả năng truy cập URL ảnh."
             },
             "debug_mode": {
                 "type": "bool",
-                "description": "调试模式（建议关闭）",
+                "description": "Chế độ gỡ lỗi (nên tắt)",
                 "default": false,
-                "hint": "启用后，会在插件数据目录下的 debug_data 目录中保存每次分析的平台 API 原始历史消息和 Prompt 原文，用于调试和优化提示词。"
+                "hint": "Khi bật, tin nhắn lịch sử thô từ API nền tảng và prompt của mỗi lần phân tích sẽ được lưu trong thư mục debug_data để gỡ lỗi và tối ưu prompt."
             },
             "enable_base64_image": {
                 "type": "bool",
-                "description": "图片传输使用 Base64 编码",
+                "description": "Truyền ảnh bằng mã hóa Base64",
                 "default": true,
-                "hint": "启用后图片会被转为 Base64 编码传输。关闭后将直接传递文件路径或 URL 给 OneBot 实现端，适用于 go-cqhttp、Lagrange 等支持本地路径的实现，可降低内存占用。"
+                "hint": "Khi bật, ảnh được mã hóa Base64 để truyền. Khi tắt, đường dẫn file hoặc URL được gửi trực tiếp cho OneBot, phù hợp với go-cqhttp, Lagrange và các triển khai hỗ trợ đường dẫn cục bộ để giảm bộ nhớ."
             },
             "enable_analysis_reply": {
                 "type": "bool",
-                "description": "发送文本/表情回复",
+                "description": "Phản hồi bằng văn bản/biểu cảm",
                 "default": false,
-                "hint": "开启后，/群分析 将通过发送文本消息提示进度；关闭（默认）则使用表情回应。"
+                "hint": "Khi bật, `/phantichnhom` gửi tin nhắn văn bản để báo tiến độ; khi tắt (mặc định), plugin dùng biểu cảm phản hồi."
             },
             "show_report_caption": {
                 "type": "bool",
-                "description": "发送报告时附带 \"📊 每日群聊分析报告已生成\" 前缀",
+                "description": "Kèm tiền tố \"📊 Đã tạo báo cáo phân tích nhóm hàng ngày\"",
                 "default": true,
-                "hint": "关闭后，发送图片/HTML 报告时将只发送文件本身，不附带 \"📊 每日群聊分析报告已生成\" 等文字前缀。"
+                "hint": "Khi tắt, báo cáo ảnh/HTML chỉ gửi file mà không kèm tiền tố văn bản."
             }
         }
     },
     "qq_official": {
-        "description": "QQ 官方机器人",
+        "description": "Bot QQ Official",
         "type": "object",
-        "hint": "仅作用于 QQ 官方机器人及 QQ 官方 Webhook 的报告展示。",
+        "hint": "Chỉ áp dụng cho phần hiển thị báo cáo của bot QQ Official và QQ Official Webhook.",
         "items": {
             "enable_t2i_activity_histogram": {
                 "type": "bool",
-                "description": "启用 T2I 群聊概览图",
+                "description": "Bật ảnh tổng quan nhóm bằng T2I",
                 "default": true,
-                "hint": "在 QQ 官方 Markdown 报告中嵌入透明背景的日期、基础统计与 24 小时直方图。渲染失败时自动回退为完整文字报告。"
+                "hint": "Nhúng ngày, thống kê cơ bản và biểu đồ 24 giờ nền trong suốt vào báo cáo Markdown QQ Official. Tự động dùng báo cáo văn bản đầy đủ nếu kết xuất thất bại."
             }
         }
     },
     "t2i_rendering": {
-        "description": "图片渲染策略",
+        "description": "Chiến lược kết xuất ảnh",
         "type": "object",
-        "hint": "配置 HTML 转图片的渲染参数。支持两轮尝试：第一轮优先保证质量，第二轮作为回退方案，建议使用更低的分辨率和质量以提高成功率。",
+        "hint": "Cấu hình tham số chuyển HTML thành ảnh. Hỗ trợ hai lượt: lượt đầu ưu tiên chất lượng, lượt hai là phương án dự phòng với độ phân giải và chất lượng thấp hơn để tăng tỷ lệ thành công.",
         "items": {
             "t2i_r1_type": {
                 "type": "string",
-                "description": "第一轮：图片格式",
+                "description": "Lượt 1: định dạng ảnh",
                 "options": ["jpeg", "png"],
                 "default": "png",
-                "hint": "建议：PNG 格式无损但体积较大；JPEG 格式体积较小。"
+                "hint": "PNG không mất dữ liệu nhưng dung lượng lớn; JPEG có dung lượng nhỏ hơn."
             },
             "t2i_r1_quality": {
                 "type": "int",
-                "description": "第一轮：图片质量 (若为 JPEG)",
+                "description": "Lượt 1: chất lượng ảnh (JPEG)",
                 "default": 100,
                 "slider": {
                     "min": 1,
                     "max": 100,
                     "step": 1
                 },
-                "hint": "仅对 JPEG 格式生效。建议 80-100。"
+                "hint": "Chỉ có hiệu lực với JPEG. Khuyến nghị 80-100."
             },
             "t2i_r1_device_scale": {
                 "type": "string",
-                "description": "第一轮：分辨率等级",
+                "description": "Lượt 1: mức độ phân giải",
                 "options": ["normal", "high", "ultra"],
                 "default": "ultra",
-                "hint": "影响图片清晰度。normal=1.0x, high=1.3x, ultra=1.8x。高质量日报建议 ultra。"
+                "hint": "Ảnh hưởng độ nét: normal=1.0x, high=1.3x, ultra=1.8x. Khuyến nghị ultra cho báo cáo chất lượng cao."
             },
             "t2i_r1_timeout": {
                 "type": "int",
-                "description": "第一轮：渲染超时 (ms)",
+                "description": "Lượt 1: thời gian chờ kết xuất (ms)",
                 "default": 50000,
                 "slider": {
                     "min": 30000,
                     "max": 180000,
                     "step": 5000
                 },
-                "hint": "单次渲染的最长等待时间。复杂页面建议调大。"
+                "hint": "Thời gian chờ tối đa cho một lần kết xuất. Nên tăng với trang phức tạp."
             },
             "t2i_r2_type": {
                 "type": "string",
-                "description": "第二轮 (回退)：图片格式",
+                "description": "Lượt 2 (dự phòng): định dạng ảnh",
                 "options": ["jpeg", "png"],
                 "default": "jpeg",
-                "hint": "回退策略建议使用 jpeg 以减少渲染压力。"
+                "hint": "Nên dùng JPEG ở lượt dự phòng để giảm tải kết xuất."
             },
             "t2i_r2_quality": {
                 "type": "int",
-                "description": "第二轮 (回退)：图片质量 (若为 JPEG)",
+                "description": "Lượt 2 (dự phòng): chất lượng ảnh (JPEG)",
                 "default": 80,
                 "slider": {
                     "min": 1,
                     "max": 100,
                     "step": 1
                 },
-                "hint": "仅对 JPEG 格式生效。可以设置较低值以确保生成成功。"
+                "hint": "Chỉ có hiệu lực với JPEG. Có thể đặt thấp hơn để tăng khả năng tạo ảnh thành công."
             },
             "t2i_r2_device_scale": {
                 "type": "string",
-                "description": "第二轮 (回退)：分辨率等级",
+                "description": "Lượt 2 (dự phòng): mức độ phân giải",
                 "options": ["normal", "high", "ultra"],
                 "default": "high",
-                "hint": "回退建议使用 high/normal 以降低复杂页面的内存消耗和超时概率。"
+                "hint": "Nên dùng high/normal để giảm bộ nhớ và nguy cơ hết thời gian với trang phức tạp."
             },
             "t2i_r2_timeout": {
                 "type": "int",
-                "description": "第二轮 (回退)：渲染超时 (ms)",
+                "description": "Lượt 2 (dự phòng): thời gian chờ (ms)",
                 "default": 100000,
                 "slider": {
                     "min": 30000,
                     "max": 180000,
                     "step": 5000
                 },
-                "hint": "回退尝试通常针对复杂页面，建议设置更长的超时时间（如 100000ms+）。"
+                "hint": "Lượt dự phòng thường xử lý trang phức tạp; nên đặt thời gian chờ dài hơn, ví dụ từ 100000 ms."
             },
             "t2i_font_source": {
                 "type": "string",
-                "description": "t2i 渲染环境切换",
+                "description": "Môi trường kết xuất T2I",
                 "options": ["Mainland", "Overseas"],
                 "default": "Overseas",
-                "hint": "字体和静态资源的访问环境，内地（Mainland）、海外（Overseas），切换环境会自动应用下方对应的镜像站地址、语言标识(简体中文/繁体中文)及字体优先级。（实测 Overseas 也可以正常渲染简体中文）"
+                "hint": "Chọn môi trường truy cập font và tài nguyên tĩnh: Mainland hoặc Overseas. Plugin sẽ tự áp dụng máy chủ gương, mã ngôn ngữ và thứ tự ưu tiên font tương ứng."
             },
             "t2i_mainland_google_fonts": {
                 "type": "string",
-                "description": "[内地] Google Fonts 镜像",
+                "description": "[Mainland] Máy chủ gương Google Fonts",
                 "default": "https://fonts.loli.net",
-                "hint": "内地环境下推荐使用 loli.net 或其他可访问镜像。"
+                "hint": "Khuyến nghị loli.net hoặc máy chủ gương có thể truy cập trong môi trường Mainland."
             },
             "t2i_mainland_gstatic": {
                 "type": "string",
-                "description": "[内地] Gstatic 镜像",
+                "description": "[Mainland] Máy chủ gương Gstatic",
                 "default": "https://gstatic.loli.net",
-                "hint": "内地环境下推荐使用 loli.net 或其他可访问镜像。"
+                "hint": "Khuyến nghị loli.net hoặc máy chủ gương có thể truy cập trong môi trường Mainland."
             },
             "t2i_overseas_google_fonts": {
                 "type": "string",
-                "description": "[海外] Google Fonts 官方",
+                "description": "[Overseas] Google Fonts chính thức",
                 "default": "https://fonts.googleapis.com",
-                "hint": "海外环境通常直接使用官方地址即可。"
+                "hint": "Môi trường Overseas thường có thể dùng trực tiếp địa chỉ chính thức."
             },
             "t2i_overseas_gstatic": {
                 "type": "string",
-                "description": "[海外] Gstatic 官方",
+                "description": "[Overseas] Gstatic chính thức",
                 "default": "https://fonts.gstatic.com",
-                "hint": "海外环境通常直接使用官方地址即可。"
+                "hint": "Môi trường Overseas thường có thể dùng trực tiếp địa chỉ chính thức."
             }
         }
     },
     "auto_analysis": {
-        "description": "定时分析设置",
+        "description": "Cài đặt phân tích định kỳ",
         "type": "object",
-        "hint": "配置每日自动分析的时间点和目标群聊范围。只有先通过基础群权限的群，才会在这里继续判断。",
+        "hint": "Cấu hình thời điểm phân tích tự động hàng ngày và phạm vi nhóm mục tiêu. Chỉ các nhóm đã vượt qua kiểm tra quyền cơ bản mới được xét tại đây.",
         "items": {
             "auto_analysis_time": {
                 "type": "list",
-                "description": "自动分析时间列表",
+                "description": "Danh sách thời gian phân tích tự động",
                 "default": [
                     "23:00"
                 ],
-                "hint": "每天几点自动出报告，格式是 HH:MM。可填多个时间，例如 [\"09:00\", \"21:30\"]。",
+                "hint": "Thời điểm tự động tạo báo cáo mỗi ngày theo định dạng HH:MM. Có thể nhập nhiều mốc, ví dụ [\"09:00\", \"21:30\"].",
                 "items": {
                     "type": "string"
                 }
             },
             "scheduled_group_list_mode": {
                 "type": "string",
-                "description": "定时分析名单模式",
+                "description": "Chế độ danh sách phân tích định kỳ",
                 "options": [
                     "whitelist",
                     "blacklist"
                 ],
                 "default": "whitelist",
-                "hint": "定时任务要作用到哪些群。whitelist=只跑下面列表里的群；blacklist=除了下面列表，其他都跑。注意：这里只对“已通过基础群权限”的群生效。"
+                "hint": "Xác định nhóm áp dụng tác vụ định kỳ. whitelist = chỉ chạy các nhóm trong danh sách; blacklist = chạy mọi nhóm trừ các nhóm trong danh sách. Chỉ áp dụng với nhóm đã vượt qua quyền cơ bản."
             },
             "scheduled_group_list": {
                 "type": "list",
-                "description": "定时分析群列表",
+                "description": "Danh sách nhóm phân tích định kỳ",
                 "default": [],
-                "hint": "定时任务群列表。示例1：mode=whitelist + [\"onebot:GroupMessage:123456\"] => 只跑这个群。示例2：mode=blacklist + [\"onebot:GroupMessage:123456\"] => 这个群不跑，其他群跑。注意：whitelist + 空列表 = 不会开启定时任务。即使某群在增量名单里，只要不在定时白名单里，也不会自动触发。",
+                "hint": "Danh sách nhóm cho tác vụ định kỳ. whitelist + [\"onebot:GroupMessage:123456\"] chỉ chạy nhóm này; blacklist với cùng danh sách sẽ bỏ qua nhóm này. whitelist với danh sách trống sẽ không tạo tác vụ định kỳ. Nhóm trong danh sách tăng cường vẫn cần vượt qua danh sách định kỳ.",
                 "items": {
                     "type": "string"
                 }
@@ -313,391 +313,391 @@
         }
     },
     "llm": {
-        "description": "LLM 设置",
+        "description": "Cài đặt LLM",
         "type": "object",
-        "hint": "大语言模型相关配置，包括 Provider 选择、重试策略和 Token 限制",
+        "hint": "Cấu hình mô hình ngôn ngữ lớn, gồm lựa chọn Provider, chiến lược thử lại và giới hạn Token.",
         "items": {
             "llm_provider_id": {
                 "type": "string",
-                "description": "LLM Provider ID（用于所有分析任务）",
+                "description": "ID LLM Provider (dùng cho mọi tác vụ)",
                 "_special": "select_provider",
                 "default": "",
-                "hint": "选择用于群聊分析的 LLM Provider。留空则使用当前会话的默认 Provider"
+                "hint": "Chọn LLM Provider dùng để phân tích nhóm. Để trống để dùng Provider mặc định của phiên hiện tại."
             },
             "topic_provider_id": {
                 "type": "string",
-                "description": "话题分析专用 Provider ID",
+                "description": "ID Provider riêng cho phân tích chủ đề",
                 "_special": "select_provider",
                 "default": "",
-                "hint": "专门用于话题分析的 Provider。留空则使用主 LLM Provider"
+                "hint": "Provider riêng cho phân tích chủ đề. Để trống để dùng LLM Provider chính."
             },
             "user_title_provider_id": {
                 "type": "string",
-                "description": "用户称号分析专用 Provider ID",
+                "description": "ID Provider riêng cho phân tích danh hiệu",
                 "_special": "select_provider",
                 "default": "",
-                "hint": "专门用于用户称号分析的 Provider。留空则使用主 LLM Provider"
+                "hint": "Provider riêng cho phân tích danh hiệu thành viên. Để trống để dùng LLM Provider chính."
             },
             "golden_quote_provider_id": {
                 "type": "string",
-                "description": "金句分析专用 Provider ID",
+                "description": "ID Provider riêng cho trích dẫn nổi bật",
                 "_special": "select_provider",
                 "default": "",
-                "hint": "专门用于金句分析的 Provider。留空则使用主 LLM Provider"
+                "hint": "Provider riêng cho phân tích trích dẫn nổi bật. Để trống để dùng LLM Provider chính."
             },
             "quality_provider_id": {
                 "type": "string",
-                "description": "聊天质量分析专用 Provider ID",
+                "description": "ID Provider riêng cho chất lượng trò chuyện",
                 "_special": "select_provider",
                 "default": "",
-                "hint": "专门用于聊天质量锐评的 Provider。留空则使用主 LLM Provider"
+                "hint": "Provider riêng cho đánh giá chất lượng trò chuyện. Để trống để dùng LLM Provider chính."
             },
             "llm_retries": {
                 "type": "int",
-                "description": "LLM 请求重试次数",
+                "description": "Số lần thử lại yêu cầu LLM",
                 "default": 2,
-                "hint": "当请求超时或失败时自动重试的次数，建议设置为1~3之间。"
+                "hint": "Số lần tự động thử lại khi yêu cầu thất bại hoặc hết thời gian. Khuyến nghị 1-3."
             },
             "llm_backoff": {
                 "type": "int",
-                "description": "LLM 请求重试退避基值（秒）",
+                "description": "Thời gian chờ cơ sở khi thử lại LLM (giây)",
                 "default": 2,
-                "hint": "重试之间的基准等待时间（秒）。实际等待时间会随尝试次数指数增长，并加入少量随机抖动；当专用 Provider 失败后，会继续按队列尝试默认 Provider。"
+                "hint": "Thời gian chờ cơ sở giữa các lần thử. Thời gian thực tăng theo cấp số nhân và có độ trễ ngẫu nhiên; khi Provider riêng thất bại, plugin tiếp tục thử Provider mặc định theo hàng đợi."
             },
             "enable_streaming_llm_call": {
                 "type": "bool",
-                "description": "启用流式 LLM 调用",
+                "description": "Bật gọi LLM dạng luồng",
                 "default": false,
-                "hint": "默认关闭，使用原有非流式调用方式。开启后，插件将使用 AstrBot Provider 的流式接口并聚合结果，适用于仅支持 stream=true 的服务。"
+                "hint": "Mặc định tắt và dùng phương thức không luồng. Khi bật, plugin dùng giao diện luồng của AstrBot Provider rồi tổng hợp kết quả, phù hợp với dịch vụ chỉ hỗ trợ stream=true."
             }
         }
     },
     "analysis_features": {
-        "description": "分析功能开关",
+        "description": "Tùy chọn tính năng phân tích",
         "type": "object",
-        "hint": "控制各项 LLM 分析功能的启用状态和数量限制",
+        "hint": "Bật/tắt các tính năng phân tích LLM và thiết lập giới hạn số lượng.",
         "items": {
             "topic_analysis_enabled": {
                 "type": "bool",
-                "description": "启用话题分析",
+                "description": "Bật phân tích chủ đề",
                 "default": true,
-                "hint": "是否使用LLM进行智能话题分析"
+                "hint": "Dùng LLM để phân tích chủ đề thông minh."
             },
             "user_title_analysis_enabled": {
                 "type": "bool",
-                "description": "启用用户称号分析",
+                "description": "Bật phân tích danh hiệu thành viên",
                 "default": true,
-                "hint": "是否使用LLM进行用户称号分析"
+                "hint": "Dùng LLM để phân tích danh hiệu của thành viên."
             },
             "golden_quote_analysis_enabled": {
                 "type": "bool",
-                "description": "启用金句分析",
+                "description": "Bật phân tích trích dẫn nổi bật",
                 "default": true,
-                "hint": "是否使用LLM进行金句分析"
+                "hint": "Dùng LLM để tìm các trích dẫn nổi bật."
             },
             "chat_quality_analysis_enabled": {
                 "type": "bool",
-                "description": "启用聊天质量锐评",
+                "description": "Bật đánh giá chất lượng trò chuyện",
                 "default": true,
-                "hint": "是否使用LLM进行聊天质量锐评（维度化分析）"
+                "hint": "Dùng LLM để đánh giá chất lượng trò chuyện theo nhiều khía cạnh."
             },
             "max_topics": {
                 "type": "int",
-                "description": "最大话题数量",
+                "description": "Số chủ đề tối đa",
                 "default": 5,
-                "hint": "分析报告中显示的最大话题数量，依赖于 LLM 输出的格式化信息质量，模型越好结果越好，可能出现数量不匹配。"
+                "hint": "Số chủ đề tối đa trong báo cáo. Kết quả phụ thuộc chất lượng dữ liệu có cấu trúc từ LLM nên số lượng thực tế có thể khác."
             },
             "max_user_titles": {
                 "type": "int",
-                "description": "最大用户称号数量",
+                "description": "Số danh hiệu thành viên tối đa",
                 "default": 8,
-                "hint": "分析报告中显示的最大用户称号数量，依赖于 LLM 输出的格式化信息质量，模型越好结果越好，可能出现数量不匹配。"
+                "hint": "Số danh hiệu tối đa trong báo cáo. Kết quả phụ thuộc chất lượng dữ liệu có cấu trúc từ LLM nên số lượng thực tế có thể khác."
             },
             "max_golden_quotes": {
                 "type": "int",
-                "description": "最大金句数量",
+                "description": "Số trích dẫn nổi bật tối đa",
                 "default": 5,
-                "hint": "分析报告中显示的最大金句数量，依赖于 LLM 输出的格式化信息质量，模型越好结果越好，可能出现数量不匹配。"
+                "hint": "Số trích dẫn nổi bật tối đa trong báo cáo. Kết quả phụ thuộc chất lượng dữ liệu có cấu trúc từ LLM nên số lượng thực tế có thể khác."
             },
             "keep_original_persona": {
-                "description": "继承会话人设风格",
+                "description": "Kế thừa phong cách persona của phiên",
                 "type": "bool",
                 "default": false,
-                "hint": "【优先级2】开启后将自动尝试识别当前群聊会话（或对话）的人格设定。若该群已设置人设，则分析报告会尽量模拟该人设的口吻进行回复。注意：此开关在“强制使用插件指定人格”关闭时才会生效。"
+                "hint": "[Ưu tiên 2] Tự nhận diện persona của phiên nhóm hiện tại và cố gắng dùng giọng điệu đó trong báo cáo. Chỉ có hiệu lực khi tùy chọn buộc dùng persona riêng của plugin đang tắt."
             },
             "use_plugin_specific_persona": {
-                "description": "强制使用插件指定人格",
+                "description": "Buộc dùng persona do plugin chỉ định",
                 "type": "bool",
                 "default": false,
-                "hint": "【优先级1：核心开关】若开启，将完全忽略当前群聊的人格设定，统一强制使用下方选择的“插件指定人格 ID”进行分析。适用于希望全群分析保持某种统一固定风格（如特定的“记录员”人设）的情况。"
+                "hint": "[Ưu tiên 1] Bỏ qua persona của nhóm và luôn dùng ID persona được chọn bên dưới. Phù hợp khi muốn mọi báo cáo giữ một phong cách cố định."
             },
             "plugin_specific_persona_id": {
-                "description": "插件指定人格 ID",
+                "description": "ID persona do plugin chỉ định",
                 "type": "string",
                 "_special": "select_persona",
                 "default": "",
-                "hint": "当“强制使用插件指定人格”开启时，在此处选择系统中已定义的人设。若此处未选择，则仍会尝试识别全局默认人格。"
+                "hint": "Chọn persona đã được định nghĩa trong hệ thống khi bật chế độ bắt buộc. Nếu để trống, plugin vẫn thử nhận diện persona mặc định toàn cục."
             }
         }
     },
     "incremental": {
-        "description": "增量分析设置",
+        "description": "Cài đặt phân tích tăng cường",
         "type": "object",
-        "hint": "增量分析通过在活跃时段分步提取摘要，能显著提高分析深度和覆盖率。这里仅决定“已通过前两关的群”是走增量还是普通模式。",
+        "hint": "Phân tích tăng cường trích xuất từng phần trong giờ hoạt động để tăng độ sâu và độ phủ. Mục này chỉ chọn chế độ tăng cường hoặc thông thường cho nhóm đã vượt qua quyền cơ bản và danh sách định kỳ.",
         "items": {
             "incremental_group_list_mode": {
                 "type": "string",
-                "description": "增量分析名单模式",
+                "description": "Chế độ danh sách phân tích tăng cường",
                 "options": [
                     "whitelist",
                     "blacklist"
                 ],
                 "default": "whitelist",
-                "hint": "哪些群用“增量分析”。whitelist=只有列表里的群用增量；blacklist=除了列表外都用增量。没命中的群会走普通模式。注意：增量名单不负责放行群，只负责选模式。"
+                "hint": "Chọn nhóm dùng phân tích tăng cường. whitelist = chỉ nhóm trong danh sách; blacklist = mọi nhóm trừ danh sách. Nhóm không khớp sẽ dùng chế độ thông thường. Danh sách này chỉ chọn chế độ, không cấp quyền sử dụng."
             },
             "incremental_group_list": {
                 "type": "list",
-                "description": "增量分析群列表",
+                "description": "Danh sách nhóm phân tích tăng cường",
                 "default": [],
-                "hint": "增量分析群列表。示例1：mode=whitelist + [\"onebot:GroupMessage:123456\"] => 只有这个群增量。示例2：mode=blacklist + [\"onebot:GroupMessage:123456\"] => 这个群不用增量，其他群用增量。注意：whitelist + 空列表 = 不启用增量。只有先通过基础群权限 + 定时名单的群，才会在这里判断。",
+                "hint": "Danh sách nhóm tăng cường. whitelist với một UMO chỉ bật cho nhóm đó; blacklist sẽ loại nhóm đó và bật cho các nhóm khác. whitelist với danh sách trống sẽ không bật tăng cường. Chỉ nhóm đã vượt qua quyền cơ bản và danh sách định kỳ mới được xét.",
                 "items": {
                     "type": "string"
                 }
             },
             "incremental_report_immediately": {
                 "type": "bool",
-                "description": "增量分析立即报告（调试用）",
+                "description": "Báo cáo ngay sau phân tích tăng cường (gỡ lỗi)",
                 "default": false,
-                "hint": "【调试功能】启用后，每次增量分析完成后都会立即生成并发送一份最终报告。仅建议在调试时开启，生产环境请保持关闭，否则会频繁打扰群友。"
+                "hint": "[Gỡ lỗi] Tạo và gửi ngay báo cáo cuối sau mỗi lần phân tích tăng cường. Chỉ nên bật khi gỡ lỗi; hãy tắt trong môi trường thực tế để tránh làm phiền nhóm."
             },
             "incremental_interval_minutes": {
                 "type": "int",
-                "description": "增量分析间隔（分钟）",
+                "description": "Khoảng cách phân tích tăng cường (phút)",
                 "default": 120,
-                "hint": "每隔多少分钟执行一次增量分析。建议根据群聊实际情况处理，间隔越短分析越精细但消耗更多 Token。"
+                "hint": "Số phút giữa các lần phân tích tăng cường. Khoảng cách càng ngắn thì phân tích càng chi tiết nhưng tiêu thụ nhiều Token hơn."
             },
             "incremental_max_daily_analyses": {
                 "type": "int",
-                "description": "每日最大增量分析次数",
+                "description": "Số lần phân tích tăng cường tối đa mỗi ngày",
                 "default": 8,
-                "hint": "一天内最多执行多少次增量分析。达到上限后当天不再触发新的增量分析，但仍会在报告时间生成最终报告。建议4-12次。"
+                "hint": "Giới hạn số lần tăng cường trong ngày. Khi đạt giới hạn, plugin không chạy thêm nhưng vẫn tạo báo cáo cuối đúng giờ. Khuyến nghị 4-12 lần."
             },
             "incremental_safe_limit": {
                 "type": "int",
-                "description": "增量分析单次安全上限 (Safe Count)",
+                "description": "Giới hạn an toàn mỗi lần tăng cường (Safe Count)",
                 "default": 2000,
-                "hint": "增量分析模式下，当群聊极其活跃导致大量消息堆积时，插件单次回溯历史的最大消息条数。这同时也是为了防止特殊情况下无限回溯。即使没追到上次分析的断点，拉满此数值也会强制停止。建议 1000-5000。"
+                "hint": "Số tin nhắn lịch sử tối đa được truy xuất trong một lần khi nhóm quá hoạt động. Plugin sẽ dừng ở giới hạn này dù chưa đến điểm ngắt của lần trước, nhằm tránh truy xuất vô hạn. Khuyến nghị 1000-5000."
             },
             "incremental_min_messages": {
                 "type": "int",
-                "description": "增量分析最小消息数阈值",
+                "description": "Ngưỡng tin nhắn tối thiểu cho tăng cường",
                 "default": 300,
-                "hint": "当自上次分析以来的新消息数低于此阈值时，跳过本次增量分析以节省 Token。建议设置较大值，因为当获取到的消息不够时，最晚消息的游标不会更新，等消息累计足够后的增量分析会进行分析。"
+                "hint": "Bỏ qua lần tăng cường khi số tin nhắn mới thấp hơn ngưỡng để tiết kiệm Token. Con trỏ không cập nhật khi chưa đủ tin nhắn nên dữ liệu sẽ được phân tích sau khi tích lũy đủ."
             },
             "incremental_topics_per_batch": {
                 "type": "int",
-                "description": "单次增量提取话题数",
+                "description": "Số chủ đề mỗi lô tăng cường",
                 "default": 2,
-                "hint": "每次增量分析最多提取的话题数量。最终报告会汇总所有批次的话题。建议1-4。"
+                "hint": "Số chủ đề tối đa trích xuất mỗi lần. Báo cáo cuối sẽ tổng hợp mọi lô. Khuyến nghị 1-4."
             },
             "incremental_quotes_per_batch": {
                 "type": "int",
-                "description": "单次增量提取金句数",
+                "description": "Số trích dẫn mỗi lô tăng cường",
                 "default": 2,
-                "hint": "每次增量分析最多提取的金句数量。最终报告会汇总所有批次的金句。建议1-2。"
+                "hint": "Số trích dẫn nổi bật tối đa mỗi lần. Báo cáo cuối sẽ tổng hợp mọi lô. Khuyến nghị 1-2."
             },
             "incremental_active_start_hour": {
                 "type": "int",
-                "description": "增量分析活跃起始时段",
+                "description": "Giờ bắt đầu hoạt động tăng cường",
                 "default": 8,
-                "hint": "增量分析的活跃时段起始小时（24小时制）。如果目标群聊凌晨也活跃，建议设定的很早；在活跃时段之外不会触发增量分析，避免凌晨等低活跃时段浪费分析配额."
+                "hint": "Giờ bắt đầu theo định dạng 24 giờ. Ngoài khung hoạt động, plugin không chạy tăng cường để tránh lãng phí hạn mức trong thời gian ít hoạt động."
             },
             "incremental_active_end_hour": {
                 "type": "int",
-                "description": "增量分析活跃结束时段",
+                "description": "Giờ kết thúc hoạt động tăng cường",
                 "default": 23,
-                "hint": "增量分析的活跃时段结束小时（24小时制）。超过此时段后不再触发增量分析。"
+                "hint": "Giờ kết thúc theo định dạng 24 giờ. Sau thời điểm này plugin không kích hoạt phân tích tăng cường."
             },
             "incremental_stagger_seconds": {
                 "type": "int",
-                "description": "多群增量分析交错间隔（秒）",
+                "description": "Độ trễ xen kẽ giữa nhiều nhóm (giây)",
                 "default": 2,
-                "hint": "当同时对多个群进行增量分析时，每个群之间的延迟间隔（秒），用于均匀分散 API 请求压力。"
+                "hint": "Độ trễ giữa các nhóm khi phân tích đồng thời để phân tán đều tải yêu cầu API."
             },
             "incremental_fallback_enabled": {
                 "type": "bool",
-                "description": "增量失败自动回退全量分析",
+                "description": "Tự chuyển sang phân tích đầy đủ khi tăng cường lỗi",
                 "default": true,
-                "hint": "建议开启。开启后，如果增量分析失败，会自动改用普通分析，避免当天没报告。"
+                "hint": "Khuyến nghị bật. Nếu phân tích tăng cường thất bại, plugin tự chuyển sang phân tích thông thường để vẫn có báo cáo trong ngày."
             }
         }
     },
     "html": {
-        "description": "HTML 设置",
+        "description": "Cài đặt HTML",
         "type": "object",
-        "hint": "HTML 报告输出相关配置，包括外链 Base URL 和报告储存目录",
+        "hint": "Cấu hình đầu ra báo cáo HTML, gồm Base URL công khai và thư mục lưu báo cáo.",
         "items": {
             "html_base_url": {
                 "type": "string",
-                "description": "外鏈 Base URL",
+                "description": "Base URL công khai",
                 "default": "",
-                "hint": "用于生成外链的 Base URL（可留空）。如果设置了此项，发送报告时会在消息中提供超连結 (${BASE_URL}/${FILENAME})。留空则不提供外链。"
+                "hint": "Base URL dùng để tạo liên kết công khai (có thể để trống). Nếu được cấu hình, tin nhắn báo cáo sẽ kèm liên kết (${BASE_URL}/${FILENAME})."
             },
             "html_output_dir": {
                 "type": "string",
-                "description": "报告储存目录",
+                "description": "Thư mục lưu báo cáo",
                 "default": "",
-                "hint": "HTML报告文件的保存目录，用于存储生成的 HTML 文件和原始 JSON 数据。留空则自动使用插件数据目录（astrbot_path/data/plugin_data/astrbot_plugin_qq_group_daily_analysis/）下的 self_hosted_html_reports 目录。"
+                "hint": "Thư mục lưu file HTML và dữ liệu JSON gốc. Để trống để dùng thư mục self_hosted_html_reports trong thư mục dữ liệu của plugin."
             },
             "html_only_url": {
                 "type": "bool",
-                "description": "仅发送外链",
+                "description": "Chỉ gửi liên kết",
                 "default": false,
-                "hint": "勾选后，若配置了外链 Base URL，则发送 HTML 报告时将只发送外链链接，不再发送HTML文件，若未勾选，将保持发送HTML文件。"
+                "hint": "Khi bật và đã cấu hình Base URL, báo cáo HTML chỉ gửi liên kết thay vì file. Khi tắt, plugin tiếp tục gửi file HTML."
             },
             "html_filename_format": {
                 "type": "string",
-                "description": "HTML文件名格式",
-                "default": "群聊分析报告_${group_id}_${date}_${ulid}.html",
-                "hint": "HTML文件名格式，支持变量：${group_id}(群号)、${date}(日期)、${ulid}(时间排序ID)，支持子目录/层级。"
+                "description": "Định dạng tên file HTML",
+                "default": "bao_cao_phan_tich_nhom_${group_id}_${date}_${ulid}.html",
+                "hint": "Định dạng tên file HTML, hỗ trợ ${group_id} (ID nhóm), ${date} (ngày), ${ulid} (ID sắp xếp theo thời gian) và thư mục con."
             }
         }
     },
     "qq_group_upload": {
-        "description": "群文件/群相册上传设置",
+        "description": "Cài đặt tải lên file/album nhóm",
         "type": "object",
-        "hint": "图片报告生成后自动上传到群文件目录或群相册。群文件上传基于 OneBot upload_group_file API。仅对 QQ（OneBot）平台的图片格式报告生效",
+        "hint": "Tự động tải báo cáo ảnh lên thư mục file hoặc album nhóm. Tải file nhóm dùng API OneBot upload_group_file và chỉ áp dụng cho báo cáo ảnh trên QQ (OneBot).",
         "items": {
             "enable_group_file_upload": {
                 "type": "bool",
-                "description": "启用群文件上传",
+                "description": "Bật tải lên file nhóm",
                 "default": false,
-                "hint": "图片报告生成后，自动保存为 PNG 文件并上传到群文件目录。需要 OneBot 实现支持 upload_group_file API"
+                "hint": "Tự lưu báo cáo ảnh thành PNG rồi tải lên thư mục file nhóm. Yêu cầu triển khai OneBot hỗ trợ API upload_group_file."
             },
             "group_file_folder": {
                 "type": "string",
-                "description": "群文件上传目录名",
+                "description": "Tên thư mục file nhóm",
                 "default": "",
-                "hint": "上传到群文件中的子目录名称。留空则上传到根目录。如果指定的目录不存在，插件将尝试自动创建"
+                "hint": "Tên thư mục con trong file nhóm. Để trống để tải lên thư mục gốc; plugin sẽ thử tạo thư mục nếu chưa tồn tại."
             },
             "enable_group_album_upload": {
                 "type": "bool",
-                "description": "启用群相册上传",
+                "description": "Bật tải lên album nhóm",
                 "default": false,
-                "hint": "图片报告生成后，自动上传到群相册（确保 Bot 有权限上传群相册）。此功能为 NapCat 扩展 API，其他 OneBot 实现可能不支持"
+                "hint": "Tự động tải báo cáo ảnh lên album nhóm; cần bảo đảm bot có quyền. Đây là API mở rộng của NapCat nên các triển khai OneBot khác có thể không hỗ trợ."
             },
             "group_album_name": {
                 "type": "string",
-                "description": "目标群相册名称",
+                "description": "Tên album nhóm mục tiêu",
                 "default": "",
-                "hint": "指定上传到哪个群相册（请确保已经存在这个名称的相册）。留空则上传到群默认相册。如果指定的相册不存在，将回退到默认相册"
+                "hint": "Chọn album nhóm để tải lên và bảo đảm album đã tồn tại. Để trống để dùng album mặc định; nếu không tìm thấy album chỉ định, plugin sẽ dùng album mặc định."
             },
             "group_album_strict_mode": {
                 "type": "bool",
-                "description": "群相册上传严格模式",
+                "description": "Chế độ tải album nghiêm ngặt",
                 "default": true,
-                "hint": "当启用该开关且设置了目标群相册名称时：如果插件在目标群组中找不到同名的相册，将放弃上传。关闭该开关时，找不到目标相册将回退到群组默认的第一个相册。"
+                "hint": "Khi bật và đã đặt tên album, plugin sẽ hủy tải lên nếu không tìm thấy album cùng tên. Khi tắt, plugin dùng album mặc định đầu tiên của nhóm."
             }
         }
     },
     "prompts": {
-        "description": "提示词模板",
+        "description": "Mẫu prompt",
         "type": "object",
-        "hint": "LLM 分析使用的提示词模板配置，可自定义各项分析的提示词内容",
+        "hint": "Cấu hình prompt dùng cho phân tích LLM; có thể tùy chỉnh nội dung của từng tác vụ.",
         "items": {
             "topic_analysis_prompts": {
-                "description": "话题分析提示词模板",
+                "description": "Mẫu prompt phân tích chủ đề",
                 "type": "object",
-                "hint": "话题分析提示词模板，可自定义修改，保留变量 ${max_topics} 和 ${messages_text} 写法不要更改，需要写 JSON 块请使用双花括号 {{ ... }} 兼容当前编辑存在的问题。非常推荐根据实际群聊情况进行优化，保留一定提示样本示例供模型参考",
+                "hint": "Có thể tùy chỉnh prompt phân tích chủ đề. Không thay đổi biến ${max_topics} và ${messages_text}; dùng dấu ngoặc kép {{ ... }} khi viết khối JSON để tương thích trình chỉnh sửa. Nên giữ ví dụ mẫu cho mô hình tham khảo.",
                 "items": {
                     "topic_prompt": {
-                        "description": "默认话题分析提示词",
+                        "description": "Prompt phân tích chủ đề mặc định",
                         "type": "text",
                         "editor_mode": true,
                         "editor_language": "markdown",
-                        "default": "请分析接下来提供的群聊记录，提取出最多 **${max_topics}** 个主要话题。根据实际聊天内容提取所有最有意义的话题。\n\n## 对于每个话题，请提供：\n\n1. **话题名称**（突出主题内容，尽量简明扼要，控制在 10 字以内）\n2. **主要参与者的用户ID**（最多 5 人，按参与度排序）\n3. **话题详细描述**（包含关键信息和结论）\n\n## 注意事项：\n\n- 在生成描述内容时，请务必从你当前人格设定的视角和口吻出发。\n- 对于比较有价值的点，稍微用一两句话详细讲讲，让读者能了解讨论的深度\n- 对于其中的部分信息，你需要特意提到主题施加的主体是谁，即明确指出\"谁做了什么\"\n- **用户引用**：在话题详情描述中，如果提到了具体用户，请使用 `[用户ID]` 的格式来指代（例如 `[123456]`）。不要只写昵称。我们会自动渲染头像。\n- 对于每一条总结，尽量讲清楚前因后果，不要只列出结论\n- 如果某个话题有明确的结论或共识，请在描述中体现\n- 忽略无意义的闲聊、灌水、单纯的表情回复等\n- 优先选择讨论深度较深、参与人数较多的话题\n- 如果消息太少或没有明确话题，可以返回空数组 []\n\n群聊记录格式: [HH:MM] [用户ID]: 消息内容\n\n群聊记录：\n${messages_text}\n\n---\n\n## 重要：必须返回标准 JSON 格式\n\n严格遵守以下规则：\n\n1. 只使用英文双引号 `\"` ，不要使用中文引号 `“` `”`\n2. 字符串内容中的引号必须转义为 `\\\"`\n3. 多个对象之间用逗号分隔\n4. 数组元素之间用逗号分隔\n5. 不要在 JSON 外添加任何文字说明\n6. 描述内容避免使用特殊符号，用普通文字表达\n\n### 返回格式示例：\n\n```json\n[\n  {{\n    \"topic\": \"话题名称\",\n    \"contributors\": [\"123456789\", \"987654321\"],\n    \"detail\": \"话题的详细描述，包含讨论内容、关键信息和结论。注意：在描述中提及用户时，使用 [用户ID] 格式，例如 [123456789]。\"\n  }},\n  {{\n    \"topic\": \"另一个话题\",\n    \"contributors\": [\"111222333\", \"444555666\"],\n    \"detail\": \"另一个话题的详细描述...\"\n  }}\n]\n```\n\n**注意**：返回的内容必须是纯 JSON，不要包含 markdown 代码块标记或其他格式。"
+                        "default": "Hãy phân tích lịch sử trò chuyện nhóm bên dưới và trích xuất tối đa **${max_topics}** chủ đề chính có ý nghĩa nhất.\n\n## Với mỗi chủ đề, hãy cung cấp:\n\n1. **Tên chủ đề** (nêu bật nội dung chính, ngắn gọn, tối đa khoảng 10 từ)\n2. **ID người dùng của người tham gia chính** (tối đa 5 người, sắp xếp theo mức độ tham gia)\n3. **Mô tả chi tiết chủ đề** (gồm thông tin quan trọng và kết luận)\n\n## Lưu ý:\n\n- Viết mô tả bằng góc nhìn và giọng điệu của persona hiện tại.\n- Với điểm đáng chú ý, hãy giải thích thêm một hoặc hai câu để thể hiện chiều sâu thảo luận.\n- Khi cần, hãy nói rõ ai là chủ thể của hành động, tức là \"ai đã làm gì\".\n- **Tham chiếu người dùng**: nếu nhắc đến một người cụ thể trong mô tả, hãy dùng định dạng `[ID người dùng]` (ví dụ `[123456]`), không chỉ dùng biệt danh. Hệ thống sẽ tự kết xuất ảnh đại diện.\n- Mỗi phần tóm tắt cần nêu rõ nguyên nhân, diễn biến và kết quả, không chỉ liệt kê kết luận.\n- Nếu chủ đề có kết luận hoặc đồng thuận rõ ràng, hãy thể hiện trong mô tả.\n- Bỏ qua trò chuyện vô nghĩa, spam và phản hồi chỉ có biểu cảm.\n- Ưu tiên chủ đề có chiều sâu và nhiều người tham gia.\n- Nếu có quá ít tin nhắn hoặc không có chủ đề rõ ràng, có thể trả về mảng rỗng [].\n- Toàn bộ nội dung văn bản trong kết quả phải được viết bằng tiếng Việt.\n\nĐịnh dạng lịch sử: [HH:MM] [ID người dùng]: Nội dung tin nhắn\n\nLịch sử trò chuyện:\n${messages_text}\n\n---\n\n## Quan trọng: phải trả về JSON chuẩn\n\nTuân thủ nghiêm ngặt các quy tắc sau:\n\n1. Chỉ dùng dấu ngoặc kép tiếng Anh `\"`.\n2. Dấu ngoặc kép trong chuỗi phải được escape thành `\\\"`.\n3. Phân tách các object bằng dấu phẩy.\n4. Phân tách các phần tử mảng bằng dấu phẩy.\n5. Không thêm bất kỳ lời giải thích nào bên ngoài JSON.\n6. Hạn chế ký hiệu đặc biệt trong mô tả; ưu tiên văn bản thông thường.\n\n### Ví dụ định dạng trả về:\n\n```json\n[\n  {{\n    \"topic\": \"Tên chủ đề\",\n    \"contributors\": [\"123456789\", \"987654321\"],\n    \"detail\": \"Mô tả chi tiết chủ đề, gồm nội dung thảo luận, thông tin quan trọng và kết luận. Khi nhắc đến người dùng, hãy dùng định dạng [ID người dùng], ví dụ [123456789].\"\n  }},\n  {{\n    \"topic\": \"Một chủ đề khác\",\n    \"contributors\": [\"111222333\", \"444555666\"],\n    \"detail\": \"Mô tả chi tiết của chủ đề khác...\"\n  }}\n]\n```\n\n**Lưu ý**: chỉ trả về JSON thuần, không kèm dấu khối mã Markdown hoặc định dạng khác."
                     }
                 }
             },
             "user_title_analysis_prompts": {
-                "description": "用户称号分析提示词模板",
+                "description": "Mẫu prompt phân tích danh hiệu",
                 "type": "object",
-                "hint": "用户称号分析提示词模板，可自定义修改，保留变量 ${users_text} 写法不要更改，需要写 JSON 块请使用双花括号 {{ ... }} 兼容当前编辑存在的问题。非常推荐根据实际群聊情况进行优化，保留一定提示样本示例供模型参考",
+                "hint": "Có thể tùy chỉnh prompt phân tích danh hiệu. Không thay đổi biến ${users_text}; dùng dấu ngoặc kép {{ ... }} khi viết khối JSON để tương thích trình chỉnh sửa. Nên giữ ví dụ mẫu cho mô hình tham khảo.",
                 "items": {
                     "user_title_prompt": {
-                        "description": "默认用户称号分析提示词",
+                        "description": "Prompt phân tích danh hiệu mặc định",
                         "type": "text",
                         "editor_mode": true,
                         "editor_language": "markdown",
-                        "default": "请为以下群友分配合适的称号和 MBTI 类型。\n\n## 规则：\n\n- 每个人只能有一个称号\n- 每个称号只能给一个人\n\n## 可选称号：\n\n- **龙王**: 发言频繁但内容轻松的人\n- **技术专家**: 经常讨论技术话题的人\n- **夜猫子**: 经常在深夜发言的人\n- **表情包军火库**: 经常发表情的人\n- **沉默终结者**: 经常开启话题的人\n- **评论家**: 平均发言长度很长的人\n- **阳角**: 在群里很有影响力的人\n- **互动达人**: 经常回复别人的人\n- *...（你可以自行进行拓展添加）*\n\n## 用户数据：\n\n${users_text}\n\n---\n\n### 返回格式示例：\n\n```json\n[\n  {{\n    \"name\": \"用户名\",\n    \"user_id\": \"123456789\",\n    \"title\": \"称号\",\n    \"mbti\": \"MBTI类型\",\n    \"reason\": \"获得此称号的原因\"\n  }}\n]\n```\n\n**注意**：请以纯 JSON 格式返回，不要包含 markdown 代码块标记。"
+                        "default": "Hãy gán danh hiệu và loại MBTI phù hợp cho các thành viên nhóm bên dưới.\n\n## Quy tắc:\n\n- Mỗi người chỉ có một danh hiệu.\n- Mỗi danh hiệu chỉ được trao cho một người.\n- Tất cả danh hiệu và lý do phải được viết bằng tiếng Việt.\n\n## Danh hiệu gợi ý:\n\n- **Vua trò chuyện**: thường xuyên nhắn tin với nội dung vui vẻ.\n- **Chuyên gia công nghệ**: thường thảo luận chủ đề kỹ thuật.\n- **Cú đêm**: thường hoạt động vào đêm khuya.\n- **Kho meme**: thường gửi biểu cảm hoặc meme.\n- **Người phá tan im lặng**: thường bắt đầu chủ đề mới.\n- **Nhà bình luận**: thường gửi tin nhắn dài và chi tiết.\n- **Người có sức ảnh hưởng**: có ảnh hưởng lớn trong nhóm.\n- **Bậc thầy tương tác**: thường xuyên trả lời người khác.\n- *Bạn có thể tự mở rộng thêm danh hiệu phù hợp.*\n\n## Dữ liệu người dùng:\n\n${users_text}\n\n---\n\n### Ví dụ định dạng trả về:\n\n```json\n[\n  {{\n    \"name\": \"Tên người dùng\",\n    \"user_id\": \"123456789\",\n    \"title\": \"Danh hiệu\",\n    \"mbti\": \"Loại MBTI\",\n    \"reason\": \"Lý do nhận danh hiệu\"\n  }}\n]\n```\n\n**Lưu ý**: chỉ trả về JSON thuần, không kèm dấu khối mã Markdown."
                     }
                 }
             },
             "golden_quote_analysis_prompts": {
-                "description": "金句分析提示词模板",
+                "description": "Mẫu prompt trích dẫn nổi bật",
                 "type": "object",
-                "hint": "金句分析提示词模板，可自定义修改，保留变量 ${max_golden_quotes} 和 ${messages_text} 写法不要更改，需要写 JSON 块请使用双花括号 {{ ... }} 兼容当前编辑存在的问题。非常推荐根据实际群聊情况进行优化，保留一定提示样本示例供模型参考",
+                "hint": "Có thể tùy chỉnh prompt trích dẫn nổi bật. Không thay đổi biến ${max_golden_quotes} và ${messages_text}; dùng dấu ngoặc kép {{ ... }} khi viết khối JSON để tương thích trình chỉnh sửa. Nên giữ ví dụ mẫu.",
                 "items": {
                     "golden_quote_v2_prompt": {
-                        "description": "默认金句分析提示词",
+                        "description": "Prompt trích dẫn nổi bật mặc định",
                         "type": "text",
                         "editor_mode": true,
                         "editor_language": "markdown",
-                        "default": "请从以下群聊记录中挑选出 **${max_golden_quotes}** 句最具冲击力、最令人惊叹的「金句」。\n\n## 金句标准：\n\n- **核心标准**：**逆天的神人发言**，即具备颠覆常识的脑洞、逻辑跳脱的表达或强烈反差感的原创内容\n- **典型特征**：包含某些争议话题元素、夸张类比、反常规结论、一本正经的「胡说八道」或突破语境的清奇思路，并且具备一定的冲击力，让人印象深刻\n\n## 对于每个金句，请提供：\n\n1. **原文内容**（完整保留发言细节）\n2. **发言人用户ID**（必须严格使用消息记录中提供的 [用户ID]）\n3. **选择理由**（具体说明其「逆天」之处，如逻辑颠覆点/脑洞角度/反差感/争议话题元素）\n\n## 严格约束：\n\n- 优先筛选 **逆天指数最高** 的内容：\n  - 发情、性压抑话题 > 争议话题 > 元素级 > 颠覆认知级 > 逻辑跳脱级 > 趣味调侃级\n  - 剔除单纯玩梗或网络热词堆砌的普通发言\n- **用户引用**：在选择理由（reason）中，如果提到了具体用户，请使用 `[用户ID]` 的格式来指代（例如 `[123456]`）。不要只写昵称。我们会自动渲染头像。\n- **身份对齐**：返回的 `sender` 字段必须是 `[用户ID]` 格式（例如 `[123456]`）。我们会根据 ID 自动还原昵称和头像。\n\n## 群聊记录格式: [HH:MM] [用户ID]: 消息内容\n\n## 群聊记录：\n\n${messages_text}\n\n---\n\n### 返回格式示例：\n\n```json\n[\n  {{\n    \"content\": \"金句原文\",\n    \"sender\": \"[123456789]\",\n    \"reason\": \"这句话太逆天了，尤其是对 [987654321] 的逻辑降维打击。\"\n  }}\n]\n```\n\n**注意**：返回的内容必须是纯 JSON，不要包含 markdown 代码块标记或其他格式。"
+                        "default": "Hãy chọn tối đa **${max_golden_quotes}** câu nổi bật, bất ngờ và đáng nhớ nhất từ lịch sử trò chuyện bên dưới.\n\n## Tiêu chí:\n\n- **Tiêu chí chính**: nội dung độc đáo, đảo ngược lẽ thường, có cách diễn đạt nhảy logic hoặc tạo tương phản mạnh.\n- **Đặc điểm điển hình**: so sánh phóng đại, kết luận khác thường, phát biểu nghiêm túc nhưng hài hước, góc nhìn lạ hoặc chi tiết gây ấn tượng mạnh.\n\n## Với mỗi trích dẫn, hãy cung cấp:\n\n1. **Nội dung gốc** (giữ đầy đủ chi tiết của phát biểu).\n2. **ID người gửi** (phải dùng đúng `[ID người dùng]` trong lịch sử).\n3. **Lý do lựa chọn** (nêu rõ điểm độc đáo, bất ngờ, tương phản hoặc hài hước).\n\n## Ràng buộc:\n\n- Ưu tiên nội dung có tính độc đáo và tác động cao; loại bỏ câu chỉ lặp meme hoặc từ khóa mạng thông thường.\n- **Tham chiếu người dùng**: trong `reason`, nếu nhắc đến người cụ thể, dùng `[ID người dùng]` (ví dụ `[123456]`), không chỉ dùng biệt danh. Hệ thống sẽ tự kết xuất ảnh đại diện.\n- **Đồng bộ danh tính**: trường `sender` phải có dạng `[ID người dùng]`, ví dụ `[123456]`; hệ thống sẽ tự khôi phục biệt danh và ảnh đại diện.\n- Nội dung của `reason` phải được viết bằng tiếng Việt; `content` phải giữ nguyên lời nói gốc.\n\nĐịnh dạng lịch sử: [HH:MM] [ID người dùng]: Nội dung tin nhắn\n\nLịch sử trò chuyện:\n\n${messages_text}\n\n---\n\n### Ví dụ định dạng trả về:\n\n```json\n[\n  {{\n    \"content\": \"Nội dung nguyên văn của câu nói\",\n    \"sender\": \"[123456789]\",\n    \"reason\": \"Câu nói tạo ra một góc nhìn rất bất ngờ, đặc biệt khi phản hồi [987654321].\"\n  }}\n]\n```\n\n**Lưu ý**: chỉ trả về JSON thuần, không kèm dấu khối mã Markdown hoặc định dạng khác."
                     }
                 }
             },
             "quality_analysis_prompts": {
-                "description": "聊天质量分析提示词模板",
+                "description": "Mẫu prompt chất lượng trò chuyện",
                 "type": "object",
-                "hint": "聊天质量分析提示词模板，可自定义修改",
+                "hint": "Có thể tùy chỉnh prompt đánh giá chất lượng trò chuyện.",
                 "items": {
                     "quality_v2_prompt": {
-                        "description": "默认聊天质量分析提示词",
+                        "description": "Prompt chất lượng trò chuyện mặc định",
                         "type": "text",
                         "editor_mode": true,
                         "editor_language": "markdown",
-                        "default": "请分析以下群聊记录，输出一份\"聊天质量锐评\"。\n\n## 任务目标：\n1. **维度划分**：将聊天内容划分为 3-6 个【高层级、抽象、泛化】的维度（例如：就业焦虑、生涯规划、技术方案研究、情感树洞、无意义水群等）。\n2. **严禁在维度名称（name）中出现任何具体的群聊人物名、项目名、具体的报错内容或细碎的事件点。标题必须保持高度抽象且字数简练（2-6个字）。**\n3. 为每个维度计算一个大致的百分比占位（总和小于等于 100%）。\n4. **点评内容**：为每个维度写一句符合你当前人格设定的犀利、幽默或温情的点评。具体的吐槽内容、具体的细节事件描述请放在这里。\n5. **全群表现**：给出一句总结性的评价，作为总结标题对应的“金句”。\n6. **主题设定**：设定一个本次报告的主题标题和副标题。\n\n## 点评风格指南：\n- 语言要接地气，多用互联网黑话。吐槽要精准，避重就轻。\n- **只有维度名称（name）需要抽象，点评（comment）和总结（summary）可以非常具体和生动。**\n\n## 返回格式要求：\n必须以纯 JSON 格式返回，不得包含任何 Markdown 格式。\n\n```json\n{{\n  \"title\": \"今日群聊主题\",\n  \"subtitle\": \"副标题\",\n  \"dimensions\": [\n    {{\n      \"name\": \"抽象维度名\",\n      \"percentage\": 比例,\n      \"comment\": \"与该维度相关的锐评，请务必保持你的人设口吻\"\n    }}\n  ],\n  \"summary\": \"一句总结性的金句\"\n}}\n```\n\n群聊记录：\n${messages_text}"
+                        "default": "Hãy phân tích lịch sử trò chuyện bên dưới và tạo một bản đánh giá chất lượng trò chuyện.\n\n## Mục tiêu:\n1. **Phân chia khía cạnh**: chia nội dung thành 3-6 khía cạnh cấp cao, trừu tượng và có tính khái quát (ví dụ: áp lực nghề nghiệp, định hướng tương lai, nghiên cứu giải pháp kỹ thuật, chia sẻ cảm xúc, trò chuyện lan man).\n2. **Không được đưa tên thành viên, tên dự án, lỗi cụ thể hoặc sự kiện vụn vặt vào tên khía cạnh (`name`). Tên phải khái quát và ngắn gọn, khoảng 2-6 từ.**\n3. Ước tính tỷ lệ phần trăm cho mỗi khía cạnh, tổng không vượt quá 100%.\n4. **Nhận xét**: viết một câu sắc sảo, hài hước hoặc ấm áp cho mỗi khía cạnh theo persona hiện tại. Chi tiết cụ thể và nội dung trêu đùa nên đặt tại đây.\n5. **Đánh giá toàn nhóm**: đưa ra một câu tổng kết nổi bật.\n6. **Chủ đề báo cáo**: đặt tiêu đề và phụ đề cho báo cáo.\n\n## Phong cách:\n- Ngôn ngữ tự nhiên, gần gũi với cộng đồng mạng Việt Nam; nhận xét chính xác nhưng không công kích.\n- Chỉ `name` cần trừu tượng; `comment` và `summary` có thể cụ thể, sinh động.\n- Toàn bộ nội dung văn bản phải được viết bằng tiếng Việt.\n\n## Định dạng trả về:\nChỉ trả về JSON thuần, không chứa Markdown.\n\n```json\n{{\n  \"title\": \"Chủ đề trò chuyện hôm nay\",\n  \"subtitle\": \"Phụ đề\",\n  \"dimensions\": [\n    {{\n      \"name\": \"Tên khía cạnh khái quát\",\n      \"percentage\": 35,\n      \"comment\": \"Nhận xét về khía cạnh này theo giọng điệu persona hiện tại\"\n    }}\n  ],\n  \"summary\": \"Một câu tổng kết nổi bật\"\n}}\n```\n\nLịch sử trò chuyện:\n${messages_text}"
                     },
                     "quality_summary_prompt": {
-                        "description": "增量汇总聊天质量分析提示词",
+                        "description": "Prompt tổng hợp chất lượng tăng cường",
                         "type": "text",
                         "editor_mode": true,
                         "editor_language": "markdown",
-                        "default": "你现在有一份今天全天分散时间段的多个“增量批次点评笔记”。\n你的任务是将这些分散的笔记汇总成一份最终的“全天聊天质量终极锐评”。\n\n## 任务目标：\n1. **全局抽象维度**：根据各批次的维度表现，平衡权重，提取出 3-6 个覆盖全天的【核心、上层抽象】课题维度（如：职场/行业风向、技术架构演进、社畜心理博弈等）。\n2. **严禁在维度名称（name）中出现具体的批次细节。标题必须代表全天的某种趋势。**\n3. **百分比融合**：根据全天笔记的频率和强度，给出一个代表全天整体分布的比例（总和不超过100%）。\n4. **终极点评**：为每个汇总维度写出一句符合你当前人设且升华后的全天总结性点评。可以融合具体批次中的有趣槽点。\n5. **终极总结**：拟定全天的大型主题标题、副标题，并给出一句霸气的全天表现总结。\n\n## 风格要求：\n- 只有维度名称（name）需要高度概括抽象。\n- 点评（comment）和总结（summary）请尽量生动、具体，要把一整天的梗串联起来。\n\n## 返回格式要求：\n必须以纯 JSON 格式返回，不得包含任何 Markdown 格式。\n\n```json\n{{\n  \"title\": \"今日群聊主题\",\n  \"subtitle\": \"副标题\",\n  \"dimensions\": [\n    {{\n      \"name\": \"抽象大类标题\",\n      \"percentage\": 比例,\n      \"comment\": \"全天的锐评总结，请务必保持你的人设口吻\"\n    }}\n  ],\n  \"summary\": \"全天总结金句\"\n}}\n```\n\n增量汇总数据：\n${reviews_text}"
+                        "default": "Bạn có nhiều ghi chú đánh giá từ các lô phân tích tăng cường trong ngày. Hãy tổng hợp chúng thành một bản đánh giá chất lượng trò chuyện cuối ngày.\n\n## Mục tiêu:\n1. **Khía cạnh tổng quát**: cân bằng trọng số giữa các lô và trích xuất 3-6 khía cạnh cốt lõi, trừu tượng, bao quát cả ngày (ví dụ: xu hướng nghề nghiệp, phát triển kiến trúc kỹ thuật, tâm lý nơi làm việc).\n2. **Không đưa chi tiết của một lô cụ thể vào tên khía cạnh (`name`). Tên phải thể hiện một xu hướng xuyên suốt ngày.**\n3. **Tổng hợp tỷ lệ**: dựa trên tần suất và cường độ trong các ghi chú để đưa ra tỷ lệ toàn ngày, tổng không vượt quá 100%.\n4. **Nhận xét cuối ngày**: viết một câu tổng kết nâng cao cho mỗi khía cạnh theo persona hiện tại; có thể kết hợp chi tiết thú vị từ các lô.\n5. **Tổng kết chung**: đặt tiêu đề, phụ đề và một câu tổng kết nổi bật cho cả ngày.\n\n## Phong cách:\n- Chỉ `name` cần khái quát và trừu tượng.\n- `comment` và `summary` cần sinh động, cụ thể và kết nối các điểm đáng nhớ trong ngày.\n- Toàn bộ nội dung văn bản phải được viết bằng tiếng Việt.\n\n## Định dạng trả về:\nChỉ trả về JSON thuần, không chứa Markdown.\n\n```json\n{{\n  \"title\": \"Chủ đề trò chuyện hôm nay\",\n  \"subtitle\": \"Phụ đề\",\n  \"dimensions\": [\n    {{\n      \"name\": \"Tên nhóm khía cạnh khái quát\",\n      \"percentage\": 35,\n      \"comment\": \"Nhận xét tổng hợp cả ngày theo giọng điệu persona hiện tại\"\n    }}\n  ],\n  \"summary\": \"Câu tổng kết nổi bật của cả ngày\"\n}}\n```\n\nDữ liệu tổng hợp tăng cường:\n${reviews_text}"
                     }
                 }
             }
         }
     },
     "performance": {
-        "description": "并发限流设置",
+        "description": "Cài đặt giới hạn đồng thời",
         "type": "object",
-        "hint": "控制插件运行时的各项并发强度。合理的配置可以保护您的服务器不宕机、API 不被封禁。",
+        "hint": "Kiểm soát mức đồng thời khi plugin hoạt động. Cấu hình hợp lý giúp bảo vệ máy chủ và tránh vượt giới hạn API.",
         "items": {
             "max_concurrent_groups": {
                 "type": "int",
-                "description": "最大活跃任务数（任务总闸）",
+                "description": "Số tác vụ hoạt động tối đa",
                 "default": 2,
-                "hint": "限制同时有多少个群聊分析任务正在进行。主要用于【保护服务器内存和 IO】，防止瞬间读取过多群聊记录导致程序崩溃（OOM）。"
+                "hint": "Giới hạn số tác vụ phân tích nhóm chạy cùng lúc để bảo vệ bộ nhớ và I/O, tránh đọc quá nhiều lịch sử dẫn đến OOM."
             },
             "max_concurrent_llm": {
                 "type": "int",
-                "description": "最大 LLM 请求并发数（API 闸口）",
+                "description": "Số yêu cầu LLM đồng thời tối đa",
                 "default": 3,
-                "hint": "限制同时发起的 AI 分析请求数量。主要用于【遵守 API 频率限制（RPM）】，避免因为请求过快导致 API 被封号或报错。"
+                "hint": "Giới hạn số yêu cầu AI cùng lúc để tuân thủ giới hạn tần suất API (RPM) và tránh lỗi do gửi quá nhanh."
             },
             "max_concurrent_t2i": {
                 "type": "int",
-                "description": "最大 T2I渲染并发数",
+                "description": "Số tiến trình T2I đồng thời tối đa",
                 "default": 1,
-                "hint": "限制同时开启的 T2I 渲染进程数。"
+                "hint": "Giới hạn số tiến trình kết xuất T2I chạy cùng lúc."
             },
             "stagger_seconds": {
                 "type": "int",
-                "description": "多群分析交错间隔（秒）",
+                "description": "Độ trễ xen kẽ giữa nhiều nhóm (giây)",
                 "default": 30,
-                "hint": "当同时启动多个群组的定时分析任务时，每个任务之间的延迟间隔（秒），建议根据实际的 LLM 服务速度填写，过短可能导致请求堆积，过长则分析效率降低。"
+                "hint": "Độ trễ giữa các tác vụ định kỳ khi khởi chạy nhiều nhóm. Nên điều chỉnh theo tốc độ LLM; quá ngắn gây dồn yêu cầu, quá dài làm giảm hiệu suất."
             }
         }
     }

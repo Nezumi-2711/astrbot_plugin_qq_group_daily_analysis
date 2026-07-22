@@ -17,7 +17,7 @@
         <div style="display: flex; align-items: center; gap: 15px;">
             {% if title.avatar_data %}
             <img src="{{ title.avatar_data }}" 
-                 alt="头像" 
+                 alt="Ảnh đại diện"
                  style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #667eea;">
             {% endif %}
             <div style="flex: 1;">
@@ -28,8 +28,8 @@
                     </span>
                 </div>
                 <div class="item-content">
-                    <p><strong>人格标签:</strong> {{ title.profile_display or title.mbti }}</p>
-                    <p><strong>称号理由:</strong> {{ title.reason }}</p>
+                    <p><strong>Nhãn tính cách:</strong> {{ title.profile_display or title.mbti }}</p>
+                    <p><strong>Lý do danh hiệu:</strong> {{ title.reason }}</p>
                 </div>
             </div>
         </div>
@@ -37,7 +37,7 @@
     {% if title.profile_image %}
     <img src="{{ title.profile_image }}" alt="" style="position: absolute; right: 8px; bottom: 8px; width: 36%; max-height: 78%; object-fit: {{ title.profile_image_size_mode or 'contain' }}; opacity: {{ title.profile_image_opacity or 0.12 }}; pointer-events: none; z-index: 1;">
     {% endif %}
-    <img class="item-emoji title-emoji" src="{{ title_emojis | random }}" alt="称号表情" style="z-index: 2;">
+    <img class="item-emoji title-emoji" src="{{ title_emojis | random }}" alt="Biểu cảm danh hiệu" style="z-index: 2;">
 </li>
 {% endfor %}
 

@@ -28,7 +28,7 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
 
     def get_data_type(self) -> str:
         """获取数据类型标识"""
-        return "话题"
+        return "Chủ đề"
 
     def get_max_count(self) -> int:
         """获取最大话题数量，增量模式下使用覆盖值"""

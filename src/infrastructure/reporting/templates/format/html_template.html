@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>群聊日常分析报告</title>
+    <title>Báo cáo phân tích nhóm hàng ngày</title>
     <link rel="preconnect" href="{{ t2i_google_fonts_mirror }}">
     <link rel="preconnect" href="{{ t2i_gstatic_mirror }}" crossorigin>
     <link
@@ -484,46 +484,46 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>群聊日常分析报告</h1>
+            <h1>Báo cáo phân tích nhóm hàng ngày</h1>
             <div class="date">{{current_date}}</div>
         </div>
         <div class="content">
             <div class="section full-width-section">
-                <h2 class="section-title">基础统计</h2>
+                <h2 class="section-title">Thống kê cơ bản</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-number">{{message_count}}</div>
-                        <div class="stat-label">消息总数</div>
+                        <div class="stat-label">Tổng tin nhắn</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number">{{participant_count}}</div>
-                        <div class="stat-label">参与人数</div>
+                        <div class="stat-label">Người tham gia</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number">{{total_characters}}</div>
-                        <div class="stat-label">总字符数</div>
+                        <div class="stat-label">Tổng ký tự</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number">{{emoji_count}}</div>
-                        <div class="stat-label">表情数量</div>
+                        <div class="stat-label">Số biểu cảm</div>
                     </div>
                 </div>
                 <div class="active-period">
                     <div class="time">{{most_active_period}}</div>
-                    <div class="label">最活跃时段</div>
+                    <div class="label">Khung giờ sôi nổi nhất</div>
                 </div>
             </div>
 
             <div class="activity-chart-container">
                 <div class="chart-header">
-                    <div class="chart-title">24小时活跃度分布</div>
+                    <div class="chart-title">Phân bố hoạt động 24 giờ</div>
                 </div>
                 {{hourly_chart_html | safe}}
             </div>
  
             {% if chat_quality_html %}
             <div class="section full-width-section">
-                <h2 class="section-title">群聊质量分析</h2>
+                <h2 class="section-title">Phân tích chất lượng trò chuyện</h2>
                 {{ chat_quality_html | safe }}
             </div>
             {% endif %}
@@ -533,9 +533,9 @@
             {{quotes_html | safe}}
         </div>
         <div class="footer">
-            由 AstrBot 群日常分析插件 生成 | {{current_datetime}}<br>
+            Được tạo bởi plugin phân tích nhóm hàng ngày AstrBot | {{current_datetime}}<br>
             SXP-Simon/astrbot_plugin_qq_group_daily_analysis<br>
-            <span style="opacity: 0.7;">AI分析消耗：{{total_tokens}} tokens (输入: {{prompt_tokens}}, 输出: {{completion_tokens}})</span>
+            <span style="opacity: 0.7;">AI đã dùng: {{total_tokens}} token (đầu vào: {{prompt_tokens}}, đầu ra: {{completion_tokens}})</span>
         </div>
     </div>
 </body>

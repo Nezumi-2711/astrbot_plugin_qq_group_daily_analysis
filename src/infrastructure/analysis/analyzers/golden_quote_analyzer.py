@@ -27,7 +27,7 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote, list[dict]]):
 
     def get_data_type(self) -> str:
         """获取数据类型标识"""
-        return "金句"
+        return "Trích dẫn nổi bật"
 
     def get_max_count(self) -> int:
         """获取最大金句数量，增量模式下使用覆盖值"""

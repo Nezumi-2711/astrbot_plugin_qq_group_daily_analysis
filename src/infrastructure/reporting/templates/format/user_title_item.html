@@ -1,12 +1,12 @@
 ﻿{% if titles %}
 <div class="section">
-    <h2 class="section-title">群友称号</h2>
+    <h2 class="section-title">Danh hiệu thành viên</h2>
     <div class="users-grid">
         {% for title in titles %}
         <div class="user-title" style="position: relative; overflow: hidden;">
             <div class="user-info">
                 {% if title.avatar_data %}
-                <img src="{{ title.avatar_data }}" class="user-avatar" alt="头像">
+                <img src="{{ title.avatar_data }}" class="user-avatar" alt="Ảnh đại diện">
                 {% else %}
                 <div class="user-avatar-placeholder">👤</div>
                 {% endif %}
