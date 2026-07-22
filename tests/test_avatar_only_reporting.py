@@ -171,8 +171,8 @@ def test_qq_official_markdown_uses_mentions_for_all_identity_sections():
     without_mentions = report.replace(f"<@{openid}>", "")
     assert openid not in without_mentions
     assert nickname not in without_mentions
-    assert "## 💬 热门话题" in report
-    assert "**参与者**" in report
+    assert "## 💬 Chủ đề nổi bật" in report
+    assert "**Người tham gia**" in report
     assert "**龙王**" in report
     assert f"- **1. <@{openid}> 说了一句话** — <@{openid}>" in report
     assert f"  > <@{openid}> 的发言很精彩" in report
@@ -284,14 +284,14 @@ def test_qq_official_markdown_renders_simple_hourly_bar_chart():
 
     report = generate_qq_markdown(generator, analysis_result)
 
-    assert "## ⏰ 活跃时间分布" in report
+    assert "## ⏰ Phân bố thời gian hoạt động" in report
     assert "- 00:00　—　0" in report
     assert "- 01:00　███　2" in report
     assert "- 02:00　██████　5" in report
     assert "- 03:00　████████████　10" in report
-    chart_section = report.split("## ⏰ 活跃时间分布", 1)[1].split("## 💬 热门话题", 1)[
-        0
-    ]
+    chart_section = report.split("## ⏰ Phân bố thời gian hoạt động", 1)[1].split(
+        "## 💬 Chủ đề nổi bật", 1
+    )[0]
     assert sum(1 for line in chart_section.splitlines() if line.startswith("- ")) == 24
 
 
@@ -315,7 +315,7 @@ def test_qq_official_markdown_omits_empty_hourly_bar_chart():
 
     report = generate_qq_markdown(generator, analysis_result)
 
-    assert "## ⏰ 活跃时间分布" not in report
+    assert "## ⏰ Phân bố thời gian hoạt động" not in report
 
 
 def test_qq_official_t2i_summary_dashboard_replaces_text_summary():
@@ -351,12 +351,12 @@ def test_qq_official_t2i_summary_dashboard_replaces_text_summary():
 
     assert len(render_calls) == 1
     template, data, return_url, options = render_calls[0]
-    assert "群聊日常分析" in template
-    assert "消息" in template
-    assert "参与" in template
-    assert "字符" in template
-    assert "表情" in template
-    assert "高峰" in template
+    assert "Phân tích nhóm" in template
+    assert "Tin nhắn" in template
+    assert "Tham gia" in template
+    assert "Ký tự" in template
+    assert "Biểu cảm" in template
+    assert "Cao điểm" in template
     assert ">10<" in template
     assert ">2<" in template
     assert ">50<" in template
@@ -385,18 +385,18 @@ def test_qq_official_t2i_summary_dashboard_replaces_text_summary():
     assert options["omit_background"] is True
     assert options["clip"] == {"x": 0, "y": 0, "width": 800, "height": 360}
     assert "https://t2i.example/chart.png" in markdown_report
-    assert "# 🎯 群聊日常分析报告" not in markdown_report
+    assert "# 🎯 Báo cáo phân tích nhóm hôm nay" not in markdown_report
     assert "📅" not in markdown_report
-    assert "## 📊 基础统计" not in markdown_report
-    assert "消息总数" not in markdown_report
-    assert "## ⏰ 活跃时间分布" not in markdown_report
+    assert "## 📊 Thống kê cơ bản" not in markdown_report
+    assert "Tổng tin nhắn" not in markdown_report
+    assert "## ⏰ Phân bố thời gian hoạt động" not in markdown_report
     assert "████" not in markdown_report
     assert "https://t2i.example/chart.png" not in fallback_report
-    assert "# 🎯 群聊日常分析报告" in fallback_report
+    assert "# 🎯 Báo cáo phân tích nhóm hôm nay" in fallback_report
     assert "📅" in fallback_report
-    assert "## 📊 基础统计" in fallback_report
-    assert "消息总数" in fallback_report
-    assert "## ⏰ 活跃时间分布" in fallback_report
+    assert "## 📊 Thống kê cơ bản" in fallback_report
+    assert "Tổng tin nhắn" in fallback_report
+    assert "## ⏰ Phân bố thời gian hoạt động" in fallback_report
     assert "████" in fallback_report
 
 

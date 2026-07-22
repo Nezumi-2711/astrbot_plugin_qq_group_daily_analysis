@@ -62,19 +62,22 @@ class QQOfficialMarkdownReportGenerator:
             for hour, count in enumerate(hourly_counts)
         ]
         metrics = [
-            {"value": self.format_metric(stats.message_count), "label": "消息"},
-            {"value": self.format_metric(stats.participant_count), "label": "参与"},
-            {"value": self.format_metric(stats.total_characters), "label": "字符"},
-            {"value": self.format_metric(stats.emoji_count), "label": "表情"},
+            {"value": self.format_metric(stats.message_count), "label": "Tin nhắn"},
+            {
+                "value": self.format_metric(stats.participant_count),
+                "label": "Tham gia",
+            },
+            {"value": self.format_metric(stats.total_characters), "label": "Ký tự"},
+            {"value": self.format_metric(stats.emoji_count), "label": "Biểu cảm"},
             {
                 "value": self.format_peak_period(stats.most_active_period),
-                "label": "高峰",
+                "label": "Cao điểm",
             },
         ]
         html_content = self.html_templates.render_platform_template(
             "qq_official",
             "summary_dashboard.html",
-            report_title="群聊日常分析",
+            report_title="Phân tích nhóm",
             report_date=datetime.now().strftime("%Y.%m.%d"),
             metrics=metrics,
             chart_data=chart_data,
@@ -99,7 +102,7 @@ class QQOfficialMarkdownReportGenerator:
             url = str(result or "").strip()
             if url.startswith(("http://", "https://")):
                 return url
-            logger.warning("[QQOfficial] T2I 概览图未返回可公开访问的 URL")
+            logger.warning("[QQOfficial] Ảnh tổng quan T2I không trả về URL công khai")
             return None
 
         try:
@@ -108,7 +111,7 @@ class QQOfficialMarkdownReportGenerator:
             async with self.render_semaphore:
                 return await render()
         except Exception as exc:
-            logger.warning("[QQOfficial] T2I 群聊概览图生成失败: %s", exc)
+            logger.warning("[QQOfficial] Không thể tạo ảnh tổng quan T2I: %s", exc)
             return None
 
     def _generate_markdown_report(
@@ -120,20 +123,20 @@ class QQOfficialMarkdownReportGenerator:
 
         if summary_dashboard_url:
             lines = [
-                f"![群聊分析概览 #800px #360px]({summary_dashboard_url})",
+                f"![Tổng quan phân tích nhóm #800px #360px]({summary_dashboard_url})",
                 "",
             ]
         else:
             lines = [
-                "# 🎯 群聊日常分析报告",
-                f"📅 {datetime.now().strftime('%Y年%m月%d日')}",
+                "# 🎯 Báo cáo phân tích nhóm hôm nay",
+                f"📅 {datetime.now().strftime('%d/%m/%Y')}",
                 "",
-                "## 📊 基础统计",
-                f"- **消息总数**：{stats.message_count}",
-                f"- **参与人数**：{stats.participant_count}",
-                f"- **总字符数**：{stats.total_characters}",
-                f"- **表情数量**：{stats.emoji_count}",
-                f"- **最活跃时段**：{stats.most_active_period}",
+                "## 📊 Thống kê cơ bản",
+                f"- **Tổng tin nhắn**: {stats.message_count}",
+                f"- **Người tham gia**: {stats.participant_count}",
+                f"- **Tổng ký tự**: {stats.total_characters}",
+                f"- **Biểu cảm**: {stats.emoji_count}",
+                f"- **Khung giờ sôi nổi nhất**: {stats.most_active_period}",
                 "",
             ]
             activity_chart = self.build_activity_chart(stats)
@@ -141,7 +144,7 @@ class QQOfficialMarkdownReportGenerator:
                 lines.extend(activity_chart)
                 lines.append("")
 
-        lines.append("## 💬 热门话题")
+        lines.append("## 💬 Chủ đề nổi bật")
         max_topics = self.config_manager.get_max_topics()
         for index, topic in enumerate(topics[:max_topics], 1):
             topic_name = self.render_identity_text(topic.topic, analysis_result)
@@ -149,13 +152,13 @@ class QQOfficialMarkdownReportGenerator:
             contributor_ids = list(getattr(topic, "contributor_ids", []) or [])
             mentions = self.mentions(contributor_ids)
             if mentions:
-                lines.append(f"**参与者**：{mentions}")
+                lines.append(f"**Người tham gia**: {mentions}")
             detail = self.render_identity_text(topic.detail, analysis_result)
             if detail:
                 lines.append(detail)
             lines.append("")
 
-        lines.append("## 🏆 群友称号")
+        lines.append("## 🏆 Danh hiệu thành viên")
         max_user_titles = self.config_manager.get_max_user_titles()
         for title in user_titles[:max_user_titles]:
             mention = self.mention(getattr(title, "user_id", ""))
@@ -168,7 +171,7 @@ class QQOfficialMarkdownReportGenerator:
                 lines.append(f"  > {reason}")
         lines.append("")
 
-        lines.append("## 💬 群圣经")
+        lines.append("## 💬 Câu nói ấn tượng")
         max_golden_quotes = self.config_manager.get_max_golden_quotes()
         for index, golden_quote in enumerate(
             stats.golden_quotes[:max_golden_quotes], 1
@@ -216,7 +219,7 @@ class QQOfficialMarkdownReportGenerator:
             return []
 
         effective_width = max(1, int(bar_width))
-        lines = ["## ⏰ 活跃时间分布"]
+        lines = ["## ⏰ Phân bố thời gian hoạt động"]
         for hour, count in enumerate(hourly_counts):
             if count > 0:
                 blocks = max(
