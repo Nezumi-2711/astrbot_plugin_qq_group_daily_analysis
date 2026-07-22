@@ -1,6 +1,7 @@
 """
-数据模型定义
-包含所有分析相关的数据结构
+Định nghĩa các mô hình dữ liệu.
+
+Chứa tất cả cấu trúc dữ liệu liên quan đến quá trình phân tích.
 """
 
 from dataclasses import dataclass, field
@@ -9,22 +10,22 @@ from typing import Optional
 
 @dataclass
 class SummaryTopic:
-    """话题总结数据结构"""
+    """Cấu trúc dữ liệu tóm tắt chủ đề."""
 
     topic: str
     contributors: list[str]
     detail: str
     contributor_ids: list[str] = field(
         default_factory=list
-    )  # 贡献者ID列表 (用于显示头像)
+    )  # Danh sách ID người đóng góp (dùng để hiển thị ảnh đại diện)
 
 
 @dataclass
 class UserTitle:
-    """用户称号数据结构"""
+    """Cấu trúc dữ liệu danh hiệu người dùng."""
 
     name: str
-    user_id: str  # 原 qq 字段
+    user_id: str  # Trường qq trước đây
     title: str
     mbti: str
     reason: str
@@ -32,27 +33,27 @@ class UserTitle:
 
 @dataclass
 class GoldenQuote:
-    """群聊金句数据结构"""
+    """Cấu trúc dữ liệu câu nói nổi bật trong nhóm chat."""
 
     content: str
     sender: str
     reason: str
-    user_id: str = ""  # 原 qq 字段
+    user_id: str = ""  # Trường qq trước đây
 
 
 @dataclass
 class QualityDimension:
-    """聊天质量维度数据结构"""
+    """Cấu trúc dữ liệu tiêu chí chất lượng trò chuyện."""
 
-    name: str  # 维度名称
-    percentage: float  # 占比
-    comment: str  # 犀利点评
-    color: str = "#607d8b"  # 颜色
+    name: str  # Tên tiêu chí
+    percentage: float  # Tỷ lệ phần trăm
+    comment: str  # Nhận xét nổi bật
+    color: str = "#607d8b"  # Màu sắc
 
 
 @dataclass
 class QualityReview:
-    """聊天质量锐评数据结构"""
+    """Cấu trúc dữ liệu đánh giá chất lượng trò chuyện."""
 
     title: str
     subtitle: str
@@ -62,7 +63,7 @@ class QualityReview:
 
 @dataclass
 class TokenUsage:
-    """Token使用统计"""
+    """Thống kê mức sử dụng token."""
 
     prompt_tokens: int = 0
     completion_tokens: int = 0
@@ -71,18 +72,18 @@ class TokenUsage:
 
 @dataclass
 class EmojiStatistics:
-    """表情统计数据结构"""
+    """Cấu trúc dữ liệu thống kê biểu cảm."""
 
-    face_count: int = 0  # QQ基础表情数量
-    mface_count: int = 0  # 动画表情数量
-    bface_count: int = 0  # 超级表情数量
-    sface_count: int = 0  # 小表情数量
-    other_emoji_count: int = 0  # 其他表情数量
-    face_details: dict = field(default_factory=dict)  # 具体表情ID统计 {face_id: count}
+    face_count: int = 0  # Số biểu cảm QQ cơ bản
+    mface_count: int = 0  # Số biểu cảm động
+    bface_count: int = 0  # Số siêu biểu cảm
+    sface_count: int = 0  # Số biểu cảm nhỏ
+    other_emoji_count: int = 0  # Số biểu cảm khác
+    face_details: dict = field(default_factory=dict)  # Thống kê theo ID biểu cảm
 
     @property
     def total_emoji_count(self) -> int:
-        """总表情数量"""
+        """Trả về tổng số biểu cảm."""
         return (
             self.face_count
             + self.mface_count
@@ -94,25 +95,25 @@ class EmojiStatistics:
 
 @dataclass
 class ActivityVisualization:
-    """活跃度可视化数据结构"""
+    """Cấu trúc dữ liệu trực quan hóa mức độ hoạt động."""
 
     hourly_activity: dict = field(default_factory=dict)  # {hour: count}
     daily_activity: dict = field(default_factory=dict)  # {date: count}
-    user_activity_ranking: list = field(default_factory=list)  # 用户活跃度排行
-    peak_hours: list = field(default_factory=list)  # 高峰时段
-    activity_heatmap_data: dict = field(default_factory=dict)  # 热力图数据
+    user_activity_ranking: list = field(default_factory=list)  # Xếp hạng hoạt động
+    peak_hours: list = field(default_factory=list)  # Khung giờ cao điểm
+    activity_heatmap_data: dict = field(default_factory=dict)  # Dữ liệu bản đồ nhiệt
 
 
 @dataclass
 class GroupStatistics:
-    """群聊统计数据结构"""
+    """Cấu trúc dữ liệu thống kê nhóm chat."""
 
     message_count: int
     total_characters: int
     participant_count: int
     most_active_period: str
     golden_quotes: list[GoldenQuote]
-    emoji_count: int  # 保持向后兼容
+    emoji_count: int  # Duy trì khả năng tương thích ngược
     emoji_statistics: EmojiStatistics = field(default_factory=EmojiStatistics)
     activity_visualization: ActivityVisualization = field(
         default_factory=ActivityVisualization
