@@ -171,7 +171,7 @@ class QQOfficialMarkdownReportGenerator:
                 lines.append(f"  > {reason}")
         lines.append("")
 
-        lines.append("## 💬 Câu nói vàng")
+        lines.append("## 💬 Câu nói ấn tượng")
         max_golden_quotes = self.config_manager.get_max_golden_quotes()
         for index, golden_quote in enumerate(
             stats.golden_quotes[:max_golden_quotes], 1
