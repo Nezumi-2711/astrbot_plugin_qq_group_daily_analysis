@@ -1,5 +1,5 @@
 """
-常量 - 插件中使用的共享常量
+Hằng số - Các hằng số dùng chung trong plugin.
 """
 
 from enum import Enum
@@ -7,9 +7,9 @@ from enum import Enum
 
 class Platform(str, Enum):
     """
-    支持的聊天平台枚举
+    Liệt kê các nền tảng trò chuyện được hỗ trợ.
 
-    定义了插件适配的所有基础通讯平台标识。
+    Định nghĩa mã định danh của các nền tảng giao tiếp cơ bản mà plugin hỗ trợ.
     """
 
     ONEBOT = "onebot"
@@ -22,9 +22,10 @@ class Platform(str, Enum):
 
 class TaskStatus(str, Enum):
     """
-    分析任务执行状态枚举
+    Liệt kê các trạng thái thực thi của tác vụ phân tích.
 
-    用于在异步处理流水线中标记分析任务的生命阶段。
+    Dùng để đánh dấu giai đoạn trong vòng đời của tác vụ phân tích
+    thuộc quy trình xử lý bất đồng bộ.
     """
 
     PENDING = "pending"
@@ -36,9 +37,10 @@ class TaskStatus(str, Enum):
 
 class ContentType(str, Enum):
     """
-    统一消息内容类型枚举
+    Liệt kê các loại nội dung tin nhắn hợp nhất.
 
-    将不同平台（OneBot, Discord 等）的消息片段抽象为统一的类型体系。
+    Trừu tượng hóa các thành phần tin nhắn từ nhiều nền tảng
+    (OneBot, Discord, v.v.) thành một hệ thống kiểu thống nhất.
     """
 
     TEXT = "text"
@@ -55,9 +57,9 @@ class ContentType(str, Enum):
 
 class ReportFormat(str, Enum):
     """
-    分析报告导出格式枚举
+    Liệt kê các định dạng xuất báo cáo phân tích.
 
-    控制最终呈现给用户的报告呈现形式。
+    Kiểm soát hình thức trình bày báo cáo cuối cùng cho người dùng.
     """
 
     TEXT = "text"
@@ -66,25 +68,25 @@ class ReportFormat(str, Enum):
     HTML = "html"
 
 
-# 插件元数据
+# Siêu dữ liệu của plugin
 PLUGIN_NAME = "astrbot_plugin_qq_group_daily_analysis"
 PLUGIN_VERSION = "2.0.0"
 
-# 平台标识符
+# Mã định danh nền tảng
 SUPPORTED_PLATFORMS = [
     Platform.ONEBOT.value,
     Platform.TELEGRAM.value,
     Platform.DISCORD.value,
 ]
 
-# 分析默认值
+# Giá trị phân tích mặc định
 DEFAULT_MAX_TOPICS = 5
 DEFAULT_MAX_USER_TITLES = 10
 DEFAULT_MAX_GOLDEN_QUOTES = 5
 DEFAULT_MIN_MESSAGES = 50
 DEFAULT_MAX_TOKENS = 2000
 
-# 时间段
+# Các khoảng thời gian
 HOUR_RANGES = {
     "morning": (6, 12),
     "afternoon": (12, 18),
@@ -92,30 +94,30 @@ HOUR_RANGES = {
     "night": (0, 6),
 }
 
-# 错误代码
+# Mã lỗi
 ERROR_INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
 ERROR_LLM_FAILED = "LLM_FAILED"
 ERROR_PLATFORM_ERROR = "PLATFORM_ERROR"
 ERROR_CONFIG_ERROR = "CONFIG_ERROR"
 ERROR_TIMEOUT = "TIMEOUT"
 
-# 缓存 TTL（秒）
-CACHE_TTL_SHORT = 60  # 1 分钟
-CACHE_TTL_MEDIUM = 300  # 5 分钟
-CACHE_TTL_LONG = 3600  # 1 小时
-CACHE_TTL_DAY = 86400  # 24 小时
+# Thời gian tồn tại của bộ nhớ đệm (giây)
+CACHE_TTL_SHORT = 60  # 1 phút
+CACHE_TTL_MEDIUM = 300  # 5 phút
+CACHE_TTL_LONG = 3600  # 1 giờ
+CACHE_TTL_DAY = 86400  # 24 giờ
 
-# 速率限制默认值
-RATE_LIMIT_LLM_CALLS = 10  # 每分钟调用次数
-RATE_LIMIT_API_CALLS = 60  # 每分钟调用次数
-RATE_LIMIT_BURST = 5  # 突发大小
+# Giá trị giới hạn tốc độ mặc định
+RATE_LIMIT_LLM_CALLS = 10  # Số lượt gọi mỗi phút
+RATE_LIMIT_API_CALLS = 60  # Số lượt gọi mỗi phút
+RATE_LIMIT_BURST = 5  # Quy mô gọi đột biến
 
-# 重试默认值
+# Giá trị thử lại mặc định
 RETRY_MAX_ATTEMPTS = 3
 RETRY_BASE_DELAY = 1.0
 RETRY_MAX_DELAY = 30.0
 
-# 文件路径
+# Đường dẫn tệp
 HISTORY_DIR = "history"
 CACHE_DIR = "cache"
 TEMP_DIR = "temp"
