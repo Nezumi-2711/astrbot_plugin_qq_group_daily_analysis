@@ -1,5 +1,5 @@
 """
-统一群组值对象 - 跨平台群组抽象
+Giá trị đối tượng nhóm thống nhất - Trừu tượng hóa nhóm đa nền tảng.
 """
 
 from dataclasses import dataclass
@@ -8,16 +8,16 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class UnifiedMember:
     """
-    值对象：统一成员信息
+    Giá trị đối tượng: thông tin thành viên thống nhất.
 
     Attributes:
-        user_id (str): 用户唯一 ID
-        nickname (str): 用户昵称
-        card (str, optional): 群名片
-        role (str): 角色（owner/admin/member）
-        join_time (int, optional): 入群时间（秒级时间戳）
-        avatar_url (str, optional): 头像网络链接
-        avatar_data (str, optional): 头像 Base64 数据
+        user_id (str): ID duy nhất của người dùng.
+        nickname (str): Biệt danh của người dùng.
+        card (str, optional): Tên hiển thị trong nhóm.
+        role (str): Vai trò (owner/admin/member).
+        join_time (int, optional): Thời điểm tham gia nhóm (dấu thời gian tính bằng giây).
+        avatar_url (str, optional): URL ảnh đại diện.
+        avatar_data (str, optional): Dữ liệu ảnh đại diện được mã hóa Base64.
     """
 
     user_id: str
@@ -32,16 +32,16 @@ class UnifiedMember:
 @dataclass(frozen=True)
 class UnifiedGroup:
     """
-    值对象：统一群组信息
+    Giá trị đối tượng: thông tin nhóm thống nhất.
 
     Attributes:
-        group_id (str): 群组唯一 ID
-        group_name (str): 群组名称
-        member_count (int): 成员数量
-        owner_id (str, optional): 群主 ID
-        create_time (int, optional): 创建时间
-        description (str, optional): 群简介/公告
-        platform (str): 来源平台
+        group_id (str): ID duy nhất của nhóm.
+        group_name (str): Tên nhóm.
+        member_count (int): Số lượng thành viên.
+        owner_id (str, optional): ID chủ nhóm.
+        create_time (int, optional): Thời điểm tạo nhóm.
+        description (str, optional): Phần giới thiệu hoặc thông báo của nhóm.
+        platform (str): Nền tảng nguồn.
     """
 
     group_id: str

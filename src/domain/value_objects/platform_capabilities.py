@@ -1,8 +1,8 @@
 """
-平台能力值对象 - 运行时决策支持
+Giá trị đối tượng năng lực nền tảng - Hỗ trợ quyết định lúc chạy.
 
-每个平台适配器声明其能力，
-应用层根据能力决定操作。
+Mỗi adapter nền tảng khai báo năng lực của mình;
+tầng ứng dụng quyết định thao tác dựa trên các năng lực đó.
 """
 
 from dataclasses import dataclass
@@ -11,35 +11,36 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class PlatformCapabilities:
     """
-    值对象：平台能力描述
+    Giá trị đối tượng: mô tả năng lực nền tảng.
 
-    用于在运行时判断当前平台支持哪些具体操作，实现防御性编程和多平台兼容。
+    Xác định lúc chạy nền tảng hiện tại hỗ trợ thao tác nào,
+    giúp triển khai lập trình phòng thủ và tương thích đa nền tảng.
 
     Attributes:
-        platform_name (str): 平台标识（如 discord, onebot）
-        platform_version (str): 版本号
-        supports_message_history (bool): 是否支持拉取历史消息
-        max_message_history_days (int): 最大历史穿透天数
-        max_message_count (int): 单次拉取最大消息数
-        supports_message_search (bool): 是否支持消息搜索（扩展用）
-        supports_group_list (bool): 是否支持列出所有群组
-        supports_group_info (bool): 是否支持获取群元数据
-        supports_member_list (bool): 是否支持获取成员列表
-        supports_member_info (bool): 是否支持获取单成员详情
-        supports_text_message (bool): 是否能发送文本
-        supports_image_message (bool): 是否能发送图片
-        supports_file_message (bool): 是否能发送文件/PDF
-        supports_forward_message (bool): 是否支持转发链（合并转发）
-        supports_reply_message (bool): 是否支持回复引用
-        max_text_length (int): 单条回复最大文本长度
-        max_image_size_mb (float): 最大图片上传限制 (MB)
-        supports_at_all (bool): 是否能 @全员
-        supports_recall (bool): 是否支持撤回
-        supports_edit (bool): 是否支持编辑已发消息
-        supports_user_avatar (bool): 是否有用户头像 API
-        supports_group_avatar (bool): 是否有群头像 API
-        avatar_needs_api_call (bool): 获取头像是否需要额外异步请求
-        avatar_sizes (tuple[int, ...]): 平台支持的头像尺寸像素值
+        platform_name (str): Mã nền tảng (ví dụ: discord, onebot).
+        platform_version (str): Số phiên bản.
+        supports_message_history (bool): Có hỗ trợ lấy tin nhắn lịch sử hay không.
+        max_message_history_days (int): Số ngày tối đa có thể truy xuất lịch sử.
+        max_message_count (int): Số tin nhắn tối đa có thể lấy trong một lần.
+        supports_message_search (bool): Có hỗ trợ tìm kiếm tin nhắn hay không (dành cho mở rộng).
+        supports_group_list (bool): Có hỗ trợ liệt kê tất cả nhóm hay không.
+        supports_group_info (bool): Có hỗ trợ lấy metadata nhóm hay không.
+        supports_member_list (bool): Có hỗ trợ lấy danh sách thành viên hay không.
+        supports_member_info (bool): Có hỗ trợ lấy thông tin chi tiết một thành viên hay không.
+        supports_text_message (bool): Có thể gửi tin nhắn văn bản hay không.
+        supports_image_message (bool): Có thể gửi hình ảnh hay không.
+        supports_file_message (bool): Có thể gửi tệp/PDF hay không.
+        supports_forward_message (bool): Có hỗ trợ chuỗi chuyển tiếp (chuyển tiếp hợp nhất) hay không.
+        supports_reply_message (bool): Có hỗ trợ trích dẫn để trả lời hay không.
+        max_text_length (int): Độ dài văn bản tối đa của một tin nhắn trả lời.
+        max_image_size_mb (float): Giới hạn kích thước tải ảnh lên (MB).
+        supports_at_all (bool): Có thể @tất cả thành viên hay không.
+        supports_recall (bool): Có hỗ trợ thu hồi tin nhắn hay không.
+        supports_edit (bool): Có hỗ trợ chỉnh sửa tin nhắn đã gửi hay không.
+        supports_user_avatar (bool): Có API lấy ảnh đại diện người dùng hay không.
+        supports_group_avatar (bool): Có API lấy ảnh đại diện nhóm hay không.
+        avatar_needs_api_call (bool): Việc lấy ảnh đại diện có cần gọi API bất đồng bộ hay không.
+        avatar_sizes (tuple[int, ...]): Các kích thước ảnh đại diện tính bằng pixel mà nền tảng hỗ trợ.
     """
 
     # 平台标识
@@ -78,13 +79,13 @@ class PlatformCapabilities:
     avatar_needs_api_call: bool = False
     avatar_sizes: tuple[int, ...] = (100,)
 
-    # 检查方法
+    # Phương thức kiểm tra
     def can_analyze(self) -> bool:
         """
-        判断是否具备进行群聊分析的核心能力。
+        Kiểm tra nền tảng có đủ khả năng cốt lõi để phân tích chat nhóm hay không.
 
         Returns:
-            bool: 核心能力齐全则返回 True
+            bool: True nếu có đủ khả năng cốt lõi.
         """
         return (
             self.supports_message_history
@@ -94,13 +95,13 @@ class PlatformCapabilities:
 
     def can_send_report(self, format: str = "image") -> bool:
         """
-        判断是否能以指定格式发送报告。
+        Kiểm tra có thể gửi báo cáo ở định dạng được chỉ định hay không.
 
         Args:
-            format (str): 报告格式 ('text', 'image', 'pdf')
+            format (str): Định dạng báo cáo ('text', 'image', 'pdf').
 
         Returns:
-            bool: 支持该格式则返回 True
+            bool: True nếu hỗ trợ định dạng đó.
         """
         if format == "text":
             return self.supports_text_message
@@ -112,31 +113,31 @@ class PlatformCapabilities:
 
     def get_effective_days(self, requested_days: int) -> int:
         """
-        获取实际生效的历史拉取天数。
+        Lấy số ngày truy xuất lịch sử sau khi áp dụng giới hạn nền tảng.
 
         Args:
-            requested_days (int): 请求的天数
+            requested_days (int): Số ngày được yêu cầu.
 
         Returns:
-            int: 平台受限后的实际天数
+            int: Số ngày thực tế sau khi áp dụng giới hạn của nền tảng.
         """
         return min(requested_days, self.max_message_history_days)
 
     def get_effective_count(self, requested_count: int) -> int:
         """
-        获取实际生效的历史消息拉取条数。
+        Lấy số lượng tin nhắn sau khi áp dụng giới hạn nền tảng.
 
         Args:
-            requested_count (int): 请求的消息条数
+            requested_count (int): Số lượng tin nhắn được yêu cầu.
 
         Returns:
-            int: 平台受限后的实际条数
+            int: Số lượng thực tế sau khi áp dụng giới hạn của nền tảng.
         """
         return min(requested_count, self.max_message_count)
 
 
-# 预定义的平台能力
-# OneBot v11 (如 NapCat, LLOneBot 等)
+# Năng lực nền tảng được định nghĩa sẵn
+# OneBot v11 (ví dụ: NapCat, LLOneBot, ...)
 ONEBOT_V11_CAPABILITIES = PlatformCapabilities(
     platform_name="onebot",
     platform_version="v11",
@@ -165,7 +166,7 @@ ONEBOT_V11_CAPABILITIES = PlatformCapabilities(
 TELEGRAM_CAPABILITIES = PlatformCapabilities(
     platform_name="telegram",
     platform_version="bot_api_7.x",
-    # 通过 PlatformMessageHistoryManager + 消息拦截器支持历史读取
+    # Hỗ trợ đọc lịch sử thông qua PlatformMessageHistoryManager + message interceptor
     supports_message_history=True,
     max_message_history_days=7,
     max_message_count=1000,
@@ -254,8 +255,8 @@ LARK_CAPABILITIES = PlatformCapabilities(
     avatar_sizes=(72, 240, 640),
 )
 
-# QQ Official Bot API. Message history is provided by the plugin's local
-# event archive because the public API does not expose group history queries.
+# QQ Official Bot API. Lịch sử tin nhắn được cung cấp bởi kho lưu trữ sự kiện
+# cục bộ của plugin vì API công khai không cung cấp truy vấn lịch sử nhóm.
 QQ_OFFICIAL_CAPABILITIES = PlatformCapabilities(
     platform_name="qq_official",
     platform_version="api_v2_local_history",
@@ -279,7 +280,7 @@ QQ_OFFICIAL_CAPABILITIES = PlatformCapabilities(
     avatar_sizes=(640,),
 )
 
-# 能力查找表（映射平台标识到能力对象）
+# Bảng tra cứu năng lực (ánh xạ mã nền tảng đến đối tượng năng lực)
 PLATFORM_CAPABILITIES: dict[str, PlatformCapabilities] = {
     "aiocqhttp": ONEBOT_V11_CAPABILITIES,
     "onebot": ONEBOT_V11_CAPABILITIES,
@@ -294,12 +295,12 @@ PLATFORM_CAPABILITIES: dict[str, PlatformCapabilities] = {
 
 def get_capabilities(platform_name: str) -> PlatformCapabilities | None:
     """
-    根据平台名称查找其支持的能力。
+    Tra cứu các năng lực được hỗ trợ theo tên nền tảng.
 
     Args:
-        platform_name (str): 平台名称
+        platform_name (str): Tên nền tảng.
 
     Returns:
-        Optional[PlatformCapabilities]: 对应的能力对象或 None
+        Optional[PlatformCapabilities]: Đối tượng năng lực tương ứng hoặc None.
     """
     return PLATFORM_CAPABILITIES.get(platform_name.lower())
