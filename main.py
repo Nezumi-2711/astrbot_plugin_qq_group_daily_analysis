@@ -490,7 +490,6 @@ class GroupDailyAnalysis(Star):
                     pass
 
     @filter.command("phantichnhom", alias={"group_analysis"})
-    @filter.permission_type(PermissionType.ADMIN)
     async def analyze_group_daily(
         self, event: AstrMessageEvent, days: int | None = None
     ):
@@ -509,6 +508,17 @@ class GroupDailyAnalysis(Star):
             # Chặn cả LLM mặc định lẫn các handler tiếp theo xử lý lại slash command.
             event.should_call_llm(True)
             event.stop_event()
+
+            # Tự kiểm tra quyền để tránh thông báo mặc định bằng tiếng Trung của
+            # AstrBot được gửi trước khi handler có cơ hội xử lý sự kiện.
+            if not event.is_admin():
+                sender_id = event.get_sender_id()
+                yield event.plain_result(
+                    f"❌ Bạn (ID: {sender_id}) không có quyền sử dụng lệnh này. "
+                    "Hãy dùng /sid để lấy ID và nhờ quản trị viên thêm quyền."
+                )
+                return
+
             group_id = self._get_group_id_from_event(event)
             platform_id = self._get_platform_id_from_event(event)
 

@@ -224,12 +224,20 @@ def test_report_boundary_removes_chinese_semantics_but_keeps_identity():
 def test_group_analysis_command_stops_event_propagation():
     main_path = Path(__file__).resolve().parents[1] / "main.py"
     source = main_path.read_text(encoding="utf-8")
+    decorator_start = source.index('@filter.command("phantichnhom"')
     command_start = source.index("async def analyze_group_daily(")
     command_end = source.index("async def _send_analysis_report(", command_start)
+    decorator_source = source[decorator_start:command_start]
     command_source = source[command_start:command_end]
 
+    assert "permission_type" not in decorator_source
     assert "event.should_call_llm(True)" in command_source
     assert "event.stop_event()" in command_source
+    assert "if not event.is_admin():" in command_source
+    assert "không có quyền sử dụng lệnh này" in command_source
     assert command_source.index("event.stop_event()") < command_source.index(
+        "execute_daily_analysis"
+    )
+    assert command_source.index("if not event.is_admin():") < command_source.index(
         "execute_daily_analysis"
     )

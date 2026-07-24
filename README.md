@@ -235,6 +235,7 @@ _✨ 一个基于 AstrBot 的智能群聊分析插件，支持 **OneBot** (NapCa
 /phantichnhom [số ngày]
 ```
 - Phân tích hoạt động trò chuyện gần đây của nhóm.
+- Chỉ quản trị viên đã được cấp quyền trong AstrBot mới có thể sử dụng.
 - Số ngày là tùy chọn, mặc định là 1 ngày.
 - Ví dụ: `/phantichnhom 3` phân tích 3 ngày gần nhất.
 
