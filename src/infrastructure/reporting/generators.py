@@ -22,6 +22,7 @@ from markupsafe import Markup
 
 from ...domain.repositories.report_repository import IReportGenerator
 from ...utils.logger import logger
+from ...shared.vietnamese_language import sanitize_analysis_result_language
 from ..utils.template_utils import render_template
 from ..visualization.activity_charts import ActivityVisualizer
 from .qq_official_markdown import QQOfficialMarkdownReportGenerator
@@ -170,6 +171,17 @@ class ReportGenerator(IReportGenerator):
         )
         self._avatar_session = None
         self._profile_asset_manifest = self._load_profile_asset_manifest()
+
+    @staticmethod
+    def _enforce_vietnamese_report_content(analysis_result: dict) -> None:
+        """Loại nội dung sinh còn chữ Hán trước mọi đường kết xuất báo cáo."""
+        removed_fields = sanitize_analysis_result_language(analysis_result)
+        if removed_fields:
+            logger.warning(
+                "Đã loại %s trường không phải tiếng Việt trước khi tạo báo cáo: %s",
+                len(removed_fields),
+                ", ".join(removed_fields),
+            )
 
     def _load_profile_asset_manifest(self) -> dict[str, dict]:
         """Tải manifest tài nguyên hồ sơ."""
@@ -426,6 +438,7 @@ class ReportGenerator(IReportGenerator):
         """
         html_content = None
         try:
+            self._enforce_vietnamese_report_content(analysis_result)
             # Chuẩn bị dữ liệu render.
             render_payload = await self._prepare_render_data(
                 analysis_result,
@@ -596,6 +609,7 @@ class ReportGenerator(IReportGenerator):
             Tuple path tệp HTML và JSON.
         """
         try:
+            self._enforce_vietnamese_report_content(analysis_result)
             import json
 
             # Đảm bảo thư mục output tồn tại mà không block event loop.
@@ -742,6 +756,7 @@ class ReportGenerator(IReportGenerator):
 
     def generate_text_report(self, analysis_result: dict) -> str:
         """Tạo báo cáo phân tích dạng văn bản."""
+        self._enforce_vietnamese_report_content(analysis_result)
         stats = analysis_result["statistics"]
         topics = analysis_result["topics"]
         user_titles = analysis_result["user_titles"]
@@ -785,6 +800,7 @@ class ReportGenerator(IReportGenerator):
         self, analysis_result: dict, html_render_func=None
     ) -> tuple[str, str]:
         """Delegate QQ-only text generation to the platform-specific module."""
+        self._enforce_vietnamese_report_content(analysis_result)
         generator = getattr(self, "_qq_official_markdown_generator", None)
         if generator is None:
             generator = QQOfficialMarkdownReportGenerator(

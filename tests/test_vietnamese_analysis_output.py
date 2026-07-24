@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from src.infrastructure.analysis.analyzers.base_analyzer import (
@@ -11,6 +12,7 @@ from src.infrastructure.analysis.utils.response_validation import (
     validate_topic_items,
     validate_user_title_items,
 )
+from src.shared.vietnamese_language import sanitize_analysis_result_language
 
 
 class DummyAnalyzer(BaseAnalyzer[dict, list[dict]]):
@@ -152,3 +154,82 @@ def test_default_golden_quote_prompt_requires_translation():
 
     assert "dịch phát biểu sang tiếng Việt" in prompt
     assert "content` phải giữ nguyên lời nói gốc" not in prompt
+
+
+@dataclass
+class ReportItem:
+    topic: str = ""
+    detail: str = ""
+    name: str = ""
+    title: str = ""
+    reason: str = ""
+    content: str = ""
+    sender: str = ""
+
+
+@dataclass
+class ReportStatistics:
+    golden_quotes: list[ReportItem]
+    chat_quality_review: dict | None = None
+
+
+def test_report_boundary_removes_chinese_semantics_but_keeps_identity():
+    chinese_identity = "测试用户"
+    vietnamese_identity = "Nguyễn Văn A"
+    analysis_result = {
+        "topics": [
+            ReportItem(topic="技术讨论", detail="讨论 rất sâu"),
+            ReportItem(topic="Kế hoạch cuối tuần", detail="Cả nhóm sẽ đi chơi."),
+        ],
+        "user_titles": [
+            ReportItem(name=chinese_identity, title="技术专家", reason="Rất giỏi"),
+            ReportItem(
+                name=chinese_identity,
+                title="Chuyên gia kỹ thuật",
+                reason="Thường xuyên hỗ trợ mọi người.",
+            ),
+        ],
+        "statistics": ReportStatistics(
+            golden_quotes=[
+                ReportItem(content="代码能跑就不要动", sender=chinese_identity),
+                ReportItem(
+                    content="Chạy được thì đừng sửa.", sender=vietnamese_identity
+                ),
+            ]
+        ),
+        "chat_quality_review": {
+            "title": "今日群聊",
+            "subtitle": "Một ngày vui vẻ",
+            "dimensions": [],
+            "summary": "Mọi người trò chuyện tích cực.",
+        },
+    }
+
+    removed = sanitize_analysis_result_language(analysis_result)
+
+    assert len(analysis_result["topics"]) == 1
+    assert analysis_result["topics"][0].topic == "Kế hoạch cuối tuần"
+    assert len(analysis_result["user_titles"]) == 1
+    assert analysis_result["user_titles"][0].name == chinese_identity
+    assert len(analysis_result["statistics"].golden_quotes) == 1
+    assert analysis_result["statistics"].golden_quotes[0].sender == vietnamese_identity
+    assert analysis_result["chat_quality_review"] is None
+    assert analysis_result["statistics"].chat_quality_review is None
+    assert "topics[0].topic" in removed
+    assert "user_titles[0].title" in removed
+    assert "statistics.golden_quotes[0].content" in removed
+    assert "chat_quality_review.title" in removed
+
+
+def test_group_analysis_command_stops_event_propagation():
+    main_path = Path(__file__).resolve().parents[1] / "main.py"
+    source = main_path.read_text(encoding="utf-8")
+    command_start = source.index("async def analyze_group_daily(")
+    command_end = source.index("async def _send_analysis_report(", command_start)
+    command_source = source[command_start:command_end]
+
+    assert "event.should_call_llm(True)" in command_source
+    assert "event.stop_event()" in command_source
+    assert command_source.index("event.stop_event()") < command_source.index(
+        "execute_daily_analysis"
+    )

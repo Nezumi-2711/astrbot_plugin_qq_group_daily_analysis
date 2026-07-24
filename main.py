@@ -506,7 +506,9 @@ class GroupDailyAnalysis(Star):
             self._background_tasks.add(current_task)
 
         try:
-            event.should_call_llm(True)  # Ngăn LLM mặc định phân tích.
+            # Chặn cả LLM mặc định lẫn các handler tiếp theo xử lý lại slash command.
+            event.should_call_llm(True)
+            event.stop_event()
             group_id = self._get_group_id_from_event(event)
             platform_id = self._get_platform_id_from_event(event)
 

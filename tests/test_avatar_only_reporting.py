@@ -56,9 +56,9 @@ def test_standard_text_report_keeps_existing_identity_format():
         most_active_period="12:00-13:00",
         golden_quotes=[
             SimpleNamespace(
-                content="测试内容",
+                content="Nội dung kiểm thử",
                 sender=openid,
-                reason=f"由 {openid} 发出",
+                reason=f"Được phát biểu bởi {openid}",
             )
         ],
     )
@@ -66,17 +66,17 @@ def test_standard_text_report_keeps_existing_identity_format():
         "statistics": statistics,
         "topics": [
             SimpleNamespace(
-                topic="测试话题",
+                topic="Chủ đề kiểm thử",
                 contributors=[openid],
-                detail=f"{openid} 参与讨论",
+                detail=f"{openid} tham gia thảo luận",
             )
         ],
         "user_titles": [
             SimpleNamespace(
                 name=openid,
-                title="龙王",
+                title="Vua trò chuyện",
                 mbti="ENTP",
-                reason=f"{openid} 发言最多",
+                reason=f"{openid} phát biểu nhiều nhất",
             )
         ],
         "user_analysis": {openid: {"nickname": openid}},
@@ -85,11 +85,11 @@ def test_standard_text_report_keeps_existing_identity_format():
     report = generator.generate_text_report(analysis_result)
 
     assert openid in report
-    assert "测试内容" in report
-    assert "龙王" in report
+    assert "Nội dung kiểm thử" in report
+    assert "Vua trò chuyện" in report
     assert f"Người tham gia: {openid}" in report
-    assert f"• {openid} - 龙王 (ENTP)" in report
-    assert f'1. "测试内容" —— {openid}' in report
+    assert f"• {openid} - Vua trò chuyện (ENTP)" in report
+    assert f'1. "Nội dung kiểm thử" —— {openid}' in report
 
 
 def test_standard_text_report_api_has_no_qq_platform_switches():
@@ -136,9 +136,9 @@ def test_qq_official_markdown_uses_mentions_for_all_identity_sections():
         most_active_period="12:00-13:00",
         golden_quotes=[
             SimpleNamespace(
-                content=f"[{openid}] 说了一句话",
+                content=f"[{openid}] đã nói một câu",
                 sender=nickname,
-                reason=f"{nickname} 的发言很精彩",
+                reason=f"Phát biểu của {nickname} rất ấn tượng",
                 user_id=openid,
             )
         ],
@@ -147,19 +147,19 @@ def test_qq_official_markdown_uses_mentions_for_all_identity_sections():
         "statistics": statistics,
         "topics": [
             SimpleNamespace(
-                topic="测试话题",
+                topic="Chủ đề kiểm thử",
                 contributors=[nickname],
                 contributor_ids=[openid],
-                detail=f"{nickname} 和 {openid} 参与讨论",
+                detail=f"{nickname} và {openid} tham gia thảo luận",
             )
         ],
         "user_titles": [
             SimpleNamespace(
                 name=nickname,
                 user_id=openid,
-                title="龙王",
+                title="Vua trò chuyện",
                 mbti="ENTP",
-                reason=f"[{openid}] 发言最多",
+                reason=f"[{openid}] phát biểu nhiều nhất",
             )
         ],
         "user_analysis": {openid: {"nickname": nickname}},
@@ -173,10 +173,10 @@ def test_qq_official_markdown_uses_mentions_for_all_identity_sections():
     assert nickname not in without_mentions
     assert "## 💬 Chủ đề nổi bật" in report
     assert "**Người tham gia**" in report
-    assert "**龙王**" in report
-    assert f"- **1. <@{openid}> 说了一句话** — <@{openid}>" in report
-    assert f"  > <@{openid}> 的发言很精彩" in report
-    assert f"> 1. <@{openid}> 说了一句话" not in report
+    assert "**Vua trò chuyện**" in report
+    assert f"- **1. <@{openid}> đã nói một câu** — <@{openid}>" in report
+    assert f"  > Phát biểu của <@{openid}> rất ấn tượng" in report
+    assert f"> 1. <@{openid}> đã nói một câu" not in report
 
 
 def test_qq_official_markdown_keeps_content_when_identity_id_is_missing():
@@ -189,9 +189,9 @@ def test_qq_official_markdown_keeps_content_when_identity_id_is_missing():
         most_active_period="12:00-13:00",
         golden_quotes=[
             SimpleNamespace(
-                content="测试内容",
+                content="Nội dung kiểm thử",
                 sender="无法映射的用户",
-                reason="理由保留",
+                reason="Lý do được giữ lại",
                 user_id="",
             )
         ],
@@ -203,9 +203,9 @@ def test_qq_official_markdown_keeps_content_when_identity_id_is_missing():
             SimpleNamespace(
                 name="无法映射的用户",
                 user_id="",
-                title="龙王",
+                title="Vua trò chuyện",
                 mbti="",
-                reason="称号理由",
+                reason="Lý do trao danh hiệu",
             )
         ],
         "user_analysis": {},
@@ -214,14 +214,14 @@ def test_qq_official_markdown_keeps_content_when_identity_id_is_missing():
     report = generate_qq_markdown(generator, analysis_result)
 
     assert "<@" not in report
-    assert "龙王" in report
-    assert "称号理由" in report
-    assert "测试内容" in report
-    assert "理由保留" in report
+    assert "Vua trò chuyện" in report
+    assert "Lý do trao danh hiệu" in report
+    assert "Nội dung kiểm thử" in report
+    assert "Lý do được giữ lại" in report
     assert "无法映射的用户" not in report
-    assert "- **1. 测试内容**" in report
-    assert "  > 理由保留" in report
-    assert "> 1. 测试内容" not in report
+    assert "- **1. Nội dung kiểm thử**" in report
+    assert "  > Lý do được giữ lại" in report
+    assert "> 1. Nội dung kiểm thử" not in report
 
 
 def test_qq_official_scripture_spacing_and_optional_reason():
@@ -234,13 +234,13 @@ def test_qq_official_scripture_spacing_and_optional_reason():
         most_active_period="12:00-13:00",
         golden_quotes=[
             SimpleNamespace(
-                content="第一条",
+                content="Câu nói thứ nhất",
                 sender="甲",
-                reason="第一条理由",
+                reason="Lý do thứ nhất",
                 user_id="A_OPENID",
             ),
             SimpleNamespace(
-                content="第二条",
+                content="Câu nói thứ hai",
                 sender="乙",
                 reason="",
                 user_id="",
@@ -258,8 +258,11 @@ def test_qq_official_scripture_spacing_and_optional_reason():
 
     report = generate_qq_markdown(generator, analysis_result)
 
-    assert "- **1. 第一条** — <@A_OPENID>\n  > 第一条理由\n\n- **2. 第二条**" in report
-    assert "- **2. 第二条** —" not in report
+    assert (
+        "- **1. Câu nói thứ nhất** — <@A_OPENID>\n  > Lý do thứ nhất\n\n- **2. Câu nói thứ hai**"
+        in report
+    )
+    assert "- **2. Câu nói thứ hai** —" not in report
 
 
 def test_qq_official_markdown_renders_simple_hourly_bar_chart():

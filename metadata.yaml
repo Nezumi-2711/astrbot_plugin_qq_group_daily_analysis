@@ -1,7 +1,7 @@
 name: astrbot_plugin_qq_group_daily_analysis # Mã định danh duy nhất của plugin.
 display_name: Plugin tổng hợp và phân tích nhóm # Tên hiển thị của plugin.
 desc: "Plugin tổng hợp và phân tích hoạt động nhóm hằng ngày - hỗ trợ OneBot (NapCat, LLOneBot, Snowluma), bot QQ chính thức, Telegram và Discord; tạo báo cáo phân tích trò chuyện nhóm trực quan, hỗ trợ phân tích chủ đề, chân dung thành viên và trích dẫn nổi bật." # Mô tả ngắn của plugin.
-version: v4.11.2 # Phiên bản plugin, theo định dạng v1.1.1 hoặc v1.1.
+version: v4.11.3 # Phiên bản plugin, theo định dạng v1.1.1 hoặc v1.1.
 author: SXP-Simon # Tác giả.
 astrbot_version: ">=4.16.0"
 support_platforms: 
