@@ -1,9 +1,4 @@
-"""
-Telegram 平台适配器
-
-支持 Telegram Bot API 的消息发送功能。
-通过 AstrBot 的 message_history_manager 存储和读取消息历史。
-"""
+"""Adapter Telegram dùng Bot API và lịch sử tin nhắn AstrBot."""
 
 import asyncio
 import base64
@@ -30,7 +25,7 @@ from ..base import PlatformAdapter
 if TYPE_CHECKING:
     from astrbot.api.star import Context
 
-# Telegram 依赖
+# Dependency Telegram.
 try:
     from telegram.ext import ExtBot
 
@@ -45,29 +40,17 @@ TELEGRAM_AVATAR_NEGATIVE_CACHE_MAX_SIZE = 1024
 
 
 class TelegramAdapter(PlatformAdapter):
-    """
-    Telegram Bot API 适配器
-
-    实现 PlatformAdapter 接口，支持：
-    - 消息发送（文本、图片、文件）
-    - 头像获取
-    - 群组信息获取
-    - 消息历史（通过 AstrBot 的 message_history_manager）
-
-    消息历史机制：
-    - 消息通过拦截器存储到 AstrBot 数据库
-    - fetch_messages 从数据库读取历史消息
-    """
+    """Adapter Telegram hỗ trợ gửi tin, avatar, nhóm và lịch sử AstrBot."""
 
     def __init__(self, bot_instance: Any, config: dict | None = None):
         super().__init__(bot_instance, config)
         self._cached_client: Any = None
         self._context: Context | None = None
 
-        # 机器人自身 ID（用于消息过滤）
+        # ID của bot để lọc tin nhắn.
         self.bot_user_id = str(config.get("bot_user_id", "")) if config else ""
 
-        # 尝试从配置获取 bot self ids 列表
+        # Thử lấy danh sách self ID của bot từ cấu hình.
         self.bot_self_ids: list[str] = []
         if config:
             ids = config.get("bot_self_ids", [])
@@ -81,34 +64,31 @@ class TelegramAdapter(PlatformAdapter):
 
     def set_context(self, context: "Context") -> None:
         """
-        设置 AstrBot 上下文
+        Thiết lập context AstrBot.
 
-        用于访问 message_history_manager 等核心服务。
+        Dùng để truy cập các dịch vụ lõi như message_history_manager.
         """
         self._context = context
 
     def _init_capabilities(self) -> PlatformCapabilities:
-        """返回 Telegram 平台能力声明"""
+        """Trả về capability của nền tảng Telegram."""
         return TELEGRAM_CAPABILITIES
 
     async def get_group_list(self) -> list[str]:
         """
-        获取群组列表
+        Lấy danh sách nhóm.
 
-        Telegram Bot API 不支持直接获取群列表。
-        因此这里尝试结合多种策略：
-        1. 尝试调用 API (如果未来支持)
-        2. 回退：从插件的 KV 存储中获取已知群组 (需注入插件实例)
+        Telegram Bot API không hỗ trợ lấy trực tiếp danh sách nhóm, do đó
+        fallback sang nhóm đã biết trong KV của plugin.
         """
         groups = []
 
-        # 1. 尝试 API (目前 python-telegram-bot 不支持直接列出所有 chat)
-        # 如果 client 有扩展方法或未来支持，可在此实现
+        # python-telegram-bot hiện chưa hỗ trợ liệt kê toàn bộ chat.
 
-        # 2. 回退：使用 KV 注册表
+        # Fallback: dùng registry KV.
         if not groups and self._plugin_instance:
             try:
-                # 检查插件实例是否有 get_telegram_seen_group_ids 方法
+                # Kiểm tra plugin có phương thức lấy nhóm Telegram đã thấy.
                 if hasattr(self._plugin_instance, "get_telegram_seen_group_ids"):
                     kv_groups = await self._plugin_instance.get_telegram_seen_group_ids(
                         self._platform_id
@@ -116,48 +96,54 @@ class TelegramAdapter(PlatformAdapter):
                     if kv_groups:
                         groups.extend(kv_groups)
                         logger.debug(
-                            f"[Telegram] 通过 KV 回退获取到 {len(kv_groups)} 个群组"
+                            f"[Telegram] Fallback KV lấy được {len(kv_groups)} nhóm"
                         )
             except Exception as e:
-                logger.warning(f"[Telegram] KV 回退获取群列表失败: {e}")
+                logger.warning(
+                    f"[Telegram] Fallback KV lấy danh sách nhóm thất bại: {e}"
+                )
 
         if not groups:
-            logger.debug("[Telegram] 无法获取群列表 (API不支持且无KV记录)")
+            logger.debug(
+                "[Telegram] Không thể lấy danh sách nhóm: API không hỗ trợ và KV rỗng"
+            )
 
         return list(set(groups))
 
     @property
     def _telegram_client(self) -> Any:
         """
-        懒加载获取 Telegram 客户端
+        Lazy load Telegram client.
 
-        支持多种获取路径，适应 AstrBot 不同版本。
+        Hỗ trợ nhiều đường dẫn để tương thích các phiên bản AstrBot.
         """
         if self._cached_client is not None:
             return self._cached_client
 
         if not TELEGRAM_AVAILABLE:
-            logger.warning("python-telegram-bot 库未安装，Telegram 适配器不可用")
+            logger.warning(
+                "Chưa cài python-telegram-bot; adapter Telegram không khả dụng"
+            )
             return None
 
-        # 路径 A: bot 本身就是 ExtBot
+        # Đường dẫn A: bot chính là ExtBot.
         if ExtBot is not None and isinstance(self.bot, ExtBot):
             self._cached_client = self.bot
             return self._cached_client
 
-        # 路径 B: bot.client
+        # Đường dẫn B: bot.client.
         if hasattr(self.bot, "client"):
             client = self.bot.client
             if ExtBot is not None and isinstance(client, ExtBot):
                 self._cached_client = client
                 return self._cached_client
 
-        # 路径 C: bot 有 send_message 方法（ExtBot 的特征）
+        # Đường dẫn C: bot có send_message, đặc trưng ExtBot.
         if hasattr(self.bot, "send_message") and hasattr(self.bot, "send_photo"):
             self._cached_client = self.bot
             return self._cached_client
 
-        # 尝试从 bot 的其他属性获取
+        # Thử các thuộc tính khác của bot.
         for attr in ("_client", "telegram_client", "_telegram_client", "bot"):
             if hasattr(self.bot, attr):
                 client = getattr(self.bot, attr)
@@ -165,7 +151,7 @@ class TelegramAdapter(PlatformAdapter):
                     self._cached_client = client
                     return self._cached_client
 
-        logger.warning("无法从 bot_instance 获取 Telegram 客户端")
+        logger.warning("Không thể lấy Telegram client từ bot_instance")
         return None
 
     # ==================== IMessageRepository ====================
@@ -179,12 +165,12 @@ class TelegramAdapter(PlatformAdapter):
         since_ts: int | None = None,
     ) -> list[UnifiedMessage]:
         """
-        获取历史消息。
+        Lấy lịch sử tin nhắn.
 
-        从 AstrBot 的 message_history_manager 读取存储的消息。
+        Đọc tin nhắn đã lưu từ message_history_manager của AstrBot.
         """
         if not self._context:
-            logger.warning("[Telegram] 未设置 context，无法获取消息历史")
+            logger.warning("[Telegram] Chưa thiết lập context, không thể lấy lịch sử")
             return []
 
         try:
@@ -192,7 +178,7 @@ class TelegramAdapter(PlatformAdapter):
 
             platform_id = self._get_platform_id()
             logger.info(
-                f"[Telegram] 正在获取群 {group_id} 的历史消息，使用 platform_id: {platform_id}"
+                f"[Telegram] Đang lấy lịch sử nhóm {group_id}, platform_id: {platform_id}"
             )
             before_id_int: int | None = None
             if before_id:
@@ -202,7 +188,7 @@ class TelegramAdapter(PlatformAdapter):
                     logger.warning(f"[Telegram] before_id invalid: {before_id}")
 
             if since_ts and since_ts > 0:
-                # 统一使用 UTC 以兼容数据库记录的时间存储
+                # Dùng UTC để tương thích thời gian lưu trong database.
                 cutoff_time = datetime.fromtimestamp(since_ts, timezone.utc)
             else:
                 cutoff_time = datetime.now(timezone.utc) - timedelta(days=days)
@@ -224,14 +210,14 @@ class TelegramAdapter(PlatformAdapter):
                 if not history_records:
                     if current_page == 1:
                         logger.info(
-                            f"[Telegram] 群 {group_id} 没有存储的消息。"
-                            f"提示：消息需要通过拦截器实时存储。"
+                            f"[Telegram] Nhóm {group_id} chưa có tin nhắn đã lưu. "
+                            "Tin nhắn cần được interceptor lưu theo thời gian thực."
                         )
                     break
 
                 total_records_loaded += len(history_records)
 
-                # 先用当前页已有的有效昵称预热缓存，减少额外 API 请求
+                # Làm nóng cache bằng nickname hợp lệ trên trang để giảm API call.
                 for record in history_records:
                     sender_id = str(getattr(record, "sender_id", "") or "").strip()
                     sender_name = str(getattr(record, "sender_name", "") or "").strip()
@@ -264,7 +250,7 @@ class TelegramAdapter(PlatformAdapter):
                     if not msg:
                         continue
 
-                    # 过滤机器人自己的消息
+                    # Lọc tin nhắn của bot.
                     if self.bot_user_id and msg.sender_id == self.bot_user_id:
                         continue
                     if msg.sender_id in self.bot_self_ids:
@@ -275,11 +261,11 @@ class TelegramAdapter(PlatformAdapter):
                     )
                     messages.append(msg)
 
-                # 当前页完整处理后已足够，停止继续翻更旧页面。
+                # Dừng nếu đã đủ sau khi xử lý hết trang hiện tại.
                 if len(messages) >= target_count:
                     break
 
-                # 下一页一定更旧，若当前页最旧记录已越过时间窗口则可提前停止
+                # Dừng sớm nếu bản ghi cũ nhất đã vượt cửa sổ thời gian.
                 if oldest_record_time and oldest_record_time < cutoff_time:
                     break
                 if len(history_records) < page_size:
@@ -291,17 +277,17 @@ class TelegramAdapter(PlatformAdapter):
                 messages = messages[-target_count:]
 
             logger.info(
-                f"[Telegram] 从数据库获取群 {group_id} 的消息: "
-                f"{len(messages)}/{total_records_loaded} 条"
+                f"[Telegram] Lấy tin nhắn nhóm {group_id} từ database: "
+                f"{len(messages)}/{total_records_loaded} mục"
             )
             return messages
 
         except Exception as e:
-            logger.error(f"[Telegram] 获取消息历史失败: {e}")
+            logger.error(f"[Telegram] Lấy lịch sử tin nhắn thất bại: {e}")
             return []
 
     def _get_platform_id(self) -> str:
-        """获取平台 ID"""
+        """Lấy platform ID."""
         if self._platform_id:
             return self._platform_id
 
@@ -310,7 +296,7 @@ class TelegramAdapter(PlatformAdapter):
             if config_platform_id:
                 return config_platform_id
 
-        # 尝试从 bot 实例获取
+        # Thử lấy từ bot instance.
         if hasattr(self.bot, "meta") and callable(self.bot.meta):
             try:
                 meta = self.bot.meta()  # type: ignore
@@ -322,7 +308,7 @@ class TelegramAdapter(PlatformAdapter):
 
     @staticmethod
     def _is_placeholder_sender_name(name: str | None, sender_id: str | None) -> bool:
-        """判断 sender_name 是否属于占位值。"""
+        """Kiểm tra sender_name có phải giá trị placeholder hay không."""
         if not name:
             return True
         normalized = str(name).strip()
@@ -341,11 +327,9 @@ class TelegramAdapter(PlatformAdapter):
         sender_name_cache: dict[str, str],
     ) -> UnifiedMessage:
         """
-        如果 sender_name 是占位值，尝试通过 get_member_info 修复。
+        Nếu sender_name là placeholder, thử sửa qua get_member_info.
 
-        说明：
-        - 兼容历史脏数据（sender_name 写成 user_id / Unknown）
-        - 使用 sender_id 级缓存，避免重复请求 Telegram API
+        Tương thích dữ liệu lịch sử bẩn và cache theo sender_id để tránh gọi API lặp.
         """
         if not self._is_placeholder_sender_name(msg.sender_name, msg.sender_id):
             return msg
@@ -367,7 +351,7 @@ class TelegramAdapter(PlatformAdapter):
                 if not self._is_placeholder_sender_name(candidate, sender_id):
                     resolved_name = candidate
         except Exception as e:
-            logger.debug(f"[Telegram] 修复 sender_name 失败 (uid={sender_id}): {e}")
+            logger.debug(f"[Telegram] Sửa sender_name thất bại (uid={sender_id}): {e}")
 
         sender_name_cache[sender_id] = resolved_name
         if resolved_name == msg.sender_name:
@@ -378,14 +362,14 @@ class TelegramAdapter(PlatformAdapter):
         self, record: Any, group_id: str
     ) -> UnifiedMessage | None:
         """
-        将数据库记录转换为 UnifiedMessage
+        Chuyển bản ghi database thành UnifiedMessage.
         """
         try:
             content = record.content
             if not content:
                 return None
 
-            # 提取消息内容
+            # Trích xuất nội dung tin nhắn.
             message_parts = content.get("message", [])
             text_content = ""
             contents = []
@@ -448,14 +432,14 @@ class TelegramAdapter(PlatformAdapter):
             )
 
         except Exception as e:
-            logger.debug(f"[Telegram] 转换历史记录失败: {e}")
+            logger.debug(f"[Telegram] Chuyển bản ghi lịch sử thất bại: {e}")
             return None
 
     def convert_to_raw_format(self, messages: list[UnifiedMessage]) -> list[dict]:
         """
-        将统一消息格式转换为 OneBot 兼容格式
+        Chuyển định dạng tin nhắn thống nhất sang định dạng tương thích OneBot.
 
-        用于向后兼容现有分析逻辑。
+        Dùng để tương thích ngược với logic phân tích hiện tại.
         """
         result = []
         for msg in messages:
@@ -472,7 +456,7 @@ class TelegramAdapter(PlatformAdapter):
                 "user_id": msg.sender_id,
             }
 
-            # 转换消息内容
+            # Chuyển nội dung tin nhắn.
             for content in msg.contents:
                 if content.type == MessageContentType.TEXT:
                     raw["message"].append(
@@ -499,14 +483,14 @@ class TelegramAdapter(PlatformAdapter):
         text: str,
         reply_to: str | None = None,
     ) -> bool:
-        """发送文本消息"""
+        """Gửi tin nhắn văn bản."""
         client = self._telegram_client
         if not client:
-            logger.error("[Telegram] 客户端未初始化，无法发送文本")
+            logger.error("[Telegram] Client chưa khởi tạo, không thể gửi văn bản")
             return False
 
         try:
-            # 处理群组话题 ID
+            # Xử lý ID topic nhóm.
             chat_id, message_thread_id = self._parse_group_id(group_id)
 
             kwargs: dict[str, Any] = {"chat_id": chat_id, "text": text}
@@ -518,7 +502,7 @@ class TelegramAdapter(PlatformAdapter):
             await client.send_message(**kwargs)
             return True
         except Exception as e:
-            logger.error(f"[Telegram] 发送文本失败: {e}")
+            logger.error(f"[Telegram] Gửi văn bản thất bại: {e}")
             return False
 
     async def send_image(
@@ -527,10 +511,10 @@ class TelegramAdapter(PlatformAdapter):
         image_path: str,
         caption: str = "",
     ) -> bool:
-        """发送图片消息"""
+        """Gửi tin nhắn ảnh."""
         client = self._telegram_client
         if not client:
-            logger.error("[Telegram] 客户端未初始化，无法发送图片")
+            logger.error("[Telegram] Client chưa khởi tạo, không thể gửi ảnh")
             return False
 
         try:
@@ -544,7 +528,7 @@ class TelegramAdapter(PlatformAdapter):
             if caption:
                 kwargs["caption"] = caption
 
-            # 1. 统一处理输入源 (Base64 / URL / Local File)
+            # 1. Xử lý thống nhất nguồn Base64, URL hoặc tệp local.
             if image_path.startswith("base64://"):
                 data = base64.b64decode(image_path[len("base64://") :])
                 file_obj = BytesIO(data)
@@ -568,19 +552,21 @@ class TelegramAdapter(PlatformAdapter):
                                 file_obj = BytesIO(data)
                                 is_temp_obj = True
                             else:
-                                file_obj = image_path  # 尝试直接发 URL
+                                file_obj = image_path  # Thử gửi URL trực tiếp.
                 except Exception as e:
-                    logger.warning(f"[Telegram] 下载图片失败，尝试直接发送: {e}")
+                    logger.warning(
+                        f"[Telegram] Tải ảnh thất bại, thử gửi trực tiếp: {e}"
+                    )
                     file_obj = image_path
             else:
-                # 本地文件
+                # Tệp local.
                 if os.path.exists(image_path):
                     file_obj = open(image_path, "rb")
                     is_temp_obj = True
                 else:
                     file_obj = image_path
 
-            # 2. 发送图片
+            # 2. Gửi ảnh.
             kwargs["photo"] = file_obj
             try:
                 await client.send_photo(**kwargs)
@@ -592,18 +578,20 @@ class TelegramAdapter(PlatformAdapter):
 
         except Exception as e:
             err_msg = str(e)
-            # Photo_invalid_dimensions: Telegram 报错提示图片长宽比例或总尺寸不合规
+            # Photo_invalid_dimensions: tỷ lệ hoặc tổng kích thước ảnh không hợp lệ.
             if (
                 "Photo_invalid_dimensions" in err_msg
                 or "Photo invalid dimensions" in err_msg
             ):
-                logger.warning("[Telegram] 图片尺寸超限，正在尝试以文件形式发送...")
-                # 构造一个更有意义的文件名
+                logger.warning(
+                    "[Telegram] Kích thước ảnh vượt giới hạn, thử gửi dạng tệp..."
+                )
+                # Tạo tên tệp dễ hiểu hơn.
                 ts = datetime.now().strftime("%Y%m%d_%H%M%S")
                 fn = f"analysis_report_{group_id}_{ts}.png"
                 return await self.send_file(group_id, image_path, filename=fn)
 
-            logger.error(f"[Telegram] 发送图片失败: {e}")
+            logger.error(f"[Telegram] Gửi ảnh thất bại: {e}")
             return False
 
     async def send_file(
@@ -612,10 +600,10 @@ class TelegramAdapter(PlatformAdapter):
         file_path: str,
         filename: str | None = None,
     ) -> bool:
-        """发送文件消息"""
+        """Gửi tin nhắn tệp."""
         client = self._telegram_client
         if not client:
-            logger.error("[Telegram] 客户端未初始化，无法发送文件")
+            logger.error("[Telegram] Client chưa khởi tạo, không thể gửi tệp")
             return False
 
         try:
@@ -627,7 +615,7 @@ class TelegramAdapter(PlatformAdapter):
             if message_thread_id:
                 kwargs["message_thread_id"] = int(message_thread_id)
 
-            # 1. 统一处理输入源 (Base64 / Local File)
+            # 1. Xử lý thống nhất nguồn Base64 hoặc tệp local.
             if file_path.startswith("base64://"):
                 data = base64.b64decode(file_path[len("base64://") :])
                 file_obj = BytesIO(data)
@@ -648,7 +636,7 @@ class TelegramAdapter(PlatformAdapter):
                 if not filename:
                     filename = os.path.basename(file_path)
             else:
-                # 可能是 URL 或缓存 ID
+                # Có thể là URL hoặc cache ID.
                 file_obj = file_path
                 if not filename:
                     filename = "file"
@@ -664,25 +652,25 @@ class TelegramAdapter(PlatformAdapter):
 
             return True
         except Exception as e:
-            logger.error(f"[Telegram] 发送文件失败: {e}")
+            logger.error(f"[Telegram] Gửi tệp thất bại: {e}")
             return False
 
     async def send_forward_msg(self, group_id: str, nodes: list[dict]) -> bool:
         """
-        发送合并转发消息
+        Gửi tin nhắn chuyển tiếp đã gộp.
 
-        Telegram 不支持原生转发消息链，转换为格式化文本发送。
+        Telegram không hỗ trợ chuỗi chuyển tiếp native nên gửi dạng văn bản định dạng.
         """
         if not nodes:
             return True
 
-        lines = ["📊 **分析报告**\n"]
+        lines = ["📊 **Báo cáo phân tích**\n"]
         for node in nodes:
             data = node.get("data", node)
             name = data.get("name", "AstrBot")
             content = data.get("content", "")
             if isinstance(content, list):
-                # 消息链
+                # Chuỗi tin nhắn.
                 text_parts = []
                 for seg in content:
                     if isinstance(seg, dict) and seg.get("type") == "text":
@@ -692,7 +680,7 @@ class TelegramAdapter(PlatformAdapter):
 
         full_text = "\n".join(lines)
 
-        # 分段发送（Telegram 限制 4096 字符）
+        # Chia đoạn vì Telegram giới hạn 4096 ký tự.
         max_len = 4000
         if len(full_text) > max_len:
             parts = [
@@ -708,7 +696,7 @@ class TelegramAdapter(PlatformAdapter):
     # ==================== IGroupInfoRepository ====================
 
     async def get_group_info(self, group_id: str) -> UnifiedGroup | None:
-        """获取群组信息"""
+        """Lấy thông tin nhóm."""
         client = self._telegram_client
         if not client:
             return None
@@ -725,14 +713,14 @@ class TelegramAdapter(PlatformAdapter):
                 platform="telegram",
             )
         except Exception as e:
-            logger.debug(f"[Telegram] 获取群信息失败: {e}")
+            logger.debug(f"[Telegram] Lấy thông tin nhóm thất bại: {e}")
             return None
 
     async def get_member_list(self, group_id: str) -> list[UnifiedMember]:
         """
-        获取成员列表
+        Lấy danh sách thành viên.
 
-        Telegram Bot API 对成员列表获取有限制。
+        Telegram Bot API giới hạn việc lấy danh sách thành viên.
         """
         client = self._telegram_client
         if not client:
@@ -740,8 +728,7 @@ class TelegramAdapter(PlatformAdapter):
 
         try:
             chat_id, _ = self._parse_group_id(group_id)
-            # Telegram Bot API 需要使用 getChatAdministrators
-            # 只能获取管理员列表，无法获取全部成员
+            # Telegram Bot API chỉ cho lấy danh sách quản trị viên.
             admins = await client.get_chat_administrators(chat_id=chat_id)
 
             members = []
@@ -760,7 +747,7 @@ class TelegramAdapter(PlatformAdapter):
                 )
             return members
         except Exception as e:
-            logger.debug(f"[Telegram] 获取成员列表失败: {e}")
+            logger.debug(f"[Telegram] Lấy danh sách thành viên thất bại: {e}")
             return []
 
     async def get_member_info(
@@ -768,7 +755,7 @@ class TelegramAdapter(PlatformAdapter):
         group_id: str,
         user_id: str,
     ) -> UnifiedMember | None:
-        """获取成员信息"""
+        """Lấy thông tin thành viên."""
         client = self._telegram_client
         if not client:
             return None
@@ -794,7 +781,7 @@ class TelegramAdapter(PlatformAdapter):
                 role=role,
             )
         except Exception as e:
-            logger.debug(f"[Telegram] 获取成员信息失败: {e}")
+            logger.debug(f"[Telegram] Lấy thông tin thành viên thất bại: {e}")
             return None
 
     # ==================== IAvatarRepository ====================
@@ -805,14 +792,14 @@ class TelegramAdapter(PlatformAdapter):
         size: int = 100,
     ) -> str | None:
         """
-        获取用户头像 URL
+        Lấy URL avatar người dùng.
 
-        Telegram 需要调用 API 获取头像文件。
+        Telegram cần gọi API để lấy tệp avatar.
         """
         client = self._telegram_client
         if not client:
             logger.warning(
-                f"[Telegram] 获取用户头像失败 uid={user_id}: Telegram 客户端未初始化"
+                f"[Telegram] Lấy avatar người dùng thất bại uid={user_id}: client chưa khởi tạo"
             )
             return None
 
@@ -820,67 +807,72 @@ class TelegramAdapter(PlatformAdapter):
         cached_reason = self._get_avatar_negative_cache_reason(user_id_str)
         if cached_reason:
             logger.debug(
-                f"[Telegram] 跳过用户头像获取 uid={user_id_str}: negative cache 命中，"
-                f"上次失败原因: {cached_reason}"
+                f"[Telegram] Bỏ qua avatar uid={user_id_str}: trúng negative cache, "
+                f"lý do thất bại trước: {cached_reason}"
             )
             return None
 
         try:
             tg_user_id = int(user_id_str)
         except (TypeError, ValueError):
-            reason = f"用户 ID 不是有效整数: {user_id!r}"
+            reason = f"ID người dùng không phải số nguyên hợp lệ: {user_id!r}"
             self._remember_avatar_negative(user_id_str, reason)
-            logger.warning(f"[Telegram] 获取用户头像失败 uid={user_id}: {reason}")
+            logger.warning(
+                f"[Telegram] Lấy avatar người dùng thất bại uid={user_id}: {reason}"
+            )
             return None
 
         try:
             photos = await client.get_user_profile_photos(user_id=tg_user_id, limit=1)
             if photos.photos:
-                # 获取最大尺寸的头像
+                # Lấy avatar kích thước lớn nhất.
                 photo_sizes = photos.photos[0]
                 if photo_sizes:
-                    # 选择最接近请求尺寸的
-                    best = photo_sizes[-1]  # 通常最后一个是最大的
+                    # Chọn kích thước gần yêu cầu nhất.
+                    best = photo_sizes[-1]  # Phần tử cuối thường lớn nhất.
                     file = await client.get_file(best.file_id)
                     if file.file_path:
-                        # 构建完整 URL
-                        # 格式: https://api.telegram.org/file/bot<token>/<file_path>
-                        # python-telegram-bot 的 File.file_path 属性通常只返回路径部分
-                        # 需要手动拼接或使用 instance.file.file_path (取决于版本)
+                        # Dựng URL đầy đủ; File.file_path thường chỉ trả phần path.
 
                         file_path = file.file_path
                         if file_path.startswith("http"):
                             return file_path
 
-                        # 尝试构建完整 URL
+                        # Thử dựng URL đầy đủ.
                         if hasattr(client, "token"):
                             return f"https://api.telegram.org/file/bot{client.token}/{file_path}"
 
-                        # 如果无法获取 token，返回 None
-                        reason = "get_file 返回相对 file_path，但 client 没有 token，无法拼接下载 URL"
+                        # Trả None nếu không lấy được token.
+                        reason = "get_file trả file_path tương đối nhưng client không có token để dựng URL tải"
                         self._remember_avatar_negative(user_id_str, reason)
                         logger.warning(
-                            f"[Telegram] 获取用户头像失败 uid={user_id_str}: {reason}"
+                            f"[Telegram] Lấy avatar người dùng thất bại uid={user_id_str}: {reason}"
                         )
                         return None
-                    reason = "get_file 未返回 file_path"
+                    reason = "get_file không trả file_path"
                     self._remember_avatar_negative(user_id_str, reason)
                     logger.warning(
-                        f"[Telegram] 获取用户头像失败 uid={user_id_str}: {reason}"
+                        f"[Telegram] Lấy avatar người dùng thất bại uid={user_id_str}: {reason}"
                     )
                     return None
-                reason = "get_user_profile_photos 返回的首张头像没有可用尺寸"
+                reason = "Avatar đầu tiên từ get_user_profile_photos không có kích thước khả dụng"
                 self._remember_avatar_negative(user_id_str, reason)
-                logger.info(f"[Telegram] 获取用户头像失败 uid={user_id_str}: {reason}")
+                logger.info(
+                    f"[Telegram] Lấy avatar người dùng thất bại uid={user_id_str}: {reason}"
+                )
                 return None
-            reason = "get_user_profile_photos 返回空列表，用户可能没有公开头像或隐私设置不可见"
+            reason = "get_user_profile_photos trả danh sách rỗng; avatar có thể không công khai"
             self._remember_avatar_negative(user_id_str, reason)
-            logger.info(f"[Telegram] 获取用户头像失败 uid={user_id_str}: {reason}")
+            logger.info(
+                f"[Telegram] Lấy avatar người dùng thất bại uid={user_id_str}: {reason}"
+            )
             return None
         except Exception as e:
             reason = f"{type(e).__name__}: {e}"
             self._remember_avatar_negative(user_id_str, reason)
-            logger.warning(f"[Telegram] 获取用户头像失败 uid={user_id_str}: {reason}")
+            logger.warning(
+                f"[Telegram] Lấy avatar người dùng thất bại uid={user_id_str}: {reason}"
+            )
             return None
 
     async def get_user_avatar_data(
@@ -888,10 +880,10 @@ class TelegramAdapter(PlatformAdapter):
         user_id: str,
         size: int = 100,
     ) -> str | None:
-        """获取头像的 Base64 数据"""
-        # 暂不实现，返回 None
+        """Lấy dữ liệu Base64 của avatar."""
+        # Chưa triển khai, trả về None.
         logger.debug(
-            f"[Telegram] 获取用户头像数据失败 uid={user_id}: get_user_avatar_data 暂未实现"
+            f"[Telegram] Không thể lấy dữ liệu avatar uid={user_id}: get_user_avatar_data chưa triển khai"
         )
         return None
 
@@ -900,11 +892,11 @@ class TelegramAdapter(PlatformAdapter):
         group_id: str,
         size: int = 100,
     ) -> str | None:
-        """获取群组头像 URL"""
+        """Lấy URL avatar nhóm."""
         client = self._telegram_client
         if not client:
             logger.warning(
-                f"[Telegram] 获取群头像失败 group_id={group_id}: Telegram 客户端未初始化"
+                f"[Telegram] Lấy avatar nhóm thất bại group_id={group_id}: client chưa khởi tạo"
             )
             return None
 
@@ -923,26 +915,26 @@ class TelegramAdapter(PlatformAdapter):
                         return f"https://api.telegram.org/file/bot{client.token}/{file_path}"
 
                     logger.warning(
-                        f"[Telegram] 获取群头像失败 group_id={group_id}: "
-                        "get_file 返回相对 file_path，但 client 没有 token，无法拼接下载 URL"
+                        f"[Telegram] Lấy avatar nhóm thất bại group_id={group_id}: "
+                        "get_file trả file_path tương đối nhưng client không có token để dựng URL tải"
                     )
                     return None
                 logger.warning(
-                    f"[Telegram] 获取群头像失败 group_id={group_id}: get_file 未返回 file_path"
+                    f"[Telegram] Lấy avatar nhóm thất bại group_id={group_id}: get_file không trả file_path"
                 )
                 return None
             logger.info(
-                f"[Telegram] 获取群头像失败 group_id={group_id}: 群组未设置头像或 bot 不可见"
+                f"[Telegram] Lấy avatar nhóm thất bại group_id={group_id}: nhóm chưa đặt avatar hoặc bot không thấy"
             )
             return None
         except Exception as e:
             logger.warning(
-                f"[Telegram] 获取群头像失败 group_id={group_id}: {type(e).__name__}: {e}"
+                f"[Telegram] Lấy avatar nhóm thất bại group_id={group_id}: {type(e).__name__}: {e}"
             )
             return None
 
     def _prune_avatar_negative_cache(self) -> None:
-        """清理过期项并限制 negative cache 大小，避免长期运行时无界增长。"""
+        """Xoá mục hết hạn và giới hạn negative cache để tránh tăng vô hạn."""
         cache = self._avatar_negative_cache
         if not cache:
             return
@@ -988,11 +980,11 @@ class TelegramAdapter(PlatformAdapter):
         user_ids: list[str],
         size: int = 100,
     ) -> dict[str, str | None]:
-        """批量获取头像 URL"""
+        """Lấy hàng loạt URL avatar."""
         if not user_ids:
             return {}
 
-        # 适度并发，避免串行等待过久，也避免瞬时过载 Telegram API
+        # Giới hạn concurrency để tránh chờ tuần tự lâu hoặc quá tải Telegram API.
         semaphore = asyncio.Semaphore(8)
 
         async def _fetch_avatar(uid: str) -> tuple[str, str | None]:
@@ -1000,7 +992,9 @@ class TelegramAdapter(PlatformAdapter):
                 try:
                     return uid, await self.get_user_avatar_url(uid, size)
                 except Exception as e:
-                    logger.debug(f"[Telegram] 批量获取头像失败 uid={uid}: {e}")
+                    logger.debug(
+                        f"[Telegram] Lấy avatar hàng loạt thất bại uid={uid}: {e}"
+                    )
                     return uid, None
 
         pairs = await asyncio.gather(*(_fetch_avatar(uid) for uid in user_ids))
@@ -1010,7 +1004,7 @@ class TelegramAdapter(PlatformAdapter):
         self, group_id: str, message_id: str, emoji: str | int, is_add: bool = True
     ) -> bool:
         """
-        Telegram 实现消息回应。
+        Triển khai reaction tin nhắn Telegram.
         """
         client = self._telegram_client
         if not client:
@@ -1019,7 +1013,7 @@ class TelegramAdapter(PlatformAdapter):
         try:
             chat_id, _ = self._parse_group_id(group_id)
 
-            # 只有开启了库支持且版本符合时才尝试。set_message_reaction 是 Bot API 7.0 (PTB 20.8+) 特性。
+            # set_message_reaction cần Bot API 7.0 và PTB 20.8 trở lên.
             if not hasattr(client, "set_message_reaction"):
                 return False
 
@@ -1079,20 +1073,20 @@ class TelegramAdapter(PlatformAdapter):
                         continue
 
             logger.debug(
-                f"[Telegram] set_reaction 未匹配到可用表情: emoji={emoji}, candidates={candidates}"
+                f"[Telegram] set_reaction không khớp emoji khả dụng: emoji={emoji}, candidates={candidates}"
             )
             return False
         except Exception as e:
-            logger.debug(f"[Telegram] set_reaction 失败: {e}")
+            logger.debug(f"[Telegram] set_reaction thất bại: {e}")
             return False
 
-    # ==================== 辅助方法 ====================
+    # ==================== Phương thức hỗ trợ ====================
 
     def _parse_group_id(self, group_id: str) -> tuple[str, str | None]:
         """
-        解析群组 ID
+        Parse ID nhóm.
 
-        Telegram 话题群的 ID 格式为: "chat_id#thread_id"
+        ID nhóm topic Telegram có dạng ``chat_id#thread_id``.
 
         Returns:
             tuple[str, str | None]: (chat_id, message_thread_id)

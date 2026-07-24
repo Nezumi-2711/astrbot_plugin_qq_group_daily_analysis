@@ -1,6 +1,8 @@
 """
-统计领域服务 - 领域层
-负责核心统计逻辑的计算，不依赖于具体的平台或基础设施。
+Dịch vụ thống kê thuộc tầng domain.
+
+Phụ trách tính toán logic thống kê cốt lõi, không phụ thuộc nền tảng hoặc
+cơ sở hạ tầng cụ thể.
 """
 
 from collections import defaultdict
@@ -13,7 +15,7 @@ from ..value_objects.unified_message import MessageContentType, UnifiedMessage
 
 
 class StatisticsService:
-    """统计服务 - 处理群聊数据的聚合统计"""
+    """Xử lý thống kê tổng hợp dữ liệu trò chuyện nhóm."""
 
     def __init__(self, activity_visualizer: IActivityVisualizer | None = None):
         if activity_visualizer is None:
@@ -26,9 +28,10 @@ class StatisticsService:
         self, messages: list[UnifiedMessage]
     ) -> GroupStatistics:
         """
-        计算群组基础统计数据。
+        Tính các số liệu thống kê cơ bản của nhóm.
 
-        基于统一消息格式(UnifiedMessage)进行计算，确保跨平台一致性。
+        Tính toán dựa trên định dạng ``UnifiedMessage`` để đảm bảo kết quả
+        nhất quán giữa các nền tảng.
         """
         total_chars = 0
         participants = set()
@@ -38,35 +41,35 @@ class StatisticsService:
         for msg in messages:
             participants.add(msg.sender_id)
 
-            # 统计时间分布
+            # Thống kê phân bố theo thời gian
             msg_time = datetime.fromtimestamp(msg.timestamp)
             hour_counts[msg_time.hour] += 1
 
-            # 处理消息内容
+            # Xử lý nội dung tin nhắn
             for content in msg.contents:
                 if content.type == MessageContentType.TEXT:
                     total_chars += len(content.text or "")
                 elif content.type == MessageContentType.EMOJI:
                     emoji_statistics.face_count += 1
-                    # 尝试保留原始表情详情（如果适配器提供了）
+                    # Giữ chi tiết biểu cảm gốc nếu adapter cung cấp
                     face_id = content.emoji_id or "unknown"
                     emoji_statistics.face_details[f"emoji_{face_id}"] = (
                         emoji_statistics.face_details.get(f"emoji_{face_id}", 0) + 1
                     )
                 elif content.type == MessageContentType.IMAGE:
-                    # 兼容识别“图片形态的表情”:
-                    # 1) 优先使用 onebot sub_type=1 信号
-                    # 2) 若无该字段，再回退到历史 summary 文本匹配
+                    # Nhận diện tương thích biểu cảm ở dạng hình ảnh:
+                    # 1) Ưu tiên tín hiệu sub_type=1 của OneBot
+                    # 2) Nếu không có, đối chiếu văn bản summary kiểu cũ
                     if self._is_emoji_like_image(content.raw_data):
                         emoji_statistics.mface_count += 1
                 elif content.type in (
                     MessageContentType.VOICE,
                     MessageContentType.VIDEO,
                 ):
-                    # 其他非文本类型统计（可选）
+                    # Có thể bổ sung thống kê các loại phi văn bản khác
                     pass
 
-        # 找出最活跃时段
+        # Xác định khung giờ hoạt động tích cực nhất
         most_active_hour = (
             max(hour_counts.items(), key=lambda x: x[1])[0] if hour_counts else 0
         )
@@ -74,9 +77,9 @@ class StatisticsService:
             f"{most_active_hour:02d}:00-{(most_active_hour + 1) % 24:02d}:00"
         )
 
-        # 生成活跃度可视化数据
-        # 注意：ActivityVisualizer 可能需要迁移以支持 UnifiedMessage
-        # 目前先转换回 dict 以保持兼容性，或者之后重构它
+        # Tạo dữ liệu trực quan hoá hoạt động
+        # ActivityVisualizer có thể cần được chuyển đổi để hỗ trợ UnifiedMessage.
+        # Hiện tại chuyển ngược về dict để duy trì khả năng tương thích.
         raw_msgs = self._convert_to_legacy_dict(messages)
         activity_visualization = (
             self.activity_visualizer.generate_activity_visualization(raw_msgs)
@@ -96,7 +99,7 @@ class StatisticsService:
 
     @staticmethod
     def _is_emoji_like_image(raw_data: object) -> bool:
-        """判断 IMAGE 段是否应按表情计数。"""
+        """Kiểm tra phân đoạn IMAGE có được tính là biểu cảm hay không."""
         if isinstance(raw_data, dict):
             sub_type = raw_data.get("sub_type")
             if sub_type is not None:
@@ -111,7 +114,7 @@ class StatisticsService:
         return "动画表情" in text or "表情" in text
 
     def _convert_to_legacy_dict(self, messages: list[UnifiedMessage]) -> list[dict]:
-        """内部辅助：将 UnifiedMessage 转换为 Legacy Dict 格式，用于兼容可视化组件"""
+        """Chuyển ``UnifiedMessage`` sang dict cũ để tương thích trình trực quan."""
         legacy_list = []
         for msg in messages:
             legacy_list.append(

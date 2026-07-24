@@ -1,7 +1,4 @@
-"""
-金句分析模块
-专门处理群聊金句提取和分析
-"""
+"""Module trích xuất và phân tích trích dẫn nổi bật trong nhóm."""
 
 from datetime import datetime
 
@@ -16,21 +13,18 @@ from .base_analyzer import BaseAnalyzer
 
 
 class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote, list[dict]]):
-    """
-    金句分析器
-    专门处理群聊金句的提取和分析
-    """
+    """Analyzer trích xuất và phân tích trích dẫn nổi bật."""
 
     def get_provider_id_key(self) -> str:
-        """获取 Provider ID 配置键名"""
+        """Lấy tên key cấu hình Provider ID."""
         return "golden_quote_provider_id"
 
     def get_data_type(self) -> str:
-        """获取数据类型标识"""
+        """Lấy định danh loại dữ liệu."""
         return "Trích dẫn nổi bật"
 
     def get_max_count(self) -> int:
-        """获取最大金句数量，增量模式下使用覆盖值"""
+        """Lấy số trích dẫn tối đa, dùng giá trị ghi đè trong chế độ gia tăng."""
         if self._incremental_max_count is not None:
             return self._incremental_max_count
         return self.config_manager.get_max_golden_quotes()
@@ -43,25 +37,25 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote, list[dict]]):
 
     def build_prompt(self, data: list[dict]) -> str:
         """
-        构建金句分析提示词
+        Xây dựng prompt phân tích trích dẫn.
 
         Args:
-            messages: 群聊的文本消息列表
+            messages: Danh sách tin nhắn văn bản của nhóm.
 
         Returns:
-            提示词字符串
+            Chuỗi prompt.
         """
         if not data:
             return ""
 
-        # 构建消息文本 (用 [user_id] 替代 nickname 以确保回填 100% 准确，避免 Emoji 等干扰)
+        # Dùng [user_id] thay nickname để khôi phục chính xác và tránh nhiễu emoji.
         messages_text = "\n".join(
             [f"[{msg['time']}] [{msg['user_id']}]: {msg['content']}" for msg in data]
         )
 
         max_golden_quotes = self.get_max_count()
 
-        # 从配置读取 prompt 模板（默认使用 "default" 风格）
+        # Đọc template prompt từ cấu hình, mặc định kiểu ``default``.
         prompt_template = self.config_manager.get_golden_quote_analysis_prompt()
 
         if prompt_template:
@@ -71,50 +65,52 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote, list[dict]]):
                     max_golden_quotes=max_golden_quotes,
                     messages_text=messages_text,
                 )
-                logger.info("使用配置中的金句分析提示词")
+                logger.info("Đang dùng prompt phân tích trích dẫn trong cấu hình")
                 return prompt
             except Exception as e:
-                logger.warning(f"应用金句分析提示词失败: {e}")
+                logger.warning(f"Áp dụng prompt phân tích trích dẫn thất bại: {e}")
 
-        logger.warning("未找到有效的金句分析提示词配置，请检查配置文件")
+        logger.warning("Không tìm thấy cấu hình prompt phân tích trích dẫn hợp lệ")
         return ""
 
     def extract_with_regex(self, result_text: str, max_count: int) -> list[dict]:
         """
-        使用正则表达式提取金句信息
+        Trích xuất trích dẫn bằng regex.
 
         Args:
-            result_text: LLM响应文本
-            max_count: 最大提取数量
+            result_text: Văn bản phản hồi LLM.
+            max_count: Số lượng tối đa.
 
         Returns:
-            金句数据列表
+            Danh sách dữ liệu trích dẫn.
         """
         return extract_golden_quotes_with_regex(result_text, max_count)
 
     def create_data_objects(self, data_list: list[dict]) -> list[GoldenQuote]:
         """
-        创建金句对象列表
+        Tạo danh sách object trích dẫn.
 
         Args:
-            quotes_data: 原始金句数据列表
+            quotes_data: Danh sách dữ liệu trích dẫn gốc.
 
         Returns:
-            GoldenQuote对象列表
+            Danh sách object GoldenQuote.
         """
         try:
             quotes = []
             max_quotes = self.get_max_count()
 
             for quote_data in data_list[:max_quotes]:
-                # 确保数据格式正确
+                # Đảm bảo định dạng dữ liệu đúng.
                 content = quote_data.get("content", "").strip()
                 sender = quote_data.get("sender", "").strip()
                 reason = quote_data.get("reason", "").strip()
 
-                # 验证必要字段
+                # Xác thực trường bắt buộc.
                 if not content or not sender or not reason:
-                    logger.warning(f"金句数据格式不完整，跳过: {quote_data}")
+                    logger.warning(
+                        f"Dữ liệu trích dẫn không đầy đủ, bỏ qua: {quote_data}"
+                    )
                     continue
 
                 quotes.append(
@@ -124,7 +120,7 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote, list[dict]]):
             return quotes
 
         except Exception as e:
-            logger.error(f"创建金句对象失败: {e}")
+            logger.error(f"Tạo object trích dẫn thất bại: {e}")
             return []
 
     def validate_parsed_data(
@@ -139,38 +135,41 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote, list[dict]]):
         session_id: str | None = None,
     ) -> tuple[list[GoldenQuote], TokenUsage]:
         """
-        分析群聊金句
+        Phân tích trích dẫn nổi bật trong nhóm.
 
         Args:
-            messages: 群聊消息列表
-            umo: 模型唯一标识符
-            session_id: 会话ID (用于调试模式)
+            messages: Danh sách tin nhắn nhóm.
+            umo: Định danh model.
+            session_id: ID phiên dùng cho debug mode.
 
         Returns:
-            (金句列表, Token使用统计)
+            Tuple danh sách trích dẫn và thống kê token.
         """
         try:
-            # 提取圣经的文本消息
+            # Trích xuất tin nhắn văn bản đáng chú ý.
             interesting_messages = self.extract_interesting_messages(messages)
 
             if not interesting_messages:
-                logger.info("没有符合条件的圣经消息，返回空结果")
+                logger.info(
+                    "Không có tin nhắn phù hợp để trích dẫn, trả về kết quả rỗng"
+                )
                 return [], TokenUsage()
 
-            logger.info(f"开始从 {len(interesting_messages)} 条圣经消息中提取金句")
+            logger.info(
+                f"Bắt đầu trích xuất trích dẫn từ {len(interesting_messages)} tin nhắn đáng chú ý"
+            )
             quotes, usage = await self.analyze(interesting_messages, umo, session_id)
 
-            # 建立 ID 到昵称的映射表用于恢复显示
+            # Lập ánh xạ ID sang biệt danh để khôi phục hiển thị.
             id_to_nickname = {}
             for msg in interesting_messages:
                 uid = str(msg.get("user_id", ""))
                 if uid:
                     id_to_nickname[uid] = msg.get("sender", "")
 
-            # 回填 User ID 并恢复发送者昵称
+            # Điền User ID và khôi phục biệt danh người gửi.
             for quote in quotes:
-                # 此时 quote.sender 包含的是 Prompt 中的 [user_id]
-                # 有些 LLM 可能会带上中括号，尝试清理
+                # quote.sender hiện chứa [user_id] trong prompt; loại ngoặc nếu có.
                 potential_id = quote.sender.strip().strip("[]")
 
                 if potential_id in id_to_nickname:
@@ -178,29 +177,29 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote, list[dict]]):
                     quote.sender = id_to_nickname[potential_id]
                 else:
                     logger.warning(
-                        f"[金句分析] 无法匹配 User ID: {potential_id}，金句将无法显示真实头像。"
+                        f"[Phân tích trích dẫn] Không khớp User ID: {potential_id}; không thể hiển thị avatar thật"
                     )
 
             return quotes, usage
 
         except Exception as e:
-            logger.error(f"金句分析失败: {e}")
+            logger.error(f"Phân tích trích dẫn thất bại: {e}")
             return [], TokenUsage()
 
     def extract_interesting_messages(self, messages: list[dict]) -> list[dict]:
         """
-        根据清理后的消息提取可能有意义的消息片段用于金句分析。
+        Trích xuất đoạn tin nhắn có ý nghĩa từ dữ liệu đã làm sạch.
 
         Args:
-            messages: 已由 MessageCleaner 处理过的 legacy 消息列表
+            messages: Danh sách tin nhắn legacy đã qua MessageCleaner.
 
         Returns:
-            提取的文本消息列表
+            Danh sách tin nhắn văn bản đã trích xuất.
         """
         interesting_messages = []
 
         for msg in messages:
-            # 获取发送者显示名
+            # Lấy tên hiển thị của người gửi.
             sender = msg.get("sender", {})
             nickname = InfoUtils.get_user_nickname(self.config_manager, sender)
             msg_time = datetime.fromtimestamp(msg.get("time", 0)).strftime("%H:%M")
@@ -208,7 +207,7 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote, list[dict]]):
             for content in msg.get("message", []):
                 if content.get("type") == "text":
                     text = content.get("data", {}).get("text", "").strip()
-                    # 过滤掉过短或过长的噪音（已经在 cleaner 处理过一遍基本垃圾）
+                    # Lọc nhiễu quá ngắn hoặc quá dài sau bước cleaner cơ bản.
                     if 2 <= len(text) <= 500:
                         interesting_messages.append(
                             {

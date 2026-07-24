@@ -1,7 +1,4 @@
-"""
-LLM API请求处理工具模块
-提供LLM调用和token统计功能
-"""
+"""Công cụ gọi API LLM và thống kê token."""
 
 import asyncio
 import random
@@ -19,7 +16,7 @@ _circuit_breakers = {}
 
 def _is_response_format_unsupported_error(error: Exception) -> bool:
     """
-    判断是否为 Provider/网关不支持 response_format 的兼容性错误。
+    Kiểm tra lỗi tương thích khi provider/gateway không hỗ trợ response_format.
     """
     text = str(error).lower()
     patterns = [
@@ -46,7 +43,7 @@ async def _call_provider_stream(
 ) -> LLMResponse:
     provider = context.get_provider_by_id(provider_id=provider_id)
     if provider is None:
-        raise RuntimeError(f"Provider 不存在: {provider_id}")
+        raise RuntimeError(f"Provider không tồn tại: {provider_id}")
 
     stream_kwargs = dict(llm_kwargs)
     stream_kwargs.pop("chat_provider_id", None)
@@ -61,7 +58,7 @@ async def _call_provider_stream(
                 content_parts.append(text)
 
     if final_resp is None:
-        raise RuntimeError("流式 LLM 调用未返回任何响应")
+        raise RuntimeError("Lời gọi LLM streaming không trả về phản hồi")
 
     final_text = extract_response_text(final_resp)
     if final_text and not getattr(final_resp, "is_chunk", False):
@@ -79,63 +76,63 @@ async def _try_get_provider_id_by_id(
     context, provider_id: str, description: str
 ) -> str | None:
     """
-    尝试通过 ID 获取 Provider ID 的辅助函数
+    Thử xác thực và lấy Provider ID theo ID cấu hình.
 
     Args:
-        context: AstrBot上下文对象
+        context: Context AstrBot.
         provider_id: Provider ID
-        description: 描述信息，用于日志
+        description: Mô tả dùng trong log.
 
     Returns:
-        Provider ID 或 None
+        Provider ID hoặc None.
     """
     if not provider_id or not isinstance(provider_id, str) or not provider_id.strip():
         return None
 
     provider_id = provider_id.strip()
-    logger.info(f"尝试使用{description}: {provider_id}")
+    logger.info(f"Thử dùng {description}: {provider_id}")
     try:
-        # 验证 Provider 是否存在
+        # Xác thực provider tồn tại.
         provider = context.get_provider_by_id(provider_id=provider_id)
         if provider:
-            logger.info(f"✓ 使用{description}: {provider_id}")
+            logger.info(f"✓ Dùng {description}: {provider_id}")
             return provider_id
     except Exception as e:
-        logger.warning(f"无法找到{description} '{provider_id}': {e}")
+        logger.warning(f"Không tìm thấy {description} '{provider_id}': {e}")
     return None
 
 
 async def _try_get_session_provider_id(context, umo: str | None) -> str | None:
     """
-    尝试获取会话 Provider ID 的辅助函数
+    Thử lấy Provider ID của phiên hiện tại.
 
     Args:
-        context: AstrBot上下文对象
+        context: Context AstrBot.
         umo: unified_msg_origin
 
     Returns:
-        Provider ID 或 None
+        Provider ID hoặc None.
     """
     try:
-        # 使用新 API 获取当前会话的 Provider ID
+        # Dùng API mới để lấy Provider ID của phiên hiện tại.
         provider_id = await context.get_current_chat_provider_id(umo=umo)
         if provider_id:
-            logger.info(f"✓ 使用当前会话的 Provider: {provider_id}")
+            logger.info(f"✓ Dùng provider của phiên hiện tại: {provider_id}")
             return provider_id
     except Exception as e:
-        logger.warning(f"无法获取会话 Provider ID: {e}")
+        logger.warning(f"Không thể lấy Provider ID của phiên: {e}")
     return None
 
 
 async def _try_get_first_available_provider_id(context) -> str | None:
     """
-    尝试获取第一个可用 Provider ID 的辅助函数
+    Thử lấy Provider ID khả dụng đầu tiên.
 
     Args:
-        context: AstrBot上下文对象
+        context: Context AstrBot.
 
     Returns:
-        Provider ID 或 None
+        Provider ID hoặc None.
     """
     try:
         all_providers = context.get_all_providers()
@@ -144,12 +141,12 @@ async def _try_get_first_available_provider_id(context) -> str | None:
             try:
                 meta = provider.meta()
                 provider_id = meta.id
-                logger.info(f"✓ 使用第一个可用 Provider: {provider_id}")
+                logger.info(f"✓ Dùng provider khả dụng đầu tiên: {provider_id}")
                 return provider_id
             except Exception:
-                logger.warning("第一个 Provider 无法获取 ID")
+                logger.warning("Không thể lấy ID của provider đầu tiên")
     except Exception as e:
-        logger.warning(f"无法获取任何 Provider: {e}")
+        logger.warning(f"Không thể lấy provider nào: {e}")
     return None
 
 
@@ -160,33 +157,30 @@ async def get_provider_id_with_fallback(
     umo: str | None = None,
 ) -> str | None:
     """
-    根据配置键获取 Provider ID，支持多级回退
+    Lấy Provider ID theo key cấu hình với fallback nhiều cấp.
 
-    回退顺序：
-    1. 尝试从配置获取指定的 provider_id（如 topic_provider_id）
-    2. 回退到主 LLM provider_id（llm_provider_id）
-    3. 回退到当前会话的 Provider（通过 umo）
-    4. 回退到第一个可用的 Provider
+    Thứ tự fallback: provider riêng của tác vụ, provider LLM chính, provider
+    của phiên hiện tại, rồi provider khả dụng đầu tiên.
 
     Args:
-        context: AstrBot上下文对象
-        config_manager: 配置管理器
-        provider_id_key: 配置中的 provider_id 键名（如 'topic_provider_id'）
-        umo: unified_msg_origin，用于获取会话默认 Provider
+        context: Context AstrBot.
+        config_manager: Trình quản lý cấu hình.
+        provider_id_key: Key provider_id trong cấu hình.
+        umo: unified_msg_origin để lấy provider mặc định của phiên.
 
     Returns:
-        Provider ID 或 None
+        Provider ID hoặc None.
     """
     try:
-        # 输出Provider选择开始日志
-        task_desc = provider_id_key if provider_id_key else "默认任务"
-        logger.info(f"[Provider 选择] 开始为 {task_desc} 选择 Provider...")
+        # Ghi log bắt đầu chọn provider.
+        task_desc = provider_id_key if provider_id_key else "tác vụ mặc định"
+        logger.info(f"[Chọn provider] Bắt đầu chọn provider cho {task_desc}...")
 
-        # 定义回退策略列表
+        # Định nghĩa danh sách chiến lược fallback.
         strategies = []
         strategy_names = []
 
-        # 1. 特定任务的 provider_id
+        # 1. provider_id riêng của tác vụ.
         if provider_id_key:
             getter_method = f"get_{provider_id_key}"
             if hasattr(config_manager, getter_method):
@@ -194,46 +188,48 @@ async def get_provider_id_with_fallback(
                 if specific_provider_id:
                     strategies.append(
                         lambda pid=specific_provider_id: _try_get_provider_id_by_id(
-                            context, pid, f"配置的 {provider_id_key}"
+                            context, pid, f"{provider_id_key} đã cấu hình"
                         )
                     )
-                    strategy_names.append(f"1. 配置的 {provider_id_key}")
+                    strategy_names.append(f"1. {provider_id_key} đã cấu hình")
 
-        # 2. 主 LLM provider_id
+        # 2. provider_id LLM chính.
         main_provider_id = config_manager.get_llm_provider_id()
         if main_provider_id:
             strategies.append(
                 lambda pid=main_provider_id: _try_get_provider_id_by_id(
-                    context, pid, "主 LLM Provider"
+                    context, pid, "provider LLM chính"
                 )
             )
-            strategy_names.append("2. 主 LLM Provider")
+            strategy_names.append("2. Provider LLM chính")
 
-        # 3. 当前会话的 Provider
+        # 3. Provider của phiên hiện tại.
         strategies.append(lambda: _try_get_session_provider_id(context, umo))
-        strategy_names.append("3. 当前会话 Provider")
+        strategy_names.append("3. Provider phiên hiện tại")
 
-        # 4. 第一个可用的 Provider
+        # 4. Provider khả dụng đầu tiên.
         strategies.append(lambda: _try_get_first_available_provider_id(context))
-        strategy_names.append("4. 第一个可用 Provider")
+        strategy_names.append("4. Provider khả dụng đầu tiên")
 
-        # 输出回退策略列表
-        logger.info(f"[Provider 选择] 回退策略顺序：{' -> '.join(strategy_names)}")
+        # Ghi thứ tự chiến lược fallback.
+        logger.info(f"[Chọn provider] Thứ tự fallback: {' -> '.join(strategy_names)}")
 
-        # 依次尝试每个策略
+        # Thử lần lượt từng chiến lược.
         for idx, strategy in enumerate(strategies):
             provider_id = await strategy()
             if provider_id:
                 logger.info(
-                    f"[Provider 选择] ✓ 成功！使用策略 #{idx + 1}，Provider ID: {provider_id}"
+                    f"[Chọn provider] ✓ Thành công với chiến lược #{idx + 1}, Provider ID: {provider_id}"
                 )
                 return provider_id
 
-        logger.error("[Provider 选择] ✗ 失败：所有回退策略均无法获取可用 Provider")
+        logger.error(
+            "[Chọn provider] ✗ Thất bại: không chiến lược nào trả về provider khả dụng"
+        )
         return None
 
     except Exception as e:
-        logger.error(f"[Provider 选择] ✗ 异常：Provider 选择过程出错: {e}")
+        logger.error(f"[Chọn provider] ✗ Lỗi trong quá trình chọn provider: {e}")
         return None
 
 
@@ -249,31 +245,30 @@ async def call_provider_with_retry(
     extra_generate_kwargs: dict[str, JSONValue] | None = None,
 ) -> LLMResponse | None:
     """
-    调用LLM提供者，带超时、重试与退避。支持自定义服务商和配置化 Provider 选择。
+    Gọi provider LLM với retry và backoff, hỗ trợ chọn provider theo cấu hình.
 
     Args:
-        context: AstrBot上下文对象
-        config_manager: 配置管理器
-        prompt: 输入的提示语
-        umo: 指定使用的模型唯一标识符
-        provider_id_key: 配置中的 provider_id 键名（如 'topic_provider_id'），用于选择特定的 Provider
-        system_prompt: 系统提示词
-        response_format: 结构化输出约束（OpenAI 风格）
-        extra_generate_kwargs: 传递给 context.llm_generate 的附加参数（用于内部高级重试策略）
+        context: Context AstrBot.
+        config_manager: Trình quản lý cấu hình.
+        prompt: Prompt đầu vào.
+        umo: Định danh model cần dùng.
+        provider_id_key: Key provider_id để chọn provider riêng.
+        system_prompt: System prompt.
+        response_format: Ràng buộc output có cấu trúc kiểu OpenAI.
+        extra_generate_kwargs: Tham số bổ sung cho context.llm_generate.
 
     Returns:
-        LLM生成的结果，失败时返回None
+        Kết quả LLM hoặc None nếu thất bại.
     """
-    # 注意: 超时由 AstrBot Provider 内部配置控制，不再使用插件层 asyncio.wait_for
-    # 用户可在 AstrBot WebUI 中为每个 Provider 配置 timeout 参数
+    # Timeout do provider AstrBot kiểm soát và có thể cấu hình trong WebUI.
     retries = config_manager.get_llm_retries()
     backoff = config_manager.get_llm_backoff()
     enable_streaming_llm_call = config_manager.get_enable_streaming_llm_call()
 
-    # 1. 确定我们要尝试的 Provider 队列
+    # 1. Xác định hàng đợi provider cần thử.
     attempt_queue = []
 
-    # 尝试获取指定的 Provider
+    # Thử lấy provider được chỉ định.
     specific_provider_id = provider_id
     if not specific_provider_id:
         specific_provider_id = await get_provider_id_with_fallback(
@@ -283,16 +278,18 @@ async def call_provider_with_retry(
         attempt_queue.extend([(specific_provider_id, False)] * retries)
 
     if not attempt_queue:
-        logger.error("无可用 Provider，无法调用 llm_generate")
+        logger.error("Không có provider khả dụng để gọi llm_generate")
         return None
 
-    # 2. 核心请求执行闭包
+    # 2. Closure thực thi yêu cầu cốt lõi.
     async def _execute_llm_request(
         pid: str, r_format: JSONObject | None
     ) -> LLMResponse:
         cb = _get_circuit_breaker(pid)
         if not cb.allow_request():
-            logger.warning(f"Provider {pid} 熔断器已打开，跳过本次请求")
+            logger.warning(
+                f"Circuit breaker của provider {pid} đang mở, bỏ qua yêu cầu"
+            )
             raise Exception("Circuit breaker open")
 
         try:
@@ -320,31 +317,31 @@ async def call_provider_with_retry(
             cb.record_failure()
             raise err
 
-    # 3. 开始执行队列
+    # 3. Bắt đầu xử lý hàng đợi.
     last_exc = None
     current_response_format = response_format
 
-    # 记录上一次尝试的 Provider ID，用于判断是否发生切换
+    # Lưu Provider ID trước để phát hiện chuyển provider.
     previous_pid = None
-    # 惰性降级标记：仅在 primary provider 重试用尽后才 resolve fallback
+    # Chỉ resolve fallback sau khi hết lượt retry provider chính.
     needs_fallback = provider_id_key is not None
 
     for i, (current_pid, is_fallback) in enumerate(attempt_queue):
         attempt_num = i + 1
 
-        # 修复状态污染：如果切换了全新的 Provider，必须重置 response_format 约束
+        # Reset response_format khi chuyển sang provider mới.
         if current_pid != previous_pid:
             current_response_format = response_format
         previous_pid = current_pid
 
-        prefix = "[降级补偿] " if is_fallback else "[LLM 调用] "
+        prefix = "[Fallback] " if is_fallback else "[Gọi LLM] "
         logger.info(
-            f"{prefix}尝试 #{attempt_num} | Provider ID: {current_pid} | "
-            f"prompt长度={len(prompt) if prompt else 0}字符"
+            f"{prefix}Lần thử #{attempt_num} | Provider ID: {current_pid} | "
+            f"độ dài prompt={len(prompt) if prompt else 0} ký tự"
         )
 
         if not prompt or not prompt.strip():
-            logger.error("LLM provider: prompt 为空，无法调用")
+            logger.error("LLM provider: prompt rỗng, không thể gọi")
             return None
 
         try:
@@ -353,16 +350,16 @@ async def call_provider_with_retry(
         except Exception as e:
             last_exc = e
 
-            # 处理不支持 response_format 的情况
+            # Xử lý provider không hỗ trợ response_format.
             if (
                 current_response_format is not None
                 and _is_response_format_unsupported_error(e)
             ):
                 logger.warning(
-                    f"{prefix}当前 Provider 可能不支持 response_format，已自动降级为无 schema 约束。"
+                    f"{prefix}Provider hiện tại có thể không hỗ trợ response_format; tự chuyển sang không ràng buộc schema."
                 )
                 current_response_format = None
-                # 在当前尝试额度内立即再试一次剥离了 schema 的请求
+                # Thử lại ngay yêu cầu không có schema trong lượt hiện tại.
                 try:
                     return await _execute_llm_request(
                         current_pid, current_response_format
@@ -370,8 +367,8 @@ async def call_provider_with_retry(
                 except Exception as inner_e:
                     last_exc = inner_e
 
-            logger.warning(f"{prefix}请求失败: {last_exc}")
-            # 惰性降级：仅当所有 primary provider 的重试都耗尽后才 resolve 并注入 fallback
+            logger.warning(f"{prefix}Yêu cầu thất bại: {last_exc}")
+            # Chỉ resolve và thêm fallback khi hết retry provider chính.
             if not is_fallback and i == retries - 1 and needs_fallback:
                 fallback_provider_id = await get_provider_id_with_fallback(
                     context, config_manager, None, umo
@@ -387,46 +384,46 @@ async def call_provider_with_retry(
             if not is_last_attempt:
                 # Exponential backoff with jitter: backoff * (2 ^ (attempt_num - 1)) + random jitter
                 sleep_time = backoff * (2 ** (attempt_num - 1)) + random.uniform(0, 1)
-                logger.debug(f"等待 {sleep_time:.2f} 秒后重试...")
+                logger.debug(f"Chờ {sleep_time:.2f} giây trước khi thử lại...")
                 await asyncio.sleep(sleep_time)
 
-    logger.error(f"LLM请求队列全部耗尽，最终失败: {last_exc}")
+    logger.error(f"Đã dùng hết hàng đợi yêu cầu LLM, lỗi cuối: {last_exc}")
     return None
 
 
 def extract_token_usage(response) -> dict:
     """
-    从LLM响应中提取token使用统计
+    Trích xuất thống kê token từ phản hồi LLM.
 
     Args:
-        response: LLM响应对象
+        response: Đối tượng phản hồi LLM.
 
     Returns:
-        Token使用统计字典，包含prompt_tokens, completion_tokens, total_tokens
+        Dict gồm prompt_tokens, completion_tokens và total_tokens.
     """
     token_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     try:
-        # 1. 尝试直接获取 response.usage
+        # 1. Thử lấy trực tiếp response.usage.
         usage = getattr(response, "usage", None)
 
-        # 2. 尝试从 response.raw_completion.usage 获取 (兼容旧版)
+        # 2. Thử response.raw_completion.usage để tương thích bản cũ.
         if not usage and hasattr(response, "raw_completion"):
             usage = getattr(response.raw_completion, "usage", None)
 
-        # 3. 如果 response 本身就是 dict (某些特殊情况)
+        # 3. Xử lý trường hợp response là dict.
         if not usage and isinstance(response, dict):
             usage = response.get("usage")
 
         if usage:
-            # 优先检查 AstrBot 的 TokenUsage 对象字段 (input, output, total)
+            # Ưu tiên các trường của TokenUsage AstrBot.
             # AstrBot TokenUsage define: input (prop), output (attr), total (prop)
             if hasattr(usage, "input") and hasattr(usage, "output"):
                 token_usage["prompt_tokens"] = getattr(usage, "input", 0) or 0
                 token_usage["completion_tokens"] = getattr(usage, "output", 0) or 0
                 token_usage["total_tokens"] = getattr(usage, "total", 0) or 0
 
-            # 处理 usage 是字典的情况
+            # Xử lý usage dạng dict.
             elif isinstance(usage, dict):
                 token_usage["prompt_tokens"] = usage.get("prompt_tokens", 0) or 0
                 token_usage["completion_tokens"] = (
@@ -434,7 +431,7 @@ def extract_token_usage(response) -> dict:
                 )
                 token_usage["total_tokens"] = usage.get("total_tokens", 0) or 0
 
-            # 处理 OpenAI CompletionUsage 等标准对象
+            # Xử lý object chuẩn như OpenAI CompletionUsage.
             else:
                 token_usage["prompt_tokens"] = getattr(usage, "prompt_tokens", 0) or 0
                 token_usage["completion_tokens"] = (
@@ -445,19 +442,19 @@ def extract_token_usage(response) -> dict:
         return token_usage
 
     except Exception as e:
-        logger.error(f"提取token使用统计失败: {e}")
+        logger.error(f"Trích xuất thống kê token thất bại: {e}")
         return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
 
 def extract_response_text(response) -> str:
     """
-    从LLM响应中提取文本内容
+    Trích xuất nội dung văn bản từ phản hồi LLM.
 
     Args:
-        response: LLM响应对象
+        response: Đối tượng phản hồi LLM.
 
     Returns:
-        响应文本内容
+        Nội dung văn bản phản hồi.
     """
     try:
         if hasattr(response, "completion_text"):
@@ -465,5 +462,5 @@ def extract_response_text(response) -> str:
         else:
             return str(response)
     except Exception as e:
-        logger.error(f"提取响应文本失败: {e}")
+        logger.error(f"Trích xuất văn bản phản hồi thất bại: {e}")
         return ""

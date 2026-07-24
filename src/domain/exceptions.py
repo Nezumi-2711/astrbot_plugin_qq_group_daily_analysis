@@ -1,13 +1,13 @@
 """
-领域异常 - 领域层自定义异常
+Ngoại lệ domain - các ngoại lệ tuỳ chỉnh của tầng domain.
 
-该模块包含插件中使用的所有领域特定异常。
-这些异常是平台无关的，表示业务逻辑错误。
+Module này chứa các ngoại lệ đặc thù nghiệp vụ được plugin sử dụng.
+Các ngoại lệ độc lập với nền tảng và biểu diễn lỗi logic nghiệp vụ.
 """
 
 
 class DomainException(Exception):
-    """所有领域错误的基础异常。"""
+    """Ngoại lệ cơ sở cho mọi lỗi domain."""
 
     def __init__(self, message: str, code: str = "DOMAIN_ERROR"):
         self.message = message
@@ -16,33 +16,33 @@ class DomainException(Exception):
 
 
 # ============================================================================
-# 分析异常
+# Ngoại lệ phân tích
 # ============================================================================
 
 
 class AnalysisException(DomainException):
-    """分析相关错误的基础异常。"""
+    """Ngoại lệ cơ sở cho các lỗi liên quan đến phân tích."""
 
     def __init__(self, message: str, code: str = "ANALYSIS_ERROR"):
         super().__init__(message, code)
 
 
 class InsufficientDataException(AnalysisException):
-    """当数据不足以进行分析时抛出。"""
+    """Được phát sinh khi dữ liệu không đủ để phân tích."""
 
     def __init__(self, message: str = "Không đủ dữ liệu để phân tích"):
         super().__init__(message, "INSUFFICIENT_DATA")
 
 
 class AnalysisTimeoutException(AnalysisException):
-    """当分析超时时抛出。"""
+    """Được phát sinh khi phân tích quá thời gian cho phép."""
 
     def __init__(self, message: str = "Phân tích bị timeout"):
         super().__init__(message, "ANALYSIS_TIMEOUT")
 
 
 class LLMException(AnalysisException):
-    """当 LLM API 调用失败时抛出。"""
+    """Được phát sinh khi gọi API LLM thất bại."""
 
     def __init__(self, message: str = "Gọi API LLM thất bại", provider: str = ""):
         self.provider = provider
@@ -53,7 +53,7 @@ class LLMException(AnalysisException):
 
 
 class LLMRateLimitException(LLMException):
-    """当 LLM API 速率限制超出时抛出。"""
+    """Được phát sinh khi vượt quá giới hạn tốc độ của API LLM."""
 
     def __init__(
         self, message: str = "Vượt quá giới hạn tốc độ LLM", provider: str = ""
@@ -63,7 +63,7 @@ class LLMRateLimitException(LLMException):
 
 
 class LLMQuotaExceededException(LLMException):
-    """当 LLM API 配额超出时抛出。"""
+    """Được phát sinh khi vượt quá hạn ngạch của API LLM."""
 
     def __init__(self, message: str = "Vượt quá hạn ngạch LLM", provider: str = ""):
         super().__init__(message, provider)
@@ -71,12 +71,12 @@ class LLMQuotaExceededException(LLMException):
 
 
 # ============================================================================
-# 平台异常
+# Ngoại lệ nền tảng
 # ============================================================================
 
 
 class PlatformException(DomainException):
-    """平台相关错误的基础异常。"""
+    """Ngoại lệ cơ sở cho các lỗi liên quan đến nền tảng."""
 
     def __init__(self, message: str, platform: str = "", code: str = "PLATFORM_ERROR"):
         self.platform = platform
@@ -84,7 +84,7 @@ class PlatformException(DomainException):
 
 
 class PlatformNotSupportedException(PlatformException):
-    """当平台不被支持时抛出。"""
+    """Được phát sinh khi nền tảng không được hỗ trợ."""
 
     def __init__(self, platform: str):
         super().__init__(
@@ -95,21 +95,21 @@ class PlatformNotSupportedException(PlatformException):
 
 
 class PlatformConnectionException(PlatformException):
-    """当连接平台失败时抛出。"""
+    """Được phát sinh khi kết nối đến nền tảng thất bại."""
 
     def __init__(self, message: str = "Kết nối nền tảng thất bại", platform: str = ""):
         super().__init__(message, platform, "PLATFORM_CONNECTION_ERROR")
 
 
 class PlatformAPIException(PlatformException):
-    """当平台 API 调用失败时抛出。"""
+    """Được phát sinh khi gọi API nền tảng thất bại."""
 
     def __init__(self, message: str = "Gọi API nền tảng thất bại", platform: str = ""):
         super().__init__(message, platform, "PLATFORM_API_ERROR")
 
 
 class MessageFetchException(PlatformException):
-    """当获取消息失败时抛出。"""
+    """Được phát sinh khi lấy tin nhắn thất bại."""
 
     def __init__(
         self,
@@ -126,7 +126,7 @@ class MessageFetchException(PlatformException):
 
 
 class MessageSendException(PlatformException):
-    """当发送消息失败时抛出。"""
+    """Được phát sinh khi gửi tin nhắn thất bại."""
 
     def __init__(
         self,
@@ -143,19 +143,19 @@ class MessageSendException(PlatformException):
 
 
 # ============================================================================
-# 配置异常
+# Ngoại lệ cấu hình
 # ============================================================================
 
 
 class ConfigurationException(DomainException):
-    """配置相关错误的基础异常。"""
+    """Ngoại lệ cơ sở cho các lỗi liên quan đến cấu hình."""
 
     def __init__(self, message: str, code: str = "CONFIG_ERROR"):
         super().__init__(message, code)
 
 
 class InvalidConfigurationException(ConfigurationException):
-    """当配置无效时抛出。"""
+    """Được phát sinh khi cấu hình không hợp lệ."""
 
     def __init__(self, message: str = "Cấu hình không hợp lệ", key: str = ""):
         self.key = key
@@ -163,7 +163,7 @@ class InvalidConfigurationException(ConfigurationException):
 
 
 class MissingConfigurationException(ConfigurationException):
-    """当缺少必需配置时抛出。"""
+    """Được phát sinh khi thiếu cấu hình bắt buộc."""
 
     def __init__(self, key: str):
         self.key = key
@@ -171,19 +171,19 @@ class MissingConfigurationException(ConfigurationException):
 
 
 # ============================================================================
-# 仓储异常
+# Ngoại lệ repository
 # ============================================================================
 
 
 class RepositoryException(DomainException):
-    """仓储相关错误的基础异常。"""
+    """Ngoại lệ cơ sở cho các lỗi liên quan đến repository."""
 
     def __init__(self, message: str, code: str = "REPOSITORY_ERROR"):
         super().__init__(message, code)
 
 
 class DataNotFoundException(RepositoryException):
-    """当请求的数据未找到时抛出。"""
+    """Được phát sinh khi không tìm thấy dữ liệu được yêu cầu."""
 
     def __init__(
         self,
@@ -200,26 +200,26 @@ class DataNotFoundException(RepositoryException):
 
 
 class DataPersistenceException(RepositoryException):
-    """当数据持久化失败时抛出。"""
+    """Được phát sinh khi lưu trữ dữ liệu thất bại."""
 
     def __init__(self, message: str = "Lưu trữ dữ liệu thất bại"):
         super().__init__(message, "DATA_PERSISTENCE_ERROR")
 
 
 # ============================================================================
-# 调度异常
+# Ngoại lệ lập lịch
 # ============================================================================
 
 
 class SchedulingException(DomainException):
-    """调度相关错误的基础异常。"""
+    """Ngoại lệ cơ sở cho các lỗi liên quan đến lập lịch."""
 
     def __init__(self, message: str, code: str = "SCHEDULING_ERROR"):
         super().__init__(message, code)
 
 
 class TaskAlreadyScheduledException(SchedulingException):
-    """当尝试调度已调度的任务时抛出。"""
+    """Được phát sinh khi cố lập lịch cho tác vụ đã được lập lịch."""
 
     def __init__(self, task_id: str):
         self.task_id = task_id
@@ -229,7 +229,7 @@ class TaskAlreadyScheduledException(SchedulingException):
 
 
 class TaskNotFoundException(SchedulingException):
-    """当找不到已调度的任务时抛出。"""
+    """Được phát sinh khi không tìm thấy tác vụ đã lập lịch."""
 
     def __init__(self, task_id: str):
         self.task_id = task_id
@@ -239,12 +239,12 @@ class TaskNotFoundException(SchedulingException):
 
 
 # ============================================================================
-# 验证异常
+# Ngoại lệ xác thực
 # ============================================================================
 
 
 class ValidationException(DomainException):
-    """验证错误的基础异常。"""
+    """Ngoại lệ cơ sở cho các lỗi xác thực."""
 
     def __init__(self, message: str, field: str = "", code: str = "VALIDATION_ERROR"):
         self.field = field
@@ -252,7 +252,7 @@ class ValidationException(DomainException):
 
 
 class InvalidGroupIdException(ValidationException):
-    """当群组 ID 无效时抛出。"""
+    """Được phát sinh khi ID nhóm không hợp lệ."""
 
     def __init__(self, group_id: str):
         super().__init__(
@@ -261,7 +261,7 @@ class InvalidGroupIdException(ValidationException):
 
 
 class InvalidUserIdException(ValidationException):
-    """当用户 ID 无效时抛出。"""
+    """Được phát sinh khi ID thành viên không hợp lệ."""
 
     def __init__(self, user_id: str):
         super().__init__(
@@ -270,7 +270,7 @@ class InvalidUserIdException(ValidationException):
 
 
 class InvalidMessageException(ValidationException):
-    """当消息格式无效时抛出。"""
+    """Được phát sinh khi định dạng tin nhắn không hợp lệ."""
 
     def __init__(self, message: str = "Định dạng tin nhắn không hợp lệ"):
         super().__init__(message, "message", "INVALID_MESSAGE")

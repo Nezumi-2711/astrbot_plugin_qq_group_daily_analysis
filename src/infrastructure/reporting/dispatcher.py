@@ -12,8 +12,7 @@ from ...utils.logger import logger
 
 class ReportDispatcher:
     """
-    报告分发器
-    负责协调报告生成、格式选择、消息发送和失败重试
+    Bộ phân phối báo cáo, điều phối tạo báo cáo, chọn định dạng, gửi và fallback.
     """
 
     def __init__(
@@ -28,7 +27,7 @@ class ReportDispatcher:
         self._html_render_func: Callable | None = None
 
     def set_html_render(self, render_func: Callable):
-        """设置 HTML 渲染函数 (运行时注入)"""
+        """Thiết lập hàm render HTML được inject lúc runtime."""
         self._html_render_func = render_func
 
     def _is_qq_official(self, platform_id: str | None) -> bool:
@@ -42,13 +41,13 @@ class ReportDispatcher:
         platform_id: str | None = None,
     ):
         """
-        分发分析报告
+        Phân phối báo cáo phân tích.
         """
         trace_id = TraceContext.get()
         output_formats = self.config_manager.get_output_format()
 
         logger.info(
-            f"[{trace_id}] 正在分发群 {group_id} 的报告 (格式: {', '.join(output_formats)})"
+            f"[{trace_id}] Đang phân phối báo cáo cho nhóm {group_id} (định dạng: {', '.join(output_formats)})"
         )
 
         dispatch_map = {
@@ -61,22 +60,24 @@ class ReportDispatcher:
             if handler:
                 await handler(group_id, analysis_result, platform_id)
 
-        logger.info(f"[{trace_id}] 群 {group_id} 的报告分发完成")
+        logger.info(f"[{trace_id}] Hoàn tất phân phối báo cáo cho nhóm {group_id}")
 
     async def _dispatch_image(
         self, group_id: str, analysis_result: dict[str, Any], platform_id: str | None
     ) -> bool:
         trace_id = TraceContext.get()
-        # 1. 检查渲染函数
+        # 1. Kiểm tra hàm render.
         if not self._html_render_func:
-            logger.warning(f"[{trace_id}] 未设置 HTML 渲染函数，回退到文本模式。")
+            logger.warning(
+                f"[{trace_id}] Chưa thiết lập hàm render HTML, chuyển sang văn bản"
+            )
             return await self._dispatch_text(group_id, analysis_result, platform_id)
 
-        # 2. 生成图片
+        # 2. Tạo ảnh.
         image_url = None
         html_content = None
         try:
-            # 定义头像获取回调，请求小尺寸头像以优化性能
+            # Callback lấy avatar kích thước nhỏ để tối ưu hiệu năng.
             async def avatar_url_getter(user_id: str):
                 if not platform_id:
                     return None
@@ -94,10 +95,10 @@ class ReportDispatcher:
                 allow_alphanumeric_user_ids=self._is_qq_official(platform_id),
             )
         except Exception as e:
-            logger.error(f"[{trace_id}] Failed to generate image report: {e}")
+            logger.error(f"[{trace_id}] Tạo báo cáo ảnh thất bại: {e}")
             # image_url and html_content remain None
 
-        # 4. 发送图片
+        # 4. Gửi ảnh.
         sent = False
         if image_url:
             caption = (
@@ -109,16 +110,16 @@ class ReportDispatcher:
                 group_id, image_url, caption, platform_id
             )
 
-            # 5. 尝试上传到群文件/群相册（静默处理）
-            # 无论消息发送是否成功（如超时回退），只要图片生成了，就尝试备份到群文件
+            # 5. Thử upload vào tệp/album nhóm và chỉ ghi log khi lỗi.
+            # Nếu ảnh đã tạo thì luôn thử sao lưu dù gửi tin nhắn có thành công hay không.
             await self._try_upload_image(group_id, image_url, platform_id)
 
         if sent:
             return True
 
-        # 6. 最终回退：如果图片发送失败（包括生成失败或发送接口报错），直接尝试发送文本报告
+        # 6. Fallback cuối: gửi báo cáo văn bản nếu ảnh thất bại.
         logger.warning(
-            f"[{trace_id}] Image dispatch failed, falling back to text report."
+            f"[{trace_id}] Phân phối ảnh thất bại, chuyển sang báo cáo văn bản"
         )
         return await self._dispatch_text(group_id, analysis_result, platform_id)
 
@@ -146,7 +147,7 @@ class ReportDispatcher:
                 allow_alphanumeric_user_ids=self._is_qq_official(platform_id),
             )
         except Exception as e:
-            logger.error(f"[{trace_id}] Failed to generate HTML report: {e}")
+            logger.error(f"[{trace_id}] Tạo báo cáo HTML thất bại: {e}")
 
         if html_path:
             is_only_url = self.config_manager.get_html_only_url()
@@ -154,10 +155,10 @@ class ReportDispatcher:
 
             if is_only_url:
                 if base_url and base_url.strip():
-                    # 获取配置的目录
+                    # Lấy thư mục đã cấu hình.
                     html_output_dir = self.config_manager.get_html_output_dir()
 
-                    # 若用户配置为空，使用默认目录
+                    # Dùng thư mục mặc định nếu cấu hình rỗng.
                     if not html_output_dir:
                         from astrbot.api.star import StarTools
 
@@ -166,14 +167,14 @@ class ReportDispatcher:
                             "self_hosted_html_reports",
                         )
 
-                    # 计算相对路径并转换为URL
+                    # Tính đường dẫn tương đối và chuyển thành URL.
                     rel_path = os.path.relpath(html_path, html_output_dir)
                     url_path = rel_path.replace(os.sep, "/")
                     report_url = f"{base_url.rstrip('/')}/{url_path.lstrip('/')}"
 
                     sent = await self.message_sender.send_text(
                         group_id,
-                        f"📊 今日群聊分析报告已生成：\n{report_url}",
+                        f"📊 Báo cáo phân tích nhóm hôm nay đã sẵn sàng:\n{report_url}",
                         platform_id,
                     )
 
@@ -181,7 +182,7 @@ class ReportDispatcher:
                         return True
                 else:
                     logger.warning(
-                        f"[{trace_id}] 群 {group_id} 开启了仅发送外链，但未配置 html_base_url，已进行降级，回退至发送 HTML 文件。"
+                        f"[{trace_id}] Nhóm {group_id} chỉ bật gửi liên kết nhưng chưa cấu hình html_base_url; chuyển sang gửi tệp HTML"
                     )
 
             caption = (
@@ -200,15 +201,15 @@ class ReportDispatcher:
                 return True
 
         logger.warning(
-            f"[{trace_id}] HTML dispatch failed, falling back to text report."
+            f"[{trace_id}] Phân phối HTML thất bại, chuyển sang báo cáo văn bản"
         )
         return await self._dispatch_text(group_id, analysis_result, platform_id)
 
     async def _dispatch_text(
         self, group_id: str, analysis_result: dict[str, Any], platform_id: str | None
     ) -> bool:
-        """分发文本报告"""
-        logger.info(f"[分发器] 正在向群组 {group_id} 分发文本报告")
+        """Phân phối báo cáo văn bản."""
+        logger.info(f"[Bộ phân phối] Đang gửi báo cáo văn bản tới nhóm {group_id}")
         is_qq_official = self._is_qq_official(platform_id)
         fallback_report = None
         if is_qq_official:
@@ -221,8 +222,10 @@ class ReportDispatcher:
         else:
             text_report = self.report_generator.generate_text_report(analysis_result)
         adapter = self.message_sender.bot_manager.get_adapter(platform_id)
-        # 尝试通过适配器发送文本报告
-        logger.info(f"[分发器] 正在尝试通过适配器发送文本报告。群: {group_id}")
+        # Thử gửi báo cáo văn bản qua adapter.
+        logger.info(
+            f"[Bộ phân phối] Đang thử gửi báo cáo văn bản qua adapter, nhóm: {group_id}"
+        )
         try:
             if adapter:
                 if is_qq_official:
@@ -235,14 +238,18 @@ class ReportDispatcher:
                 elif await adapter.send_text_report(group_id, text_report):
                     return True
             return await self.message_sender.send_text(
-                group_id, f"📊 每日群聊分析报告：\n\n{text_report}", platform_id
+                group_id,
+                f"📊 Báo cáo phân tích nhóm hằng ngày:\n\n{text_report}",
+                platform_id,
             )
         except Exception as e:
-            logger.error(f"[分发器] 发送文本报告最终失败。群: {group_id}, 错误: {e}")
+            logger.error(
+                f"[Bộ phân phối] Gửi báo cáo văn bản thất bại, nhóm: {group_id}, lỗi: {e}"
+            )
             return False
 
     # ================================================================
-    # 图片报告上传到群文件 / 群相册（仅 QQ 平台 image 格式）
+    # Upload báo cáo ảnh vào tệp/album nhóm, chỉ cho định dạng ảnh trên QQ.
     # ================================================================
 
     async def _try_upload_image(
@@ -252,31 +259,31 @@ class ReportDispatcher:
         platform_id: str | None,
     ):
         """
-        尝试将图片报告上传到群文件和/或群相册。
+        Thử upload báo cáo ảnh vào tệp và/hoặc album nhóm.
 
-        仅在配置启用且平台为 OneBot 时执行，失败静默处理。
+        Chỉ thực hiện khi bật cấu hình và nền tảng là OneBot; lỗi chỉ ghi log.
         """
         enable_file = self.config_manager.get_enable_group_file_upload()
         enable_album = self.config_manager.get_enable_group_album_upload()
         if not enable_file and not enable_album:
             return
 
-        # 仅 OneBot 平台支持
+        # Chỉ OneBot hỗ trợ.
         adapter = self._get_onebot_adapter(platform_id)
         if not adapter:
             return
 
-        # 将图片保存为临时文件
+        # Lưu ảnh thành tệp tạm.
         image_file = self._save_image_to_temp(image_url, group_id)
         if not image_file:
             return
 
         try:
-            # 上传到群文件
+            # Upload vào tệp nhóm.
             if enable_file:
                 await self._do_upload_group_file(adapter, group_id, image_file)
 
-            # 上传到群相册
+            # Upload vào album nhóm.
             if enable_album:
                 await self._do_upload_group_album(adapter, group_id, image_file)
         finally:
@@ -286,7 +293,7 @@ class ReportDispatcher:
                 pass
 
     async def _do_upload_group_file(self, adapter, group_id: str, file_path: str):
-        """上传文件到群文件目录，失败静默"""
+        """Upload tệp vào thư mục nhóm; lỗi chỉ ghi log."""
         try:
             folder_name = self.config_manager.get_group_file_folder()
             folder_id = None
@@ -298,10 +305,10 @@ class ReportDispatcher:
                 folder_id=folder_id,
             )
         except Exception as e:
-            logger.warning(f"群文件上传失败 (群 {group_id}): {e}")
+            logger.warning(f"Upload tệp nhóm thất bại (nhóm {group_id}): {e}")
 
     async def _do_upload_group_album(self, adapter, group_id: str, file_path: str):
-        """上传图片到群相册，失败静默"""
+        """Upload ảnh vào album nhóm; lỗi chỉ ghi log."""
         try:
             album_name = self.config_manager.get_group_album_name()
             strict_mode = self.config_manager.get_group_album_strict_mode()
@@ -312,12 +319,12 @@ class ReportDispatcher:
                     album_id = await adapter.find_album_id(group_id, album_name)
                     if not album_id and strict_mode:
                         logger.info(
-                            f"群相册严格模式开启：在群 {group_id} 中未找到名为 '{album_name}' 的相册，停止上传。"
+                            f"Đã bật chế độ album nghiêm ngặt: không tìm thấy album '{album_name}' trong nhóm {group_id}, dừng upload"
                         )
                         return
                 elif strict_mode:
                     logger.info(
-                        f"群相册严格模式开启：未设置目标相册名称，停止上传以防止操作群 {group_id} 的默认相册。"
+                        f"Đã bật chế độ album nghiêm ngặt nhưng chưa đặt tên album đích; dừng để tránh thao tác album mặc định của nhóm {group_id}"
                     )
                     return
 
@@ -329,10 +336,10 @@ class ReportDispatcher:
                 strict_mode=strict_mode,
             )
         except Exception as e:
-            logger.warning(f"群相册上传失败 (群 {group_id}): {e}")
+            logger.warning(f"Upload album nhóm thất bại (nhóm {group_id}): {e}")
 
     def _save_image_to_temp(self, image_url: str, group_id: str) -> str | None:
-        """将 base64 图片保存为临时 PNG 文件，返回路径。失败返回 None。"""
+        """Lưu ảnh Base64 thành PNG tạm và trả về đường dẫn hoặc None."""
         try:
             image_data = None
             if image_url.startswith("base64://"):
@@ -353,17 +360,18 @@ class ReportDispatcher:
 
             date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
             path = os.path.join(
-                tempfile.gettempdir(), f"群聊分析报告_{group_id}_{date_str}.png"
+                tempfile.gettempdir(),
+                f"bao_cao_phan_tich_nhom_{group_id}_{date_str}.png",
             )
             with open(path, "wb") as f:
                 f.write(image_data)
             return path
         except Exception as e:
-            logger.debug(f"保存图片到临时文件失败: {e}")
+            logger.debug(f"Lưu ảnh vào tệp tạm thất bại: {e}")
             return None
 
     def _get_onebot_adapter(self, platform_id: str | None):
-        """获取 OneBot 适配器，非 OneBot 平台返回 None。"""
+        """Lấy adapter OneBot hoặc None cho nền tảng khác."""
         if not platform_id:
             return None
         adapter = self.message_sender.bot_manager.get_adapter(platform_id)

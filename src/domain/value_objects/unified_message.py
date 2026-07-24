@@ -1,7 +1,7 @@
 """
-统一消息值对象 - 跨平台核心抽象
+Value object tin nhắn thống nhất - lớp trừu tượng cốt lõi đa nền tảng.
 
-所有平台消息都转换为此格式进行分析。
+Tin nhắn từ mọi nền tảng đều được chuyển sang định dạng này để phân tích.
 """
 
 from dataclasses import dataclass, field
@@ -12,9 +12,9 @@ from typing import Any
 
 class MessageContentType(Enum):
     """
-    枚举：消息内容类型
+    Enum loại nội dung tin nhắn.
 
-    用于标识 MessageContent 的具体类型。
+    Dùng để xác định loại cụ thể của ``MessageContent``.
     """
 
     TEXT = "text"
@@ -33,19 +33,19 @@ class MessageContentType(Enum):
 @dataclass(frozen=True)
 class MessageContent:
     """
-    值对象：消息内容段
+    Value object biểu diễn một phân đoạn nội dung tin nhắn.
 
-    表示消息链中的一个组成部分（如文本、图片、表情等）。
-    该对象是不可变的，用于保证数据流的纯净。
+    Biểu diễn một thành phần trong chuỗi tin nhắn, chẳng hạn văn bản,
+    hình ảnh hoặc biểu cảm. Đối tượng bất biến để đảm bảo luồng dữ liệu sạch.
 
     Attributes:
-        type (MessageContentType): 内容类型
-        text (str): 文本内容（仅当类型为 TEXT 或包含文本描述时）
-        url (str): 资源链接（图片、视频、文件等）
-        emoji_id (str): 表情 ID
-        emoji_name (str): 表情名称
-        at_user_id (str): 被 @ 的用户 ID
-        raw_data (Any): 平台原始数据，用于扩展
+        type: Loại nội dung.
+        text: Nội dung văn bản khi loại là TEXT hoặc có mô tả văn bản.
+        url: Liên kết tài nguyên như hình ảnh, video hoặc tệp.
+        emoji_id: ID biểu cảm.
+        emoji_name: Tên biểu cảm.
+        at_user_id: ID thành viên được nhắc đến.
+        raw_data: Dữ liệu nền tảng gốc dùng cho mục đích mở rộng.
     """
 
     type: MessageContentType
@@ -57,17 +57,17 @@ class MessageContent:
     raw_data: Any = None
 
     def is_text(self) -> bool:
-        """检查是否为文本内容。"""
+        """Kiểm tra đây có phải nội dung văn bản hay không."""
         return self.type == MessageContentType.TEXT
 
     def is_emoji(self) -> bool:
-        """检查是否为表情内容。"""
+        """Kiểm tra đây có phải nội dung biểu cảm hay không."""
         return self.type == MessageContentType.EMOJI
 
     @property
     def target_id(self) -> str:
         """
-        获取被 @ 的用户 ID（兼容旧代码）。
+        Lấy ID thành viên được nhắc đến để tương thích mã cũ.
 
         Alias for at_user_id.
         """
@@ -77,101 +77,102 @@ class MessageContent:
 @dataclass(frozen=True)
 class UnifiedMessage:
     """
-    核心值对象：统一消息格式
+    Value object cốt lõi biểu diễn định dạng tin nhắn thống nhất.
 
-    跨平台抽象层，将不同平台的原始消息转换为统一格式进行分析。
-    采用“只读”设计，确保分析逻辑的一致性。
+    Lớp trừu tượng đa nền tảng chuyển tin nhắn gốc sang một định dạng chung
+    để phân tích. Thiết kế chỉ đọc đảm bảo logic phân tích nhất quán.
 
     Attributes:
-        message_id (str): 消息唯一标识符
-        sender_id (str): 发送者唯一 ID
-        sender_name (str): 发送者昵称
-        group_id (str): 群组/会话唯一 ID
-        text_content (str): 经过清洗后的纯文本内容，主要用于 LLM 分析
-        contents (tuple[MessageContent, ...]): 结构化消息链
-        timestamp (int): Unix 时间戳（秒）
-        platform (str): 来源平台名称（如 onebot, discord 等）
-        reply_to_id (str, optional): 被回复的消息 ID
-        sender_card (str, optional): 平台特定的群名片或特别备注
+        message_id: Mã định danh duy nhất của tin nhắn.
+        sender_id: ID duy nhất của người gửi.
+        sender_name: Biệt danh người gửi.
+        group_id: ID duy nhất của nhóm hoặc cuộc trò chuyện.
+        text_content: Nội dung văn bản thuần đã làm sạch, chủ yếu dùng cho LLM.
+        contents: Chuỗi nội dung tin nhắn có cấu trúc.
+        timestamp: Unix timestamp tính bằng giây.
+        platform: Tên nền tảng nguồn, ví dụ OneBot hoặc Discord.
+        reply_to_id: ID tin nhắn được trả lời.
+        sender_card: Tên hiển thị hoặc ghi chú riêng của nền tảng.
     """
 
-    # 基础标识
+    # Thông tin định danh cơ bản
     message_id: str
     sender_id: str
     sender_name: str
     group_id: str
 
-    # 消息内容
+    # Nội dung tin nhắn
     text_content: str
     contents: tuple[MessageContent, ...] = field(default_factory=tuple)
 
-    # 时间信息
+    # Thông tin thời gian
     timestamp: int = 0
 
-    # 平台信息
+    # Thông tin nền tảng
     platform: str = "unknown"
 
-    # 可选信息
+    # Thông tin tuỳ chọn
     reply_to_id: str | None = None
     sender_card: str | None = None
 
-    # 分析辅助方法
+    # Phương thức hỗ trợ phân tích
     def has_text(self) -> bool:
         """
-        判断消息是否包含非空文本。
+        Kiểm tra tin nhắn có chứa văn bản không rỗng hay không.
 
         Returns:
-            bool: 包含有效文本则返回 True
+            ``True`` nếu tin nhắn chứa văn bản hợp lệ.
         """
         return bool(self.text_content.strip())
 
     def get_display_name(self) -> str:
         """
-        获取用户显示名称。
-        优先级：群名片 > 昵称 > 用户 ID。
+        Lấy tên hiển thị của thành viên.
+
+        Thứ tự ưu tiên: tên trong nhóm, biệt danh, ID thành viên.
 
         Returns:
-            str: 格式化后的显示名称
+            Tên hiển thị đã định dạng.
         """
         return self.sender_card or self.sender_name or self.sender_id
 
     def get_emoji_count(self) -> int:
         """
-        计算消息链中包含的表情数量。
+        Tính số biểu cảm có trong chuỗi tin nhắn.
 
         Returns:
-            int: 表情总数
+            Tổng số biểu cảm.
         """
         return sum(1 for c in self.contents if c.is_emoji())
 
     def get_text_length(self) -> int:
         """
-        获取文本内容的字符长度。
+        Lấy độ dài ký tự của nội dung văn bản.
 
         Returns:
-            int: 字符数
+            Số ký tự.
         """
         return len(self.text_content)
 
     def get_datetime(self) -> datetime:
         """
-        将 Unix 时间戳转换为 datetime 对象。
+        Chuyển Unix timestamp thành đối tượng ``datetime``.
 
         Returns:
-            datetime: 本地化后的时间对象
+            Đối tượng thời gian theo múi giờ cục bộ.
         """
         return datetime.fromtimestamp(self.timestamp)
 
     def to_analysis_format(self) -> str:
         """
-        转换为供 LLM 消费的分析格式。
+        Chuyển sang định dạng phân tích dành cho LLM.
 
         Returns:
-            str: 格式如 "[用户名]: 消息内容" 的字符串
+            Chuỗi có dạng ``[tên thành viên]: nội dung tin nhắn``.
         """
         name = self.get_display_name()
         return f"[{name}]: {self.text_content}"
 
 
-# 类型别名
+# Bí danh kiểu dữ liệu
 MessageList = list[UnifiedMessage]

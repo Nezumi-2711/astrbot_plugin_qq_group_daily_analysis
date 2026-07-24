@@ -1,11 +1,8 @@
 """
-Discord 平台适配器
+Adapter nền tảng Discord.
 
-为 Discord 平台提供消息获取、发送和群组管理功能。
-这是一个骨架实现，展示如何为新平台创建适配器。
-
-注意：Discord 的消息获取需要使用 Discord API，
-具体实现取决于 AstrBot 的 Discord 集成方式。
+Cung cấp khả năng lấy và gửi tin nhắn cùng quản lý nhóm. Việc lấy tin nhắn
+phụ thuộc cách AstrBot tích hợp Discord API.
 """
 
 from datetime import datetime, timedelta
@@ -33,47 +30,47 @@ from ..base import PlatformAdapter
 
 class DiscordAdapter(PlatformAdapter):
     """
-    具体实现：Discord 平台适配器
+    Triển khai adapter nền tảng Discord.
 
-    利用 Discord API 为群组（频道）提供消息获取、发送及基础元数据查询功能。
-    由于 Discord 的高度异步特性和复杂的权限模型，该适配器集成了懒加载客户端和多级频道查询机制。
+    Dùng Discord API để lấy/gửi tin nhắn và truy vấn metadata cơ bản cho kênh.
+    Adapter tích hợp lazy loading client và cơ chế truy vấn kênh nhiều cấp.
 
     Attributes:
-        bot_user_id (str): 机器人自身的 Discord 用户 ID
+        bot_user_id: ID Discord của bot.
     """
 
     def __init__(self, bot_instance: Any, config: dict | None = None):
         """
-        初始化 Discord 适配器。
+        Khởi tạo adapter Discord.
 
         Args:
-            bot_instance (Any): 宿主机器人实例
-            config (dict, optional): 配置项，用于提取机器人自身的 Discord ID
+            bot_instance: Instance bot chủ quản.
+            config: Cấu hình dùng để lấy ID Discord của bot.
         """
         super().__init__(bot_instance, config)
-        # 机器人自己的用户 ID，用于消息过滤（避免分析博取回复）
+        # ID của bot dùng để lọc tin nhắn do bot gửi.
         self.bot_user_id = str(config.get("bot_user_id", "")) if config else ""
 
-        # 缓存 Discord 客户端（Lazy Loading）
+        # Cache Discord client theo lazy loading.
         self._cached_client = None
 
     @property
     def _discord_client(self) -> Any:
         """
-        内部属性：获取实际的 Discord 客户端实例。
+        Lấy instance Discord client thực tế.
 
-        具备懒加载和自动身份嗅探功能。
+        Hỗ trợ lazy loading và tự nhận diện client.
 
         Returns:
-            Any: Discord Client 对象
+            Đối tượng Discord Client.
         """
         if self._cached_client:
             return self._cached_client
 
-        # 执行路径探测逻辑，兼容不同版本的 AstrBot 宿主结构
+        # Dò đường dẫn để tương thích nhiều cấu trúc AstrBot.
         self._cached_client = self._get_discord_client()
 
-        # 兜底：尝试从客户端连接状态中补全机器人 ID
+        # Fallback: lấy ID bot từ trạng thái kết nối client.
         if not self.bot_user_id and self._cached_client:
             if hasattr(self._cached_client, "user") and self._cached_client.user:
                 self.bot_user_id = str(self._cached_client.user.id)
@@ -81,27 +78,27 @@ class DiscordAdapter(PlatformAdapter):
         return self._cached_client
 
     def _get_discord_client(self) -> Any:
-        """内部方法：通过多级探测从 bot_instance 中提取 Discord SDK 客户端。"""
-        # 路径 A：bot 本身就是 Client (如小型集成)
+        """Dò nhiều cấp để lấy Discord SDK client từ bot_instance."""
+        # Đường A: bot chính là Client.
         if hasattr(self.bot, "get_channel"):
             return self.bot
-        # 路径 B：bot 是包装器，client 在标准成员变量中
+        # Đường B: bot là wrapper và client nằm trong thuộc tính chuẩn.
         if hasattr(self.bot, "client"):
             return self.bot.client
-        # 路径 C：其他常见私有属性名
+        # Đường C: các tên thuộc tính riêng phổ biến khác.
         for attr in ("_client", "discord_client", "_discord_client"):
             if hasattr(self.bot, attr):
                 client = getattr(self.bot, attr)
                 if hasattr(client, "get_channel"):
                     return client
-        logger.warning(f"无法从 {type(self.bot).__name__} 中提取 Discord 客户端实例")
+        logger.warning(f"Không thể lấy Discord client từ {type(self.bot).__name__}")
         return None
 
     def _init_capabilities(self) -> PlatformCapabilities:
-        """返回预定义的 Discord 平台能力集。"""
+        """Trả về bộ năng lực Discord được định nghĩa sẵn."""
         return DISCORD_CAPABILITIES
 
-    # ==================== IMessageRepository 实现 ====================
+    # ==================== Triển khai IMessageRepository ====================
 
     async def fetch_messages(
         self,
@@ -112,36 +109,38 @@ class DiscordAdapter(PlatformAdapter):
         since_ts: int | None = None,
     ) -> list[UnifiedMessage]:
         """
-        从 Discord 频道异步拉取历史消息记录。
+        Lấy bất đồng bộ lịch sử tin nhắn từ kênh Discord.
 
         Args:
-            group_id (str): Discord 频道 (Channel) ID
-            days (int): 查询天数范围
-            max_count (int): 最大拉取消息数量上限
-            before_id (str, optional): 锚点消息 ID，从此之前开始拉取
+            group_id: ID kênh Discord.
+            days: Phạm vi số ngày truy vấn.
+            max_count: Số tin nhắn tối đa.
+            before_id: ID tin nhắn mốc; lấy các tin trước đó.
 
         Returns:
-            list[UnifiedMessage]: 统一格式的消息对象列表
+            Danh sách tin nhắn định dạng thống nhất.
         """
         if not discord:
-            logger.error("未找到 Discord 模块 (py-cord)，无法拉取历史消息。")
+            logger.error(
+                "Không tìm thấy module Discord (py-cord), không thể lấy lịch sử"
+            )
             return []
 
         try:
             channel_id = int(group_id)
-            # 先从缓存尝试获取频道
+            # Thử lấy kênh từ cache trước.
             channel = self._discord_client.get_channel(channel_id)
             if not channel:
-                # 缓存未命中则通过网络 fetch
+                # Nếu cache miss thì fetch qua mạng.
                 try:
                     channel = await self._discord_client.fetch_channel(channel_id)
                 except Exception as e:
-                    logger.debug(f"拉取 Discord 频道 {group_id} 失败: {e}")
+                    logger.debug(f"Lấy kênh Discord {group_id} thất bại: {e}")
                     return []
 
-            # 验证权限：确保支持历史消息流
+            # Xác thực hỗ trợ truy cập lịch sử.
             if not hasattr(channel, "history"):
-                logger.warning(f"频道 {group_id} 不支持历史消息访问。")
+                logger.warning(f"Kênh {group_id} không hỗ trợ truy cập lịch sử")
                 return []
 
             if since_ts and since_ts > 0:
@@ -152,18 +151,18 @@ class DiscordAdapter(PlatformAdapter):
 
             messages = []
 
-            # 构建 Discord SDK 的 history 查询参数
+            # Xây dựng tham số truy vấn history cho Discord SDK.
             history_kwargs = {"limit": max_count, "after": start_time}
             if before_id:
                 try:
-                    # 使用 Snowflake ID 指向特定消息
+                    # Dùng Snowflake ID để trỏ tới tin nhắn cụ thể.
                     history_kwargs["before"] = discord.Object(id=int(before_id))
                 except (ValueError, TypeError):
                     pass
 
-            # 消息迭代处理
+            # Duyệt và xử lý tin nhắn.
             async for msg in channel.history(**history_kwargs):
-                # 排除机器人自身发布的消息
+                # Loại tin nhắn do chính bot gửi.
                 if self.bot_user_id and str(msg.author.id) == self.bot_user_id:
                     continue
 
@@ -171,7 +170,7 @@ class DiscordAdapter(PlatformAdapter):
                 if unified:
                     messages.append(unified)
 
-            # 排序回升序（SDK 通常返回降序）
+            # Sắp xếp tăng dần vì SDK thường trả về giảm dần.
             messages.sort(key=lambda m: m.timestamp)
             return messages
 
@@ -180,17 +179,17 @@ class DiscordAdapter(PlatformAdapter):
             return []
 
     def _convert_message(self, raw_msg: Any, group_id: str) -> UnifiedMessage | None:
-        """内部方法：将 `discord.Message` 对象转换为统一的 `UnifiedMessage`。"""
+        """Chuyển ``discord.Message`` thành ``UnifiedMessage``."""
         try:
             contents = []
 
-            # 1. 基础文本
+            # 1. Văn bản cơ bản.
             if raw_msg.content:
                 contents.append(
                     MessageContent(type=MessageContentType.TEXT, text=raw_msg.content)
                 )
 
-            # 2. 附件处理 (图片/视频/语音/普通文件)
+            # 2. Xử lý tệp đính kèm: ảnh, video, âm thanh và tệp thường.
             for attachment in raw_msg.attachments:
                 content_type = attachment.content_type or ""
                 if content_type.startswith("image/"):
@@ -223,7 +222,7 @@ class DiscordAdapter(PlatformAdapter):
                         )
                     )
 
-            # 3. 嵌入内容处理 (部分 Embed 可能包含富文本描述)
+            # 3. Xử lý nội dung embed có mô tả rich text.
             for embed in raw_msg.embeds:
                 if embed.image:
                     contents.append(
@@ -239,12 +238,12 @@ class DiscordAdapter(PlatformAdapter):
                         )
                     )
 
-            # 4. 贴纸处理 (Stickers)
+            # 4. Xử lý sticker.
             if raw_msg.stickers:
                 for sticker in raw_msg.stickers:
                     contents.append(
                         MessageContent(
-                            type=MessageContentType.IMAGE,  # 贴纸在逻辑上按图片处理
+                            type=MessageContentType.IMAGE,  # Xử lý sticker như ảnh.
                             url=sticker.url,
                             raw_data={
                                 "sticker_id": str(sticker.id),
@@ -253,7 +252,7 @@ class DiscordAdapter(PlatformAdapter):
                         )
                     )
 
-            # 确定发送者的显示名称（服务器昵称 > 全局名称 > 用户名）
+            # Tên hiển thị: biệt danh server > tên toàn cục > username.
             sender_card = None
             if hasattr(raw_msg.author, "nick") and raw_msg.author.nick:
                 sender_card = raw_msg.author.nick
@@ -275,11 +274,11 @@ class DiscordAdapter(PlatformAdapter):
                 else None,
             )
         except Exception as e:
-            logger.debug(f"Discord 消息转换错误: {e}")
+            logger.debug(f"Lỗi chuyển đổi tin nhắn Discord: {e}")
             return None
 
     def convert_to_raw_format(self, messages: list[UnifiedMessage]) -> list[dict]:
-        """将统一格式降级转换为 OneBot 风格的字典，以适配下游组件。"""
+        """Chuyển định dạng thống nhất thành dict kiểu OneBot cho tầng sau."""
         raw_messages = []
         for msg in messages:
             raw_msg = {
@@ -292,7 +291,7 @@ class DiscordAdapter(PlatformAdapter):
                     "card": msg.sender_card,
                 },
                 "message": [],
-                "user_id": msg.sender_id,  # 后向兼容
+                "user_id": msg.sender_id,  # Tương thích ngược.
             }
 
             for content in msg.contents:
@@ -323,7 +322,7 @@ class DiscordAdapter(PlatformAdapter):
             raw_messages.append(raw_msg)
         return raw_messages
 
-    # ==================== IMessageSender 实现 ====================
+    # ==================== Triển khai IMessageSender ====================
 
     async def send_text(
         self,
@@ -332,15 +331,15 @@ class DiscordAdapter(PlatformAdapter):
         reply_to: str | None = None,
     ) -> bool:
         """
-        向 Discord 频道发送文本消息。
+        Gửi tin nhắn văn bản tới kênh Discord.
 
         Args:
-            group_id (str): 频道 ID
-            text (str): 文本内容
-            reply_to (str, optional): 引用的消息 ID
+            group_id: ID kênh.
+            text: Nội dung văn bản.
+            reply_to: ID tin nhắn được trả lời.
 
         Returns:
-            bool: 是否发送成功
+            True nếu gửi thành công.
         """
         if not discord:
             return False
@@ -366,7 +365,7 @@ class DiscordAdapter(PlatformAdapter):
             await channel.send(content=text, reference=reference)
             return True
         except Exception as e:
-            logger.error(f"Discord 文本发送失败: {e}")
+            logger.error(f"Gửi văn bản Discord thất bại: {e}")
             return False
 
     async def send_image(
@@ -376,17 +375,17 @@ class DiscordAdapter(PlatformAdapter):
         caption: str = "",
     ) -> bool:
         """
-        向 Discord 频道异步发送图片。
+        Gửi ảnh bất đồng bộ tới kênh Discord.
 
-        对于远程 URL，会先下载到内存再通过 Discord API 发送。
+        URL từ xa được tải vào bộ nhớ trước khi gửi qua Discord API.
 
         Args:
-            group_id (str): 频道 ID
-            image_path (str): 本地路径或 http URL
-            caption (str): 可选说明文字
+            group_id: ID kênh.
+            image_path: Đường dẫn cục bộ hoặc URL HTTP.
+            caption: Chú thích tuỳ chọn.
 
         Returns:
-            bool: 是否发送成功
+            True nếu gửi thành công.
         """
         if not discord:
             return False
@@ -402,7 +401,7 @@ class DiscordAdapter(PlatformAdapter):
 
             file_to_send = None
             if image_path.startswith("base64://"):
-                # Base64 图片：解码 -> 内存 Object -> Discord
+                # Ảnh Base64: decode -> object trong bộ nhớ -> Discord.
                 import base64  # Fix: Ensure base64 is imported
                 from io import BytesIO
 
@@ -413,11 +412,11 @@ class DiscordAdapter(PlatformAdapter):
                         BytesIO(image_bytes), filename="daily_report_image.png"
                     )
                 except Exception as e:
-                    logger.error(f"Discord Base64 图片解码失败: {e}")
+                    logger.error(f"Giải mã ảnh Base64 Discord thất bại: {e}")
                     return False
 
             elif image_path.startswith(("http://", "https://")):
-                # 远程图片：下载 -> 内存 Object -> Discord
+                # Ảnh từ xa: tải -> object trong bộ nhớ -> Discord.
                 from io import BytesIO
 
                 import aiohttp
@@ -429,7 +428,7 @@ class DiscordAdapter(PlatformAdapter):
                         ) as resp:
                             if resp.status == 200:
                                 data = await resp.read()
-                                # 尽量保留原始后缀
+                                # Cố gắng giữ phần mở rộng gốc.
                                 filename = image_path.split("/")[-1].split("?")[0]
                                 if not filename.lower().endswith(
                                     (".png", ".jpg", ".jpeg", ".gif", ".webp")
@@ -440,7 +439,7 @@ class DiscordAdapter(PlatformAdapter):
                                     BytesIO(data), filename=filename
                                 )
                             else:
-                                # 兜底：如果下载失败，直接发 URL 给 Discord 尝试自动解析
+                                # Fallback: gửi URL để Discord tự phân tích.
                                 content = (
                                     f"{caption}\n{image_path}"
                                     if caption
@@ -450,13 +449,13 @@ class DiscordAdapter(PlatformAdapter):
                                 return True
                 except Exception as de:
                     logger.warning(
-                        f"Discord 远程图片下载失败: {de}，将回退为发送 URL。"
+                        f"Tải ảnh Discord từ xa thất bại: {de}; chuyển sang gửi URL."
                     )
                     content = f"{caption}\n{image_path}" if caption else image_path
                     await channel.send(content=content)
                     return True
             else:
-                # 本地图片
+                # Ảnh cục bộ.
                 file_to_send = discord.File(image_path)
 
             if file_to_send:
@@ -464,7 +463,7 @@ class DiscordAdapter(PlatformAdapter):
             return True
 
         except Exception as e:
-            logger.error(f"Discord 图片发送失败: {e}")
+            logger.error(f"Gửi ảnh Discord thất bại: {e}")
             return False
 
     async def send_file(
@@ -473,7 +472,7 @@ class DiscordAdapter(PlatformAdapter):
         file_path: str,
         filename: str | None = None,
     ) -> bool:
-        """向 Discord 频道上传任意文件。"""
+        """Tải tệp bất kỳ lên kênh Discord."""
         if not discord:
             return False
 
@@ -490,7 +489,7 @@ class DiscordAdapter(PlatformAdapter):
             await channel.send(file=file_to_send)
             return True
         except Exception as e:
-            logger.error(f"Discord 文件发送失败: {e}")
+            logger.error(f"Gửi tệp Discord thất bại: {e}")
             return False
 
     async def send_forward_msg(
@@ -499,9 +498,9 @@ class DiscordAdapter(PlatformAdapter):
         nodes: list[dict],
     ) -> bool:
         """
-        在 Discord 模拟合并转发。
+        Mô phỏng chuyển tiếp gộp trên Discord.
 
-        由于 Discord 没有原生节点转发 API，我们将其转换为一组文本消息发送。
+        Discord không có API chuyển tiếp node gốc nên chuyển thành nhóm tin văn bản.
         """
         if not discord:
             return False
@@ -515,17 +514,17 @@ class DiscordAdapter(PlatformAdapter):
             if not hasattr(channel, "send"):
                 return False
 
-            # 将节点汇总为美化的文本块
-            lines = ["📊 **结构化报告摘要 (Structured Report)**\n"]
+            # Tổng hợp node thành khối văn bản có định dạng.
+            lines = ["📊 **Tóm tắt báo cáo có cấu trúc (Structured Report)**\n"]
             for node in nodes:
-                data = node.get("data", node)  # 兼容不同格式
+                data = node.get("data", node)  # Tương thích nhiều định dạng.
                 name = data.get("name", "AstrBot")
                 content = data.get("content", "")
                 lines.append(f"**[{name}]**:\n{content}\n")
 
             full_text = "\n".join(lines)
 
-            # 分段处理大消息
+            # Chia nhỏ tin nhắn dài.
             if len(full_text) > 1900:
                 parts = [
                     full_text[i : i + 1900] for i in range(0, len(full_text), 1900)
@@ -537,13 +536,13 @@ class DiscordAdapter(PlatformAdapter):
 
             return True
         except Exception as e:
-            logger.error(f"Discord 模拟转发失败: {e}")
+            logger.error(f"Mô phỏng chuyển tiếp Discord thất bại: {e}")
             return False
 
-    # ==================== IGroupInfoRepository 实现 ====================
+    # ==================== Triển khai IGroupInfoRepository ====================
 
     async def get_group_info(self, group_id: str) -> UnifiedGroup | None:
-        """解析 Discord 频道及所属服务器的基本信息。"""
+        """Phân tích thông tin cơ bản của kênh và server Discord."""
         if not discord:
             return None
 
@@ -557,11 +556,11 @@ class DiscordAdapter(PlatformAdapter):
             group_name = getattr(channel, "name", str(channel.id))
 
             if guild:
-                # 群聊（服务器频道）
+                # Kênh server.
                 member_count = guild.member_count
                 owner_id = str(guild.owner_id)
             else:
-                # 私人对话（DM）
+                # Tin nhắn riêng.
                 member_count = len(getattr(channel, "recipients", [])) + 1
                 owner_id = str(getattr(channel, "owner_id", ""))
 
@@ -574,11 +573,11 @@ class DiscordAdapter(PlatformAdapter):
                 platform="discord",
             )
         except Exception as e:
-            logger.debug(f"Discord 获取群组信息错误: {e}")
+            logger.debug(f"Lỗi lấy thông tin nhóm Discord: {e}")
             return None
 
     async def get_group_list(self) -> list[str]:
-        """列出机器人所在服务器中所有可访问的文本频道 ID。"""
+        """Liệt kê ID kênh văn bản bot có thể truy cập trên các server."""
         if not discord:
             return []
 
@@ -593,9 +592,9 @@ class DiscordAdapter(PlatformAdapter):
 
     async def get_member_list(self, group_id: str) -> list[UnifiedMember]:
         """
-        获取频道对应的成员列表。
+        Lấy danh sách thành viên của kênh.
 
-        注意：对于大型服务器，建议启用 GUILD_MEMBERS 意图以保证列表完整性。
+        Nên bật intent GUILD_MEMBERS trên server lớn để đảm bảo đầy đủ.
         """
         if not discord:
             return []
@@ -608,7 +607,7 @@ class DiscordAdapter(PlatformAdapter):
 
             guild = getattr(channel, "guild", None)
             if not guild:
-                # 私聊收件人
+                # Người nhận tin nhắn riêng.
                 return [
                     UnifiedMember(
                         user_id=str(u.id),
@@ -647,7 +646,7 @@ class DiscordAdapter(PlatformAdapter):
         group_id: str,
         user_id: str,
     ) -> UnifiedMember | None:
-        """获取并解析特定 Discord 用户的身份信息。"""
+        """Lấy và phân tích thông tin định danh của thành viên Discord."""
         if not discord:
             return None
 
@@ -660,7 +659,7 @@ class DiscordAdapter(PlatformAdapter):
 
             guild = getattr(channel, "guild", None)
             if not guild:
-                # 跨频道/私聊探测
+                # Dò xuyên kênh hoặc tin nhắn riêng.
                 user = await self.bot.fetch_user(uid)
                 return UnifiedMember(
                     user_id=str(user.id), nickname=user.name, card=user.display_name
@@ -688,14 +687,14 @@ class DiscordAdapter(PlatformAdapter):
         except Exception:
             return None
 
-    # ==================== IAvatarRepository 实现 ====================
+    # ==================== Triển khai IAvatarRepository ====================
 
     async def get_user_avatar_url(
         self,
         user_id: str,
         size: int = 100,
     ) -> str | None:
-        """根据 Discord 用户 ID 动态解析其头像 CDN 地址。"""
+        """Phân giải động URL CDN avatar theo ID thành viên Discord."""
         if not discord or not self._discord_client:
             return None
 
@@ -706,14 +705,14 @@ class DiscordAdapter(PlatformAdapter):
             ) or await self._discord_client.fetch_user(uid)
 
             if user:
-                # 自动对齐 Discord 支持的尺寸 (2的幂)
+                # Chọn kích thước gần nhất được Discord hỗ trợ.
                 allowed_sizes = (16, 32, 64, 128, 256, 512, 1024, 2048, 4096)
                 target_size = min(allowed_sizes, key=lambda x: abs(x - size))
                 return user.display_avatar.with_size(target_size).url
 
             return None
         except Exception as e:
-            logger.debug(f"Discord 获取用户头像 URL 错误: {e}")
+            logger.debug(f"Lỗi lấy URL avatar Discord: {e}")
             return None
 
     async def get_user_avatar_data(
@@ -721,7 +720,7 @@ class DiscordAdapter(PlatformAdapter):
         user_id: str,
         size: int = 100,
     ) -> str | None:
-        """暂不提供 Base64 转换服务，优先使用 CDN 链接。"""
+        """Chưa hỗ trợ Base64; ưu tiên URL CDN."""
         return None
 
     async def get_group_avatar_url(
@@ -729,7 +728,7 @@ class DiscordAdapter(PlatformAdapter):
         group_id: str,
         size: int = 100,
     ) -> str | None:
-        """获取 Discord 服务器（Guild）的图标地址。"""
+        """Lấy URL biểu tượng server Discord."""
         if not discord:
             return None
 
@@ -751,14 +750,14 @@ class DiscordAdapter(PlatformAdapter):
         user_ids: list[str],
         size: int = 100,
     ) -> dict[str, str | None]:
-        """批量获取头像的最佳实践。"""
+        """Lấy hàng loạt URL avatar."""
         return {uid: await self.get_user_avatar_url(uid, size) for uid in user_ids}
 
     async def set_reaction(
         self, group_id: str, message_id: str, emoji: str | int, is_add: bool = True
     ) -> bool:
         """
-        Discord 实现消息回应。
+        Triển khai reaction tin nhắn Discord.
         """
         if not discord:
             return False
@@ -779,7 +778,7 @@ class DiscordAdapter(PlatformAdapter):
                 channel = await self._discord_client.fetch_channel(channel_id)
 
             if not hasattr(channel, "get_partial_message"):
-                # 如果较低版本的 SDK 没这个方法，则直接 fetch
+                # Fetch trực tiếp nếu SDK cũ không có phương thức này.
                 msg = await channel.fetch_message(int(message_id))
             else:
                 msg = channel.get_partial_message(int(message_id))
@@ -790,5 +789,5 @@ class DiscordAdapter(PlatformAdapter):
                 await msg.remove_reaction(emoji_to_use, self._discord_client.user)
             return True
         except Exception as e:
-            logger.debug(f"Discord set_reaction 失败: {e}")
+            logger.debug(f"Discord set_reaction thất bại: {e}")
             return False

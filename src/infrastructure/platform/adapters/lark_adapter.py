@@ -1,7 +1,8 @@
 """
-Feishu/Lark 平台适配器
+Adapter nền tảng Feishu/Lark.
 
-复用 AstrBot 已有 lark_oapi 生态能力，实现飞书群分析消息读取、成员信息与头像获取。
+Tái sử dụng hệ sinh thái lark_oapi của AstrBot để lấy tin nhắn phân tích nhóm,
+thông tin thành viên và ảnh đại diện Feishu.
 """
 
 from __future__ import annotations
@@ -117,18 +118,18 @@ try:
     ReplyMessageRequestBody = _ReplyMessageRequestBody
 
     LARK_AVAILABLE = True
-except Exception:  # pragma: no cover - 兼容缺依赖环境
+except Exception:  # pragma: no cover - tương thích môi trường thiếu dependency
     LARK_AVAILABLE = False
 
 
 class LarkAdapter(PlatformAdapter):
-    """飞书平台适配器。"""
+    """Adapter nền tảng Feishu."""
 
     platform_name = "lark"
     _DEFAULT_SCOPE_HINT = (
-        "Please grant these Feishu app scopes once: "
-        "`im:message:readonly`, `im:chat:readonly`, and user/contact read scopes "
-        "for profile avatar fields, then reinstall/re-authorize the app."
+        "Vui lòng cấp các scope Feishu `im:message:readonly`, "
+        "`im:chat:readonly` và quyền đọc người dùng/danh bạ để lấy ảnh đại diện, "
+        "sau đó cài đặt hoặc uỷ quyền lại ứng dụng."
     )
 
     def __init__(
@@ -145,7 +146,7 @@ class LarkAdapter(PlatformAdapter):
         self._permission_checked_groups: set[str] = set()
         self._permission_error_by_group: dict[str, str | None] = {}
         logger.info(
-            "飞书适配器初始化完成 (SDK可用=%s, 客户端就绪=%s)",
+            "Đã khởi tạo adapter Feishu (SDK khả dụng=%s, client sẵn sàng=%s)",
             LARK_AVAILABLE,
             bool(self._lark_client),
         )
@@ -169,15 +170,15 @@ class LarkAdapter(PlatformAdapter):
     def _resolve_lark_client(bot_instance: object) -> _SDKNode | None:
         if bot_instance is None:
             return None
-        # 直接是 lark.Client
+        # Chính là lark.Client.
         if hasattr(bot_instance, "im") and hasattr(bot_instance, "contact"):
             return cast(_SDKNode, bot_instance)
-        # 平台实例上暴露 lark_api
+        # Instance nền tảng công khai lark_api.
         if hasattr(bot_instance, "lark_api"):
             api = getattr(bot_instance, "lark_api")
             if hasattr(api, "im"):
                 return cast(_SDKNode, api)
-        # 常见包装层
+        # Các lớp wrapper phổ biến.
         for attr in ("client", "_client", "bot"):
             if hasattr(bot_instance, attr):
                 client = getattr(bot_instance, attr)
@@ -305,22 +306,29 @@ class LarkAdapter(PlatformAdapter):
         self, group_id: str
     ) -> tuple[bool, str | None]:
         """
-        预热群成员缓存并完成权限探测。
-        该方法用于在分析前一次性确认“成员信息+头像”权限是否齐备。
+        Làm nóng cache thành viên nhóm và kiểm tra quyền.
+
+        Xác nhận một lần trước khi phân tích rằng quyền đọc thông tin thành viên
+        và ảnh đại diện đã đầy đủ.
         """
         if group_id in self._permission_checked_groups:
             err = self._permission_error_by_group.get(group_id)
             logger.debug(
-                "飞书预检查命中缓存: 群=%s, 结果=%s",
+                "Kiểm tra trước Feishu dùng cache: nhóm=%s, kết quả=%s",
                 group_id,
                 err is None,
             )
             return err is None, err
-        logger.info("飞书预检查开始: 群=%s", group_id)
+        logger.info("Bắt đầu kiểm tra trước Feishu: nhóm=%s", group_id)
         if not LARK_AVAILABLE or not self._lark_client or not self._lark_client.im:
-            self._permission_error_by_group[group_id] = "飞书 SDK 客户端未初始化。"
+            self._permission_error_by_group[group_id] = (
+                "Client SDK Feishu chưa được khởi tạo."
+            )
             self._permission_checked_groups.add(group_id)
-            logger.warning("飞书预检查失败: 群=%s, 原因=SDK或客户端不可用", group_id)
+            logger.warning(
+                "Kiểm tra trước Feishu thất bại: nhóm=%s, lý do=SDK hoặc client không khả dụng",
+                group_id,
+            )
             return False, self._permission_error_by_group[group_id]
 
         try:
@@ -330,10 +338,14 @@ class LarkAdapter(PlatformAdapter):
                     f"Cannot list chat members. {self._DEFAULT_SCOPE_HINT}"
                 )
                 self._permission_checked_groups.add(group_id)
-                logger.warning("飞书预检查失败: 群=%s, 原因=未获取到成员列表", group_id)
+                logger.warning(
+                    "Kiểm tra trước Feishu thất bại: nhóm=%s, lý do=không lấy được danh sách thành viên",
+                    group_id,
+                )
                 return False, self._permission_error_by_group[group_id]
 
-            # 只预热近期活跃用户常见数量，避免在超大群上引入不必要延迟
+            # Chỉ làm nóng số lượng thành viên hoạt động gần đây thường gặp
+            # để tránh độ trễ không cần thiết ở nhóm rất lớn.
             target_ids = [m.user_id for m in members[:100]]
             avatar_map = await self.batch_get_avatar_urls(target_ids, size=240)
             avatar_ok_count = sum(1 for uid in target_ids if avatar_map.get(uid))
@@ -344,7 +356,7 @@ class LarkAdapter(PlatformAdapter):
                 )
                 self._permission_checked_groups.add(group_id)
                 logger.warning(
-                    "飞书预检查失败: 群=%s, 原因=头像预热结果为空 (用户数=%s)",
+                    "Kiểm tra trước Feishu thất bại: nhóm=%s, lý do=kết quả làm nóng ảnh rỗng (thành viên=%s)",
                     group_id,
                     len(target_ids),
                 )
@@ -353,7 +365,7 @@ class LarkAdapter(PlatformAdapter):
             self._permission_error_by_group[group_id] = None
             self._permission_checked_groups.add(group_id)
             logger.info(
-                "飞书预检查通过: 群=%s (成员=%s, 头像成功=%s/%s)",
+                "Kiểm tra trước Feishu thành công: nhóm=%s (thành viên=%s, ảnh thành công=%s/%s)",
                 group_id,
                 len(members),
                 avatar_ok_count,
@@ -362,11 +374,11 @@ class LarkAdapter(PlatformAdapter):
             return True, None
         except Exception as e:
             self._permission_error_by_group[group_id] = (
-                f"飞书成员缓存预热失败: {e}. {self._DEFAULT_SCOPE_HINT}"
+                f"Làm nóng cache thành viên Feishu thất bại: {e}. {self._DEFAULT_SCOPE_HINT}"
             )
             self._permission_checked_groups.add(group_id)
             logger.error(
-                "飞书预检查异常: 群=%s, 错误=%s",
+                "Lỗi kiểm tra trước Feishu: nhóm=%s, lỗi=%s",
                 group_id,
                 e,
                 exc_info=True,
@@ -382,7 +394,10 @@ class LarkAdapter(PlatformAdapter):
         since_ts: int | None = None,
     ) -> list[UnifiedMessage]:
         if not LARK_AVAILABLE or not self._lark_client or not self._lark_client.im:
-            logger.warning("飞书消息拉取跳过: 群=%s, 原因=SDK或客户端不可用", group_id)
+            logger.warning(
+                "Bỏ qua lấy tin nhắn Feishu: nhóm=%s, lý do=SDK hoặc client không khả dụng",
+                group_id,
+            )
             return []
         now_seconds = int(__import__("time").time())
         start_seconds = (
@@ -395,7 +410,7 @@ class LarkAdapter(PlatformAdapter):
         seen_ids: set[str] = set()
         page_index = 0
         logger.info(
-            "飞书消息拉取开始: 群=%s (天数=%s, 最大条数=%s, since_ts=%s)",
+            "Bắt đầu lấy tin nhắn Feishu: nhóm=%s (ngày=%s, tối đa=%s, since_ts=%s)",
             group_id,
             days,
             max_count,
@@ -431,7 +446,7 @@ class LarkAdapter(PlatformAdapter):
             response = await self._lark_client.im.v1.message.alist(request)
             if not response.success():
                 logger.warning(
-                    "飞书消息拉取失败: 群=%s, code=%s, msg=%s",
+                    "Lấy tin nhắn Feishu thất bại: nhóm=%s, code=%s, msg=%s",
                     group_id,
                     response.code,
                     response.msg,
@@ -441,7 +456,7 @@ class LarkAdapter(PlatformAdapter):
             items_raw = (response.data.items if response.data else None) or []
             items: list[object] = items_raw if isinstance(items_raw, list) else []
             logger.debug(
-                "飞书消息分页: 页=%s, 群=%s, 条数=%s, has_more=%s",
+                "Phân trang tin nhắn Feishu: trang=%s, nhóm=%s, số lượng=%s, has_more=%s",
                 page_index,
                 group_id,
                 len(items),
@@ -471,7 +486,7 @@ class LarkAdapter(PlatformAdapter):
 
         messages.sort(key=lambda m: m.timestamp)
         logger.info(
-            "飞书消息拉取完成: 群=%s (消息=%s, 页数=%s, 起始=%s, 结束=%s)",
+            "Hoàn tất lấy tin nhắn Feishu: nhóm=%s (tin nhắn=%s, trang=%s, bắt đầu=%s, kết thúc=%s)",
             group_id,
             len(messages),
             page_index,
@@ -612,7 +627,7 @@ class LarkAdapter(PlatformAdapter):
                 ),
             )
         except Exception as e:
-            logger.debug(f"飞书消息转换失败: {e}")
+            logger.debug(f"Chuyển đổi tin nhắn Feishu thất bại: {e}")
             return None
 
     def convert_to_raw_format(self, messages: list[UnifiedMessage]) -> list[dict]:
@@ -698,7 +713,7 @@ class LarkAdapter(PlatformAdapter):
                 response = await self._lark_client.im.v1.message.acreate(request)
             return bool(response.success())
         except Exception as e:
-            logger.error(f"飞书文本发送失败: {e}")
+            logger.error(f"Gửi văn bản Feishu thất bại: {e}")
             return False
 
     async def send_image(
@@ -790,7 +805,7 @@ class LarkAdapter(PlatformAdapter):
                 await self.send_text(group_id, caption)
             return bool(send_resp.success())
         except Exception as e:
-            logger.error(f"飞书图片发送失败: {e}")
+            logger.error(f"Gửi ảnh Feishu thất bại: {e}")
             return False
         finally:
             if temp_path and temp_path.exists():
@@ -854,7 +869,7 @@ class LarkAdapter(PlatformAdapter):
             msg_resp = await self._lark_client.im.v1.message.acreate(msg_req)
             return bool(msg_resp.success())
         except Exception as e:
-            logger.error(f"飞书文件发送失败: {e}")
+            logger.error(f"Gửi tệp Feishu thất bại: {e}")
             return False
 
     async def get_group_info(self, group_id: str) -> UnifiedGroup | None:
@@ -880,24 +895,24 @@ class LarkAdapter(PlatformAdapter):
                 platform="lark",
             )
         except Exception as e:
-            logger.debug(f"飞书群信息获取失败: {e}")
+            logger.debug(f"Lấy thông tin nhóm Feishu thất bại: {e}")
             return None
 
     async def get_group_list(self) -> list[str]:
-        # 飞书服务端 API 不提供简单“机器人可见群列表”枚举能力
+        # API Feishu không cung cấp cách đơn giản để liệt kê nhóm bot nhìn thấy.
         return []
 
     async def get_member_list(self, group_id: str) -> list[UnifiedMember]:
         if not self._lark_client or not self._lark_client.im:
             logger.warning(
-                "飞书成员列表获取跳过: 群=%s, 原因=客户端不可用",
+                "Bỏ qua lấy danh sách thành viên Feishu: nhóm=%s, lý do=client không khả dụng",
                 group_id,
             )
             return []
         members: list[UnifiedMember] = []
         page_token: str | None = None
         page_index = 0
-        logger.debug("飞书成员列表获取开始: 群=%s", group_id)
+        logger.debug("Bắt đầu lấy danh sách thành viên Feishu: nhóm=%s", group_id)
         while True:
             page_index += 1
             GetChatMembersRequestClass = self._request_class_or_throw(
@@ -919,14 +934,14 @@ class LarkAdapter(PlatformAdapter):
                     str(getattr(response, "msg", "") or ""),
                 ):
                     logger.warning(
-                        "飞书成员列表权限不足: 群=%s, code=%s, msg=%s",
+                        "Không đủ quyền lấy danh sách thành viên Feishu: nhóm=%s, code=%s, msg=%s",
                         group_id,
                         response.code,
                         response.msg,
                     )
                 else:
                     logger.warning(
-                        "飞书成员列表获取失败: 群=%s, code=%s, msg=%s",
+                        "Lấy danh sách thành viên Feishu thất bại: nhóm=%s, code=%s, msg=%s",
                         group_id,
                         getattr(response, "code", "unknown"),
                         getattr(response, "msg", "unknown"),
@@ -935,7 +950,7 @@ class LarkAdapter(PlatformAdapter):
             items_raw = (response.data.items if response.data else None) or []
             items: list[object] = items_raw if isinstance(items_raw, list) else []
             logger.debug(
-                "飞书成员分页: 页=%s, 群=%s, 条数=%s",
+                "Phân trang thành viên Feishu: trang=%s, nhóm=%s, số lượng=%s",
                 page_index,
                 group_id,
                 len(items),
@@ -962,7 +977,7 @@ class LarkAdapter(PlatformAdapter):
             page_token_raw = getattr(response.data, "page_token", None)
             page_token = str(page_token_raw) if page_token_raw else None
         logger.info(
-            "飞书成员列表获取完成: 群=%s (成员=%s, 页数=%s)",
+            "Hoàn tất lấy thành viên Feishu: nhóm=%s (thành viên=%s, trang=%s)",
             group_id,
             len(members),
             page_index,
@@ -989,14 +1004,14 @@ class LarkAdapter(PlatformAdapter):
                     str(getattr(response, "msg", "") or ""),
                 ):
                     logger.warning(
-                        "飞书用户资料权限不足: 用户=%s, code=%s, msg=%s",
+                        "Không đủ quyền lấy hồ sơ Feishu: thành viên=%s, code=%s, msg=%s",
                         self._short_id(user_id),
                         response.code,
                         response.msg,
                     )
                 else:
                     logger.warning(
-                        "飞书用户资料获取失败: 用户=%s, code=%s, msg=%s",
+                        "Lấy hồ sơ Feishu thất bại: thành viên=%s, code=%s, msg=%s",
                         self._short_id(user_id),
                         getattr(response, "code", "unknown"),
                         getattr(response, "msg", "unknown"),
@@ -1004,7 +1019,7 @@ class LarkAdapter(PlatformAdapter):
                 return None
             return response.data
         except Exception as e:
-            logger.debug(f"飞书用户资料获取失败: {e}")
+            logger.debug(f"Lấy hồ sơ Feishu thất bại: {e}")
             return None
 
     async def get_member_info(
@@ -1057,7 +1072,7 @@ class LarkAdapter(PlatformAdapter):
         fallback_avatar = self._build_fallback_avatar(user_id, cached_name)
         self._avatar_url_cache[user_id] = fallback_avatar
         logger.debug(
-            "飞书头像使用回退图: 用户=%s, 尺寸=%s",
+            "Ảnh Feishu dùng hình fallback: thành viên=%s, kích thước=%s",
             self._short_id(user_id),
             size,
         )
@@ -1106,7 +1121,7 @@ class LarkAdapter(PlatformAdapter):
         unique_ids = list(dict.fromkeys(user_ids))
         semaphore = asyncio.Semaphore(8)
         logger.debug(
-            "飞书批量头像获取开始 (请求=%s, 去重后=%s, 尺寸=%s)",
+            "Bắt đầu lấy ảnh Feishu hàng loạt (yêu cầu=%s, sau loại trùng=%s, kích thước=%s)",
             len(user_ids),
             len(unique_ids),
             size,
@@ -1119,11 +1134,15 @@ class LarkAdapter(PlatformAdapter):
         pairs = await asyncio.gather(*(_fetch(uid) for uid in unique_ids))
         result = dict(pairs)
         ok_count = sum(1 for _, url in pairs if url)
-        logger.debug("飞书批量头像获取完成 (成功=%s/%s)", ok_count, len(unique_ids))
+        logger.debug(
+            "Hoàn tất lấy ảnh Feishu hàng loạt (thành công=%s/%s)",
+            ok_count,
+            len(unique_ids),
+        )
         return result
 
     async def set_reaction(
         self, group_id: str, message_id: str, emoji: str | int, is_add: bool = True
     ) -> bool:
-        # 当前插件分析流程不依赖飞书 reaction，这里返回 False 以保持兼容。
+        # Quy trình hiện tại không phụ thuộc reaction Feishu; trả False để tương thích.
         return False

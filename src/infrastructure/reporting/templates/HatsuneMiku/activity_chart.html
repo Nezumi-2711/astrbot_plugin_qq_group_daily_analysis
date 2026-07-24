@@ -1,5 +1,5 @@
 ﻿<div class="miku-activity-chart" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
-    {# 柱状图主体层：确保底部对齐 #}
+    {# Lớp thân biểu đồ cột: căn đáy #}
     <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 160px; gap: 4px; padding-bottom: 5px; border-bottom: 2px solid rgba(57, 197, 187, 0.1);">
         {% set chart_colors = [
             '#66D1C7', '#6FD3C6', '#79D5C4', '#85D8C3', '#93DAC1', '#A3DDBF',
@@ -32,7 +32,7 @@
         {% endfor %}
     </div>
 
-    {# X轴标签层：独立容器确保水平对齐且不换行 #}
+    {# Lớp nhãn trục X: container riêng để căn ngang và không xuống dòng #}
     <div style="display: flex; justify-content: space-between; gap: 4px;">
         {% for item in chart_data %}
         <div style="flex: 1; text-align: center;">

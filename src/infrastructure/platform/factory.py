@@ -1,6 +1,4 @@
-"""
-平台适配器工厂
-"""
+"""Factory adapter nền tảng."""
 
 from __future__ import annotations
 
@@ -12,17 +10,16 @@ from .base import PlatformAdapter
 
 class PlatformAdapterFactory:
     """
-    平台适配器工厂
+    Factory adapter nền tảng.
 
-    根据平台名称创建适配器实例。
-    使用注册表模式便于扩展。
+    Tạo instance adapter theo tên nền tảng bằng registry dễ mở rộng.
     """
 
     _adapters: dict[str, type[PlatformAdapter]] = {}
 
     @classmethod
     def register(cls, platform_name: str, adapter_class: type[PlatformAdapter]):
-        """注册新适配器"""
+        """Đăng ký adapter mới."""
         cls._adapters[platform_name.lower()] = adapter_class
 
     @classmethod
@@ -33,15 +30,15 @@ class PlatformAdapterFactory:
         config: Mapping[str, object] | None = None,
     ) -> PlatformAdapter | None:
         """
-        创建平台适配器
+        Tạo adapter nền tảng.
 
-        参数:
-            platform_name: 平台名称（如 "aiocqhttp"、"telegram"）
-            bot_instance: AstrBot 机器人实例
-            config: 配置字典
+        Args:
+            platform_name: Tên nền tảng như ``aiocqhttp`` hoặc ``telegram``.
+            bot_instance: Instance bot AstrBot.
+            config: Dict cấu hình.
 
-        返回:
-            平台适配器实例，如果不支持则返回 None
+        Returns:
+            Instance adapter hoặc None nếu không hỗ trợ.
         """
         adapter_class = cls._adapters.get(platform_name.lower())
 
@@ -51,22 +48,22 @@ class PlatformAdapterFactory:
         try:
             return adapter_class(bot_instance, config)
         except Exception:
-            # 记录异常，但不崩溃
-            logger.error(f"为 {platform_name} 创建适配器时出错", exc_info=True)
+            # Ghi lỗi nhưng không làm sập plugin.
+            logger.error(f"Lỗi khi tạo adapter cho {platform_name}", exc_info=True)
             return None
 
     @classmethod
     def get_supported_platforms(cls) -> list[str]:
-        """获取所有支持的平台名称"""
+        """Lấy tên tất cả nền tảng được hỗ trợ."""
         return list(cls._adapters.keys())
 
     @classmethod
     def is_supported(cls, platform_name: str) -> bool:
-        """检查平台是否被支持"""
+        """Kiểm tra nền tảng có được hỗ trợ hay không."""
         return platform_name.lower() in cls._adapters
 
 
-# 导入适配器以注册它们
+# Import các adapter để đăng ký.
 def _register_adapters():
     try:
         from .adapters.onebot_adapter import OneBotAdapter
@@ -80,7 +77,7 @@ def _register_adapters():
         from .adapters.discord_adapter import DiscordAdapter
 
         PlatformAdapterFactory.register("discord", DiscordAdapter)
-        PlatformAdapterFactory.register("discord_bot", DiscordAdapter)  # 添加别名
+        PlatformAdapterFactory.register("discord_bot", DiscordAdapter)  # Alias
     except ImportError:
         pass
 

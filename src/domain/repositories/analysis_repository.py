@@ -1,6 +1,7 @@
 """
-分析服务接口 - 领域层
-定义语义分析的抽象契约
+Giao diện dịch vụ phân tích thuộc tầng domain.
+
+Định nghĩa hợp đồng trừu tượng cho chức năng phân tích ngữ nghĩa.
 """
 
 from abc import ABC, abstractmethod
@@ -15,9 +16,7 @@ from ..models.data_models import (
 
 
 class IAnalysisProvider(ABC):
-    """
-    LLM 分析提供商接口
-    """
+    """Giao diện nhà cung cấp dịch vụ phân tích bằng LLM."""
 
     @abstractmethod
     async def analyze_topics(
@@ -26,7 +25,7 @@ class IAnalysisProvider(ABC):
         umo: str | None = None,
         session_id: str | None = None,
     ) -> tuple[list[SummaryTopic], TokenUsage]:
-        """分析话题"""
+        """Phân tích các chủ đề thảo luận."""
         pass
 
     @abstractmethod
@@ -38,7 +37,7 @@ class IAnalysisProvider(ABC):
         top_users: list[dict] | None = None,
         session_id: str | None = None,
     ) -> tuple[list[UserTitle], TokenUsage]:
-        """分析用户称号"""
+        """Phân tích danh hiệu của thành viên."""
         pass
 
     @abstractmethod
@@ -48,7 +47,7 @@ class IAnalysisProvider(ABC):
         umo: str | None = None,
         session_id: str | None = None,
     ) -> tuple[list[GoldenQuote], TokenUsage]:
-        """分析金句"""
+        """Phân tích các trích dẫn nổi bật."""
         pass
 
     @abstractmethod
@@ -69,7 +68,7 @@ class IAnalysisProvider(ABC):
         TokenUsage,
         QualityReview | None,
     ]:
-        """并发分析所有内容"""
+        """Phân tích đồng thời tất cả nội dung."""
         pass
 
     @abstractmethod
@@ -83,7 +82,7 @@ class IAnalysisProvider(ABC):
         golden_quote_enabled: bool = True,
         chat_quality_enabled: bool = False,
     ) -> tuple[list[SummaryTopic], list[GoldenQuote], TokenUsage, QualityReview | None]:
-        """增量模式并发分析"""
+        """Phân tích đồng thời ở chế độ gia tăng."""
         pass
 
     @abstractmethod
@@ -93,5 +92,5 @@ class IAnalysisProvider(ABC):
         umo: str | None = None,
         session_id: str | None = None,
     ) -> tuple[QualityReview | None, TokenUsage]:
-        """汇总多个聊天质量报告（增量模式使用）"""
+        """Tổng hợp nhiều báo cáo chất lượng trò chuyện ở chế độ gia tăng."""
         pass

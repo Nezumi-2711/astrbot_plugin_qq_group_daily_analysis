@@ -1,8 +1,4 @@
-"""
-OneBot v11 平台适配器
-
-支持 NapCat、go-cqhttp、Lagrange 及其他 OneBot 实现。
-"""
+"""Adapter OneBot v11 cho NapCat, go-cqhttp, Lagrange và implementation khác."""
 
 import asyncio
 import base64
@@ -28,35 +24,26 @@ from ..base import PlatformAdapter
 
 
 class OneBotAdapter(PlatformAdapter):
-    """
-    具体实现：OneBot v11 平台适配器
-
-    支持 NapCat, go-cqhttp, Lagrange 等遵循 OneBot v11 协议的 QQ 机器人框架。
-    实现了消息获取、发送、群组管理及头像解析等全套功能。
-
-    Attributes:
-        platform_name (str): 平台硬编码标识 'onebot'
-        bot_self_ids (list[str]): 机器人自身的 QQ 号列表，用于消息过滤
-    """
+    """Adapter OneBot v11 hỗ trợ tin nhắn, nhóm và avatar cho bot QQ."""
 
     platform_name = "onebot"
 
-    # QQ 头像服务 URL 模板
+    # Template URL dịch vụ avatar QQ.
     USER_AVATAR_TEMPLATE = "https://q1.qlogo.cn/g?b=qq&nk={user_id}&s={size}"
     USER_AVATAR_HD_TEMPLATE = (
         "https://q.qlogo.cn/headimg_dl?dst_uin={user_id}&spec={size}&img_type=jpg"
     )
     GROUP_AVATAR_TEMPLATE = "https://p.qlogo.cn/gh/{group_id}/{group_id}/{size}/"
 
-    # OneBot 服务支持的头像尺寸像素
+    # Kích thước avatar được dịch vụ OneBot hỗ trợ.
     AVAILABLE_SIZES = (40, 100, 140, 160, 640)
 
     def __init__(self, bot_instance: Any, config: dict | None = None):
         """
-        初始化 OneBot 适配器。
+        Khởi tạo adapter OneBot.
         """
         super().__init__(bot_instance, config)
-        # 支持从多个潜在的配置键中提取机器人 ID
+        # Hỗ trợ lấy ID bot từ nhiều key cấu hình tiềm năng.
         self.bot_self_ids = (
             [str(id) for id in config.get("bot_self_ids", [])] if config else []
         )
@@ -66,41 +53,41 @@ class OneBotAdapter(PlatformAdapter):
             config.get("filter_bot_messages", True) if config else True
         )
 
-        # LLBot 探测标志
+        # Cờ phát hiện LLBot.
         self._is_llbot = False
         self._llbot_checked = False
 
-        # SnowLuma 探测标志
+        # Cờ phát hiện SnowLuma.
         self._is_snowluma = False
         self._snowluma_checked = False
 
-        # 禁言状态缓存 (group_id -> timestamp)
+        # Cache trạng thái mute: group_id -> timestamp.
         self._muted_groups_cache = {}
-        # 群角色缓存 (group_id -> (role, timestamp))，用于 get_group_member_info 超时降级
+        # Cache role nhóm để fallback khi get_group_member_info timeout.
         self._group_role_cache: dict[str, tuple[str, float]] = {}
 
     def _init_capabilities(self) -> PlatformCapabilities:
-        """返回预定义的 OneBot v11 能力集。"""
+        """Trả về capability OneBot v11 định sẵn."""
         return ONEBOT_V11_CAPABILITIES
 
     async def _detect_llbot(self):
-        """探测是否为 LLBot"""
+        """Phát hiện LLBot."""
         if self._llbot_checked:
             return
         try:
-            # 避免在一些不支持 get_version_info 的老版本上卡死
+            # Tránh treo ở bản cũ không hỗ trợ get_version_info.
             result = await self.bot.call_action("get_version_info")
             if isinstance(result, dict):
                 app_name = result.get("app_name", "")
                 self._is_llbot = app_name == "LLOneBot"
                 if self._is_llbot:
-                    logger.info("[OneBot] 探测到当前协议端为 LLBot")
+                    logger.info("[OneBot] Phát hiện endpoint giao thức LLBot")
         except Exception:
             self._is_llbot = False
         self._llbot_checked = True
 
     async def _detect_snowluma(self):
-        """探测是否为 SnowLuma"""
+        """Phát hiện SnowLuma."""
         if self._snowluma_checked:
             return
         try:
@@ -109,10 +96,10 @@ class OneBotAdapter(PlatformAdapter):
                 app_name = result.get("app_name", "")
                 self._is_snowluma = app_name.lower() == "snowluma"
                 if self._is_snowluma:
-                    logger.info("[OneBot] 探测到当前协议端为 SnowLuma")
+                    logger.info("[OneBot] Phát hiện endpoint giao thức SnowLuma")
         except Exception as exc:
             logger.debug(
-                "[OneBot] 探测 SnowLuma 失败，将按非 SnowLuma 处理: %s",
+                "[OneBot] Phát hiện SnowLuma thất bại, xử lý như endpoint khác: %s",
                 exc,
                 exc_info=True,
             )
@@ -120,10 +107,10 @@ class OneBotAdapter(PlatformAdapter):
         self._snowluma_checked = True
 
     def _get_nearest_size(self, requested_size: int) -> int:
-        """从支持的尺寸列表中找到最接近请求尺寸的一个。"""
+        """Tìm kích thước hỗ trợ gần nhất với yêu cầu."""
         return min(self.AVAILABLE_SIZES, key=lambda x: abs(x - requested_size))
 
-    # ==================== IMessageRepository 实现 ====================
+    # ==================== Triển khai IMessageRepository ====================
 
     async def fetch_messages(
         self,
@@ -134,18 +121,17 @@ class OneBotAdapter(PlatformAdapter):
         since_ts: int | None = None,
     ) -> list[UnifiedMessage]:
         """
-        从 OneBot 后端拉取群组历史消息。
-        采用分页拉取策略（参考 portrayal 插件），减少 NapCat/go-cqhttp 单次请求的 CPU 和内存负担。
+        Lấy lịch sử nhóm từ backend OneBot theo trang để giảm tải CPU và bộ nhớ.
 
         Args:
-            group_id (str): 群号
-            days (int): 拉取过去几天的消息
-            max_count (int): 最大拉取条数
-            before_id (str, optional): 锚点消息 ID，用于分页回溯
-            since_ts (int, optional): 从指定时间戳开始拉取消息（Unix timestamp），优先级高于 days。
+            group_id: ID nhóm.
+            days: Số ngày lịch sử.
+            max_count: Số tin nhắn tối đa.
+            before_id: ID neo để phân trang ngược.
+            since_ts: Unix timestamp bắt đầu, ưu tiên hơn days.
 
         Returns:
-            list[UnifiedMessage]: 统一格式的消息列表
+            Danh sách UnifiedMessage.
         """
         if not hasattr(self.bot, "call_action"):
             return []
@@ -153,10 +139,10 @@ class OneBotAdapter(PlatformAdapter):
         await self._detect_snowluma()
 
         try:
-            chunk_size = 100  # 每次拉取 100 条，较为稳健
+            chunk_size = 100  # Mỗi lần lấy 100 mục để ổn định.
             all_raw_messages = []
 
-            # 确定回溯的起始时间点
+            # Xác định thời điểm bắt đầu truy ngược.
             if since_ts and since_ts > 0:
                 start_timestamp = since_ts
             else:
@@ -164,13 +150,13 @@ class OneBotAdapter(PlatformAdapter):
                 start_time_dt = end_time_dt - timedelta(days=days)
                 start_timestamp = int(start_time_dt.timestamp())
 
-            # 使用 message_seq 或 message_id 进行分页回溯拉取
+            # Phân trang ngược bằng message_seq hoặc message_id.
             current_anchor_id = before_id
 
             logger.info(
-                f"OneBot 开始分页回溯消息: 群 {group_id}, "
-                f"起始时间 {datetime.fromtimestamp(start_timestamp).strftime('%Y-%m-%d %H:%M:%S')}, "
-                f"上限 {max_count} 条"
+                f"OneBot bắt đầu lấy lịch sử phân trang: nhóm {group_id}, "
+                f"từ {datetime.fromtimestamp(start_timestamp).strftime('%Y-%m-%d %H:%M:%S')}, "
+                f"tối đa {max_count} mục"
             )
 
             while len(all_raw_messages) < max_count:
@@ -192,27 +178,26 @@ class OneBotAdapter(PlatformAdapter):
 
                 if not result or "messages" not in result:
                     logger.debug(
-                        f"OneBot 分页拉取：API 调用返回空或无效数据，停止回溯。群: {group_id}"
+                        f"OneBot phân trang: API trả dữ liệu rỗng hoặc lỗi, dừng nhóm {group_id}"
                     )
                     break
 
                 messages = result.get("messages", [])
                 if not messages:
                     logger.debug(
-                        f"OneBot 分页拉取：获取到 0 条消息，停止回溯。群: {group_id}"
+                        f"OneBot phân trang: lấy được 0 tin nhắn, dừng nhóm {group_id}"
                     )
                     break
 
-                # 确定该批次中最旧的消息作为下一次回溯的起点
-                # 不同 OneBot 实现对 reverseOrder 的处理可能导致结果顺序不同（反映在消息时间戳上）
-                # 我们通过比较首尾消息的时间戳，动态识别出本批次中最旧的消息
+                # Chọn tin cũ nhất trong batch làm điểm bắt đầu tiếp theo;
+                # implementation OneBot có thể xử lý reverseOrder khác nhau.
                 first_msg = messages[0]
                 last_msg = messages[-1]
                 if first_msg.get("time", 0) <= last_msg.get("time", 0):
-                    # 正序：首条消息最旧
+                    # Thứ tự xuôi: tin đầu cũ nhất.
                     chunk_earliest_msg = first_msg
                 else:
-                    # 逆序：末条消息最旧
+                    # Thứ tự ngược: tin cuối cũ nhất.
                     chunk_earliest_msg = last_msg
 
                 chunk_earliest_time = chunk_earliest_msg.get("time", 0)
@@ -221,27 +206,24 @@ class OneBotAdapter(PlatformAdapter):
                     msg_time = raw_msg.get("time", 0)
                     msg_id = str(raw_msg.get("message_id", ""))
 
-                    # 基础过滤：去重
+                    # Lọc cơ bản: loại trùng.
                     if any(
                         str(m.get("message_id", "")) == msg_id for m in all_raw_messages
                     ):
                         continue
 
-                    # 身份过滤（排除机器人自己）
+                    # Lọc danh tính: bỏ bot.
                     sender_id = str(raw_msg.get("sender", {}).get("user_id", ""))
                     if self.filter_bot_messages and sender_id in self.bot_self_ids:
                         continue
 
-                    # 时间范围判定
+                    # Kiểm tra khoảng thời gian.
                     if start_timestamp <= msg_time <= int(datetime.now().timestamp()):
                         all_raw_messages.append(raw_msg)
 
-                # 提取锚点。
-                # SnowLuma 仅支持 message_id 作为分页锚点。
-                # 其他 OneBot 实现优先级: message_seq > real_id > seq > message_id
-                # 注意：为了兼容 NapCat (NTQQ) 这种 Message ID 非连续的情况，
-                # 以及 LLBot 这种 Sequence 模式，我们统一不进行 -1 偏移。
-                # 分页产生的重叠消息将由上方的去重逻辑 (all_raw_messages 循环对比) 自动处理。
+                # SnowLuma chỉ hỗ trợ message_id làm neo; implementation khác ưu tiên
+                # message_seq > real_id > seq > message_id. Không trừ 1 để tương thích
+                # ID không liên tục của NapCat và sequence mode của LLBot.
                 if self._is_snowluma:
                     new_anchor_id = chunk_earliest_msg.get("message_id")
                 else:
@@ -253,28 +235,28 @@ class OneBotAdapter(PlatformAdapter):
                     mid_val = chunk_earliest_msg.get("message_id")
                     new_anchor_id = seq_val if seq_val is not None else mid_val
 
-                # 如果消息时间已到达起始点，或者锚点无法继续往前位移，则停止
+                # Dừng khi tới thời điểm bắt đầu hoặc neo không thể lùi thêm.
                 if chunk_earliest_time <= start_timestamp:
                     logger.debug(
-                        f"OneBot 分页拉取：已到达起始时间 ({start_timestamp})，回溯同步完成。"
+                        f"OneBot phân trang: đã tới thời điểm bắt đầu ({start_timestamp}), hoàn tất"
                     )
                     break
 
                 if current_anchor_id and str(new_anchor_id) == str(current_anchor_id):
                     logger.debug(
-                        "OneBot 分页拉取：消息锚点未发生有效位移，可能已到达历史尽头。"
+                        "OneBot phân trang: neo không dịch chuyển, có thể đã hết lịch sử"
                     )
                     break
 
                 current_anchor_id = new_anchor_id
                 logger.debug(
-                    f"OneBot 分页拉取进度: 已获取 {len(all_raw_messages)} 条基础/有效消息，下一次锚点: {current_anchor_id}"
+                    f"Tiến độ OneBot: đã lấy {len(all_raw_messages)} tin hợp lệ, neo tiếp: {current_anchor_id}"
                 )
 
-                # 稍微延迟，减缓服务端压力
+                # Giãn nhẹ để giảm tải server.
                 await asyncio.sleep(0.05)
 
-            # 统一转换为 UnifiedMessage 并在返回前去重排序
+            # Chuyển thành UnifiedMessage, loại trùng và sắp xếp trước khi trả.
             unified_messages = []
             seen_ids = set()
             for raw_msg in all_raw_messages:
@@ -287,25 +269,25 @@ class OneBotAdapter(PlatformAdapter):
                     unified_messages.append(unified)
                     seen_ids.add(mid)
 
-            # 确保最终结果符合时间顺序
+            # Đảm bảo kết quả theo thứ tự thời gian.
             unified_messages.sort(key=lambda m: m.timestamp)
 
             logger.info(
-                f"OneBot 分页拉取完成: 共处理 {len(all_raw_messages)} 条原始消息, 最终有效 {len(unified_messages)} 条"
+                f"OneBot phân trang hoàn tất: xử lý {len(all_raw_messages)} tin thô, hợp lệ {len(unified_messages)}"
             )
             return unified_messages
 
         except Exception as e:
-            logger.warning(f"OneBot 分页获取消息失败: {e}")
+            logger.warning(f"OneBot lấy tin nhắn phân trang thất bại: {e}")
             return []
 
     def _convert_message(self, raw_msg: dict, group_id: str) -> UnifiedMessage | None:
-        """内部方法：将 OneBot 原生原始消息字典转换为 UnifiedMessage 值对象。"""
+        """Chuyển dict tin nhắn native OneBot thành UnifiedMessage."""
         try:
             sender = raw_msg.get("sender", {})
             message_chain = raw_msg.get("message", [])
 
-            # 兼容性处理：如果是字符串格式的 message，转换为列表格式
+            # Chuyển message dạng chuỗi thành list để tương thích.
             if isinstance(message_chain, str):
                 message_chain = [{"type": "text", "data": {"text": message_chain}}]
 
@@ -324,14 +306,14 @@ class OneBotAdapter(PlatformAdapter):
                     )
 
                 elif seg_type == "image":
-                    # QQ 平台: subType=1 表示表情包，通过 raw_data 传递给下游统计
+                    # QQ: subType=1 là sticker, truyền qua raw_data cho thống kê.
                     sub_type = seg_data.get("subType", seg_data.get("sub_type"))
-                    # 安全地转换为整数，防止非数字值导致异常
+                    # Chuyển an toàn sang int.
                     try:
                         is_sticker = int(sub_type) == 1
                     except (TypeError, ValueError):
                         is_sticker = False
-                    # 只在 sub_type 有效时包含在 raw_data 中
+                    # Chỉ thêm sub_type vào raw_data khi hợp lệ.
                     raw_data: dict[str, Any] = {"summary": seg_data.get("summary", "")}
                     if sub_type is not None:
                         raw_data["sub_type"] = int(sub_type)
@@ -398,7 +380,7 @@ class OneBotAdapter(PlatformAdapter):
                         MessageContent(type=MessageContentType.UNKNOWN, raw_data=seg)
                     )
 
-            # 提取回复 ID
+            # Trích xuất ID trả lời.
             reply_to = None
             for c in contents:
                 if c.type == MessageContentType.REPLY and c.raw_data:
@@ -419,20 +401,20 @@ class OneBotAdapter(PlatformAdapter):
             )
 
         except Exception as e:
-            logger.debug(f"OneBot _convert_message 错误: {e}")
+            logger.debug(f"Lỗi OneBot _convert_message: {e}")
             return None
 
     def convert_to_raw_format(self, messages: list[UnifiedMessage]) -> list[dict]:
         """
-        将统一格式转换回 OneBot v11 原生字典格式。
+        Chuyển định dạng thống nhất về dict native OneBot v11.
 
-        使现有业务逻辑逻辑无需重构即可使用新流水。
+        Cho phép logic hiện tại dùng pipeline mới mà không cần refactor.
 
         Args:
-            messages (list[UnifiedMessage]): 统一消息列表
+            messages: Danh sách UnifiedMessage.
 
         Returns:
-            list[dict]: OneBot 格式的消息字典列表
+            Danh sách dict tin nhắn OneBot.
         """
         raw_messages = []
         for msg in messages:
@@ -496,7 +478,7 @@ class OneBotAdapter(PlatformAdapter):
 
         return raw_messages
 
-    # ==================== IMessageSender 实现 ====================
+    # ==================== Triển khai IMessageSender ====================
 
     async def send_text(
         self,
@@ -505,15 +487,15 @@ class OneBotAdapter(PlatformAdapter):
         reply_to: str | None = None,
     ) -> bool:
         """
-        向群组发送文本消息。
+        Gửi tin nhắn văn bản tới nhóm.
 
         Args:
-            group_id (str): 目标群号
-            text (str): 消息内容
-            reply_to (str, optional): 引用回复的消息 ID
+            group_id: ID nhóm đích.
+            text: Nội dung tin nhắn.
+            reply_to: ID tin nhắn được trả lời.
 
         Returns:
-            bool: 是否发送成功
+            Có gửi thành công hay không.
         """
         try:
             message = [{"type": "text", "data": {"text": text}}]
@@ -526,12 +508,12 @@ class OneBotAdapter(PlatformAdapter):
                 group_id=int(group_id),
                 message=message,
             )
-            self._record_mute_status(group_id, False)  # 成功发送，清除禁言缓存
+            self._record_mute_status(group_id, False)  # Gửi thành công, xoá cache mute.
             return True
         except Exception as e:
             if self._is_mute_exception(e):
                 self._record_mute_status(group_id, True)
-            logger.error(f"OneBot 文本发送失败: {e}")
+            logger.error(f"OneBot gửi văn bản thất bại: {e}")
             return False
 
     async def _execute_transmission_strategy(
@@ -542,30 +524,29 @@ class OneBotAdapter(PlatformAdapter):
         format_path_as_url: bool = False,
     ) -> bool:
         """
-        通用传输策略执行器。
-        处理 Base64 优先（开启时）、物理路径尝试、以及 Base64 兜底。
+        Thực thi chiến lược truyền chung: ưu tiên Base64 nếu bật, thử path và fallback Base64.
 
         Args:
-            path: 文件路径或 URL
-            worker: 执行具体 API 调用的异步函数，接收 (file_val, mode_label) -> Awaitable[None]
-            label: 业务标签，用于日志
-            format_path_as_url: 是否将本地路径格式化为 file:/// 形式
+            path: Path tệp hoặc URL.
+            worker: Hàm async gọi API nhận file_val và mode_label.
+            label: Nhãn nghiệp vụ dùng cho log.
+            format_path_as_url: Có đổi path local thành file URL hay không.
         """
         try:
             use_base64 = self._get_use_base64()
             abs_path, is_remote, exists = self._prepare_path(path)
 
-            # 1. 优先尝试 Base64 (如果开启)
+            # 1. Ưu tiên Base64 nếu bật.
             if use_base64 and not is_remote:
                 b64 = await self._get_base64_from_file(abs_path)
                 if b64:
                     try:
-                        await worker(b64, "Base64 优先")
+                        await worker(b64, "Ưu tiên Base64")
                         return True
                     except Exception:
                         pass
 
-            # 2. 尝试物理路径/远程 URL
+            # 2. Thử path vật lý hoặc URL từ xa.
             if exists:
                 try:
                     file_val = abs_path
@@ -575,28 +556,32 @@ class OneBotAdapter(PlatformAdapter):
                             if abs_path.startswith("/")
                             else f"file:///{abs_path}"
                         )
-                    await worker(file_val, "路径模式")
+                    await worker(file_val, "Chế độ path")
                     return True
                 except Exception as e:
                     if not use_base64:
-                        logger.error(f"[{label}] 发送失败: {e}")
+                        logger.error(f"[{label}] Gửi thất bại: {e}")
                         return False
-                    logger.warning(f"[{label}] 路径发送失败 ({e})，准备 Base64 补救...")
+                    logger.warning(
+                        f"[{label}] Gửi bằng path thất bại ({e}), chuẩn bị fallback Base64..."
+                    )
             else:
                 if not use_base64:
-                    logger.error(f"[{label}] 文件不存在且未开启 Base64: {abs_path}")
+                    logger.error(
+                        f"[{label}] Tệp không tồn tại và Base64 chưa bật: {abs_path}"
+                    )
                     return False
 
-            # 3. 兜底回退
+            # 3. Fallback cuối.
             if not is_remote:
                 b64 = await self._get_base64_from_file(abs_path)
                 if b64:
-                    await worker(b64, "Base64 补发")
+                    await worker(b64, "Gửi bù Base64")
                     return True
 
             return False
         except Exception as e:
-            logger.error(f"[{label}] 发送异常: {e}")
+            logger.error(f"[{label}] Lỗi gửi: {e}")
             return False
 
     async def send_image(
@@ -605,7 +590,7 @@ class OneBotAdapter(PlatformAdapter):
         image_path: str,
         caption: str = "",
     ) -> bool:
-        """向群组发送图片消息。"""
+        """Gửi ảnh tới nhóm."""
 
         async def do_send(file_val: str, label: str):
             msg = []
@@ -621,10 +606,10 @@ class OneBotAdapter(PlatformAdapter):
                 if self._is_mute_exception(e):
                     self._record_mute_status(group_id, True)
                 raise
-            logger.debug(f"[OneBot] 图片发送成功 ({label}): 群 {group_id}")
+            logger.debug(f"[OneBot] Gửi ảnh thành công ({label}): nhóm {group_id}")
 
         return await self._execute_transmission_strategy(
-            image_path, do_send, "OneBot 图片", format_path_as_url=True
+            image_path, do_send, "Ảnh OneBot", format_path_as_url=True
         )
 
     async def send_file(
@@ -633,7 +618,7 @@ class OneBotAdapter(PlatformAdapter):
         file_path: str,
         filename: str | None = None,
     ) -> bool:
-        """通过群文件功能上传并发送文件。"""
+        """Upload và gửi tệp qua tính năng tệp nhóm."""
 
         async def do_upload(content: str, label: str):
             try:
@@ -648,10 +633,12 @@ class OneBotAdapter(PlatformAdapter):
                 if self._is_mute_exception(e):
                     self._record_mute_status(group_id, True)
                 raise
-            logger.debug(f"[OneBot] 文件发送成功 ({label}): {filename or file_path}")
+            logger.debug(
+                f"[OneBot] Gửi tệp thành công ({label}): {filename or file_path}"
+            )
 
         return await self._execute_transmission_strategy(
-            file_path, do_upload, "OneBot 文件"
+            file_path, do_upload, "Tệp OneBot"
         )
 
     async def send_forward_msg(
@@ -660,13 +647,13 @@ class OneBotAdapter(PlatformAdapter):
         nodes: list[dict],
     ) -> bool:
         """
-        发送群合并转发消息。
+        Gửi tin nhắn chuyển tiếp nhóm đã gộp.
         """
         if not hasattr(self.bot, "call_action"):
             return False
 
         try:
-            # 兼容处理节点中的 uin -> user_id (有些后端偏好 uin)
+            # Tương thích uin và user_id trong node.
             for node in nodes:
                 if "data" in node:
                     if "user_id" in node["data"] and "uin" not in node["data"]:
@@ -682,13 +669,13 @@ class OneBotAdapter(PlatformAdapter):
         except Exception as e:
             if self._is_mute_exception(e):
                 self._record_mute_status(group_id, True)
-            logger.warning(f"[OneBot] 发送合并转发消息失败: {e}")
+            logger.warning(f"[OneBot] Gửi tin chuyển tiếp đã gộp thất bại: {e}")
             return False
 
-    # ==================== IGroupInfoRepository 实现 ====================
+    # ==================== Triển khai IGroupInfoRepository ====================
 
     async def get_group_info(self, group_id: str) -> UnifiedGroup | None:
-        """获取指定群组的基础元数据。"""
+        """Lấy metadata cơ bản của nhóm."""
         try:
             result = await self.bot.call_action(
                 "get_group_info",
@@ -710,7 +697,7 @@ class OneBotAdapter(PlatformAdapter):
             return None
 
     async def get_group_list(self) -> list[str]:
-        """获取当前机器人已加入的所有群组 ID 列表。"""
+        """Lấy ID mọi nhóm bot hiện đã tham gia."""
         try:
             result = await self.bot.call_action("get_group_list")
             return [str(g.get("group_id", "")) for g in result or []]
@@ -718,7 +705,7 @@ class OneBotAdapter(PlatformAdapter):
             return []
 
     async def get_member_list(self, group_id: str) -> list[UnifiedMember]:
-        """拉取整个群组成员列表。"""
+        """Lấy toàn bộ danh sách thành viên nhóm."""
         try:
             result = await self.bot.call_action(
                 "get_group_member_list",
@@ -745,7 +732,7 @@ class OneBotAdapter(PlatformAdapter):
         group_id: str,
         user_id: str,
     ) -> UnifiedMember | None:
-        """拉取特定群成员的详细名片及角色信息。"""
+        """Lấy thông tin chi tiết và role của thành viên nhóm."""
         try:
             result = await self.bot.call_action(
                 "get_group_member_info",
@@ -768,19 +755,19 @@ class OneBotAdapter(PlatformAdapter):
 
     async def _get_base64_from_file(self, file_path: str) -> str | None:
         """
-        读取本地文件并返回 Base64 编码字符串。
+        Đọc tệp local và trả chuỗi mã hoá Base64.
 
         Args:
-            file_path: 本地文件绝对路径
+            file_path: Path tuyệt đối của tệp local.
 
         Returns:
-            str | None: base64://... 格式的字符串，读取失败返回 None
+            Chuỗi dạng base64:// hoặc None nếu đọc thất bại.
         """
         try:
             import os
 
             if not os.path.exists(file_path):
-                logger.error(f"文件不存在，无法读取 Base64: {file_path}")
+                logger.error(f"Tệp không tồn tại, không thể đọc Base64: {file_path}")
                 return None
 
             with open(file_path, "rb") as f:
@@ -788,10 +775,10 @@ class OneBotAdapter(PlatformAdapter):
                 b64 = base64.b64encode(data).decode("utf-8")
                 return f"base64://{b64}"
         except Exception as e:
-            logger.error(f"读取文件并转换 Base64 失败: {e}")
+            logger.error(f"Đọc tệp và chuyển Base64 thất bại: {e}")
             return None
 
-    # ==================== IAvatarRepository 实现 ====================
+    # ==================== Triển khai IAvatarRepository ====================
 
     async def get_user_avatar_url(
         self,
@@ -799,17 +786,17 @@ class OneBotAdapter(PlatformAdapter):
         size: int = 100,
     ) -> str | None:
         """
-        拼凑 QQ 官方服务地址获取用户头像。
+        Dựng URL dịch vụ QQ Official để lấy avatar người dùng.
 
         Args:
-            user_id (str): QQ 号
-            size (int): 期望像素大小
+            user_id: ID QQ.
+            size: Kích thước pixel mong muốn.
 
         Returns:
-            str: 格式化后的 URL
+            URL đã định dạng.
         """
         actual_size = self._get_nearest_size(size)
-        # 640 使用 HD 接口更清晰
+        # Dùng endpoint HD cho kích thước 640.
         if actual_size >= 640:
             return self.USER_AVATAR_HD_TEMPLATE.format(user_id=user_id, size=640)
         return self.USER_AVATAR_TEMPLATE.format(user_id=user_id, size=actual_size)
@@ -820,7 +807,7 @@ class OneBotAdapter(PlatformAdapter):
         size: int = 100,
     ) -> str | None:
         """
-        通过网络下载头像并转换为 Base64 格式，适用于前端模板直接渲染。
+        Tải avatar qua mạng và chuyển sang Base64 để render trực tiếp.
         """
         url = await self.get_user_avatar_url(user_id, size)
         if not url:
@@ -837,7 +824,7 @@ class OneBotAdapter(PlatformAdapter):
                         content_type = resp.headers.get("Content-Type", "image/png")
                         return f"data:{content_type};base64,{b64}"
         except Exception as e:
-            logger.debug(f"OneBot 头像下载失败: {e}")
+            logger.debug(f"OneBot tải avatar thất bại: {e}")
         return None
 
     async def get_group_avatar_url(
@@ -845,7 +832,7 @@ class OneBotAdapter(PlatformAdapter):
         group_id: str,
         size: int = 100,
     ) -> str | None:
-        """获取 QQ 群头像地址。"""
+        """Lấy URL avatar nhóm QQ."""
         actual_size = self._get_nearest_size(size)
         return self.GROUP_AVATAR_TEMPLATE.format(group_id=group_id, size=actual_size)
 
@@ -854,7 +841,7 @@ class OneBotAdapter(PlatformAdapter):
         user_ids: list[str],
         size: int = 100,
     ) -> dict[str, str | None]:
-        """批量映射 QQ 号到其头像 URL 地址。"""
+        """Ánh xạ hàng loạt ID QQ sang URL avatar."""
         return {
             user_id: await self.get_user_avatar_url(user_id, size)
             for user_id in user_ids
@@ -862,22 +849,22 @@ class OneBotAdapter(PlatformAdapter):
 
     async def is_group_muted(self, group_id: str) -> bool:
         """
-        检查 OneBot 平台下的群聊是否被禁言（包括全体禁言或对 Bot 自身禁言）。
+        Kiểm tra nhóm OneBot có mute toàn nhóm hoặc riêng bot hay không.
         """
         group_id_str = str(group_id)
 
-        # 1. 检查最近缓存的禁言状态（5分钟内有效）
+        # 1. Kiểm tra trạng thái mute cache trong 5 phút.
         last_mute_time = self._muted_groups_cache.get(group_id_str)
         if last_mute_time and (time.time() - last_mute_time) < 300:
             logger.info(
-                f"[OneBot] 从缓存中检测到群 {group_id_str} 最近处于禁言状态，跳过分析"
+                f"[OneBot] Cache cho thấy nhóm {group_id_str} vừa bị mute, bỏ qua phân tích"
             )
             return True
 
         if not hasattr(self.bot, "call_action"):
             return False
 
-        # 2. 获取 Bot 自身的 QQ 号，并过滤掉非法的字符串（如 functools.partial 或含字母/特殊字符的异常值）
+        # 2. Lấy ID QQ bot và lọc giá trị lỗi như functools.partial.
         bot_user_id = None
         if self.bot_self_ids:
             valid_ids = [
@@ -894,7 +881,7 @@ class OneBotAdapter(PlatformAdapter):
 
         if not bot_user_id:
             try:
-                # 设定 5.0 秒超时，防止接口请求无限挂起
+                # Timeout 5 giây để tránh API treo vô hạn.
                 login_info = await asyncio.wait_for(
                     self.bot.call_action("get_login_info"), timeout=5.0
                 )
@@ -905,17 +892,17 @@ class OneBotAdapter(PlatformAdapter):
                 if self._is_mute_exception(e):
                     self._record_mute_status(group_id, True)
                     logger.info(
-                        f"[OneBot] 从 get_login_info 异常中检测到 Bot 在群 {group_id} 中已被禁言"
+                        f"[OneBot] Phát hiện bot bị mute trong nhóm {group_id} từ lỗi get_login_info"
                     )
                     return True
-                logger.warning(f"[OneBot] 获取 Bot 自身登录信息失败: {e}")
+                logger.warning(f"[OneBot] Lấy thông tin đăng nhập bot thất bại: {e}")
 
-        # 3. 检查 Bot 是否被个人禁言，并获取 Bot 在群内的角色
+        # 3. Kiểm tra bot bị mute riêng và lấy role trong nhóm.
         is_individually_muted = False
-        role = "member"  # 默认为 member 以防万一
+        role = "member"  # Mặc định member để an toàn.
         if bot_user_id:
             try:
-                # 设定 5.0 秒超时，且不传递 no_cache=True 以免强制向腾讯服务器同步导致高延时超时
+                # Timeout 5 giây và không ép no_cache để tránh độ trễ Tencent.
                 member_info = await asyncio.wait_for(
                     self.bot.call_action(
                         "get_group_member_info",
@@ -926,50 +913,49 @@ class OneBotAdapter(PlatformAdapter):
                 )
                 if member_info:
                     role = member_info.get("role", "member")
-                    # 缓存角色信息，用于 get_group_member_info 超时时降级使用
+                    # Cache role để fallback khi get_group_member_info timeout.
                     self._group_role_cache[group_id_str] = (role, time.time())
                     shut_up_time = member_info.get("shut_up_time", 0)
                     if shut_up_time > 0:
-                        # 如果 shut_up_time 是 Unix 时间戳
+                        # shut_up_time có thể là Unix timestamp.
                         if shut_up_time > 1000000000:
                             if shut_up_time > time.time():
                                 is_individually_muted = True
                         else:
-                            # 否则认为是相对禁言剩余时间（秒）
+                            # Nếu không thì là số giây mute còn lại.
                             is_individually_muted = True
             except asyncio.TimeoutError:
-                # 超时降级：优先使用缓存的角色（角色几乎不会变）
+                # Fallback timeout: ưu tiên role đã cache.
                 cached_role = self._group_role_cache.get(group_id_str)
                 if cached_role:
                     role = cached_role[0]
                     logger.warning(
-                        f"[OneBot] 获取群成员信息超时，使用缓存角色: {role} (group_id={group_id}, user_id={bot_user_id})"
+                        f"[OneBot] Lấy thông tin thành viên timeout, dùng role cache: {role} (group_id={group_id}, user_id={bot_user_id})"
                     )
                 else:
                     logger.warning(
-                        f"[OneBot] 获取群成员信息超时且无角色缓存，将按 member 处理 (group_id={group_id}, user_id={bot_user_id})"
+                        f"[OneBot] Lấy thông tin thành viên timeout và không có cache, dùng member (group_id={group_id}, user_id={bot_user_id})"
                     )
             except Exception as e:
                 if self._is_mute_exception(e):
                     self._record_mute_status(group_id, True)
                     logger.info(
-                        f"[OneBot] 从 get_group_member_info 异常中检测到 Bot 在群 {group_id} 中已被禁言"
+                        f"[OneBot] Phát hiện bot bị mute trong nhóm {group_id} từ lỗi get_group_member_info"
                     )
                     return True
                 logger.warning(
-                    f"[OneBot] 获取群成员信息失败 (group_id={group_id}, user_id={bot_user_id}): {e}"
+                    f"[OneBot] Lấy thông tin thành viên thất bại (group_id={group_id}, user_id={bot_user_id}): {e}"
                 )
 
         if is_individually_muted:
             self._record_mute_status(group_id, True)
-            logger.info(f"[OneBot] 检测到 Bot 在群 {group_id} 中已被单独禁言")
+            logger.info(f"[OneBot] Phát hiện bot bị mute riêng trong nhóm {group_id}")
             return True
 
-        # 4. 如果 Bot 不是管理员或群主，则需要检查群聊是否开启了全群禁言
-        # 管理员 (admin) 和群主 (owner) 在全群禁言下依然可以发言
+        # 4. Nếu bot không phải admin/owner, kiểm tra mute toàn nhóm.
         if role not in ("admin", "owner"):
             try:
-                # 设定 5.0 秒超时，不传 no_cache=True
+                # Timeout 5 giây, không truyền no_cache=True.
                 group_info = await asyncio.wait_for(
                     self.bot.call_action(
                         "get_group_info",
@@ -978,7 +964,7 @@ class OneBotAdapter(PlatformAdapter):
                     timeout=5.0,
                 )
                 if group_info:
-                    # 兼容 LLOneBot, Lagrange, NapCat/SnowLuma 以及标准 OneBot 各种全群禁言状态字段
+                    # Tương thích các trường mute toàn nhóm giữa các backend.
                     is_whole_ban = (
                         group_info.get("group_all_shut")
                         or group_info.get("shutup_all")
@@ -990,21 +976,25 @@ class OneBotAdapter(PlatformAdapter):
                     if is_whole_ban:
                         self._record_mute_status(group_id, True)
                         logger.info(
-                            f"[OneBot] 检测到群 {group_id} 开启了全群禁言，且 Bot 为普通成员"
+                            f"[OneBot] Phát hiện nhóm {group_id} mute toàn nhóm và bot là thành viên thường"
                         )
                         return True
             except asyncio.TimeoutError:
-                logger.warning(f"[OneBot] 获取群信息超时 (group_id={group_id})")
+                logger.warning(
+                    f"[OneBot] Lấy thông tin nhóm timeout (group_id={group_id})"
+                )
             except Exception as e:
                 if self._is_mute_exception(e):
                     self._record_mute_status(group_id, True)
                     logger.info(
-                        f"[OneBot] 从 get_group_info 异常中检测到 Bot 在群 {group_id} 中已被禁言"
+                        f"[OneBot] Phát hiện bot bị mute trong nhóm {group_id} từ lỗi get_group_info"
                     )
                     return True
-                logger.warning(f"[OneBot] 获取群信息失败 (group_id={group_id}): {e}")
+                logger.warning(
+                    f"[OneBot] Lấy thông tin nhóm thất bại (group_id={group_id}): {e}"
+                )
 
-        # 如果所有检测均未发现禁言，则暂时视为未禁言
+        # Nếu không phát hiện mute thì xem là chưa mute.
         return False
 
     def _is_mute_exception(self, e: Exception) -> bool:
@@ -1014,16 +1004,12 @@ class OneBotAdapter(PlatformAdapter):
 
         mute_keywords = ("禁言", "操作失败", "下游群鉴权")
 
-        # --- 方法一：根据 retcode 检测 ---
-        # NapCat/LLOneBot 被禁言时返回 retcode=1200（INTERNAL_ERROR）
-        # SnowLuma/OIDB 操作被拒时返回 retcode=100（ACTION_FAILED）+ wording 含错误描述
-        # SnowLuma 发送消息被拒时返回 result=120
+        # Cách 1: phát hiện theo retcode của các backend.
         if any(rc in err_str for rc in ("1200", "retcode=100", "result=120")):
             if any(kw in err_str for kw in mute_keywords):
                 return True
 
-        # --- 方法二：检查 exception 的 message/wording 属性 ---
-        # 适配不同协议端对错误信息的字段命名差异
+        # Cách 2: kiểm tra thuộc tính message/wording của exception.
         for attr in ("message", "wording"):
             val = getattr(e, attr, "") or ""
             if any(kw in val for kw in mute_keywords):
@@ -1031,8 +1017,7 @@ class OneBotAdapter(PlatformAdapter):
             if "shut up" in val.lower():
                 return True
 
-        # --- 方法三：检测 SnowLuma 发消息被拒的特定模式 ---
-        # SnowLuma 在群内发消息失败时返回：
+        # Cách 3: phát hiện mẫu SnowLuma từ chối gửi tin nhắn.
         #   retcode=100, wording="send group message rejected: result=120 err="
         err_lower = err_str.lower()
         if "rejected" in err_lower and (
@@ -1040,8 +1025,7 @@ class OneBotAdapter(PlatformAdapter):
         ):
             return True
 
-        # --- 方法四：兜底 --- 直接从 err_str 匹配禁言关键词 ---
-        # 即使 getattr 获取不到 wording 属性，str(e) 本身仍包含关键词文本
+        # Cách 4: fallback khớp keyword mute trực tiếp trong err_str.
         if any(kw in err_str for kw in mute_keywords):
             return True
 
@@ -1072,7 +1056,7 @@ class OneBotAdapter(PlatformAdapter):
             self._muted_groups_cache.pop(group_id_str, None)
 
     # ================================================================
-    # 群文件 / 群相册上传
+    # Upload tệp nhóm / album nhóm.
     # ================================================================
 
     async def upload_group_file_to_folder(
@@ -1082,7 +1066,7 @@ class OneBotAdapter(PlatformAdapter):
         filename: str | None = None,
         folder_id: str | None = None,
     ) -> bool:
-        """上传文件到群文件目录的指定子文件夹。"""
+        """Upload tệp vào thư mục con chỉ định của tệp nhóm."""
 
         async def do_upload(content: str, label: str):
             params = {
@@ -1093,10 +1077,12 @@ class OneBotAdapter(PlatformAdapter):
             if folder_id:
                 params["folder"] = folder_id
             await self.bot.call_action("upload_group_file", **params)
-            logger.debug(f"[OneBot] 群文件发送成功 ({label}): {params['name']}")
+            logger.debug(
+                f"[OneBot] Gửi tệp nhóm thành công ({label}): {params['name']}"
+            )
 
         return await self._execute_transmission_strategy(
-            file_path, do_upload, "OneBot 群文件"
+            file_path, do_upload, "Tệp nhóm OneBot"
         )
 
     async def create_group_file_folder(
@@ -1105,14 +1091,14 @@ class OneBotAdapter(PlatformAdapter):
         folder_name: str,
     ) -> str | None:
         """
-        在群文件根目录下创建子文件夹。
+        Tạo thư mục con trong thư mục gốc tệp nhóm.
 
         Args:
-            group_id: 目标群号
-            folder_name: 文件夹名称
+            group_id: ID nhóm đích.
+            folder_name: Tên thư mục.
 
         Returns:
-            str | None: 创建成功时返回 folder_id，失败返回 None
+            folder_id nếu thành công, ngược lại None.
         """
         try:
             result = await self.bot.call_action(
@@ -1121,22 +1107,24 @@ class OneBotAdapter(PlatformAdapter):
                 name=folder_name,
                 parent_id="/",
             )
-            # go-cqhttp 等实现可能不返回 folder_id
+            # Một số implementation như go-cqhttp có thể không trả folder_id.
             folder_id = None
             if isinstance(result, dict):
                 folder_id = result.get("folder_id") or result.get("id")
             logger.info(
-                f"OneBot 群文件夹创建成功: {folder_name} (群 {group_id})"
+                f"Tạo thư mục tệp nhóm OneBot thành công: {folder_name} (nhóm {group_id})"
                 + (f" [ID: {folder_id}]" if folder_id else "")
             )
             return folder_id
         except Exception as e:
             error_msg = str(e).lower()
-            # 文件夹已存在的情况不视为错误
+            # Thư mục đã tồn tại không được xem là lỗi.
             if "exist" in error_msg or "已存在" in error_msg:
-                logger.info(f"OneBot 群文件夹已存在: {folder_name} (群 {group_id})")
-                return None  # 需要通过 get_group_file_root_folders 获取 ID
-            logger.error(f"OneBot 群文件夹创建失败: {e}")
+                logger.info(
+                    f"Thư mục tệp nhóm OneBot đã tồn tại: {folder_name} (nhóm {group_id})"
+                )
+                return None  # Cần lấy ID qua get_group_file_root_folders.
+            logger.error(f"Tạo thư mục tệp nhóm OneBot thất bại: {e}")
             return None
 
     async def get_group_file_root_folders(
@@ -1144,14 +1132,13 @@ class OneBotAdapter(PlatformAdapter):
         group_id: str,
     ) -> list[dict]:
         """
-        获取群文件根目录下的文件夹列表。
+        Lấy danh sách thư mục trong thư mục gốc tệp nhóm.
 
         Args:
-            group_id: 目标群号
+            group_id: ID nhóm đích.
 
         Returns:
-            list[dict]: 文件夹列表，每项包含 folder_id/name 等字段。
-                        API 不可用时返回空列表。
+            Danh sách dict thư mục; trả list rỗng nếu API không khả dụng.
         """
         try:
             result = await self.bot.call_action(
@@ -1162,7 +1149,7 @@ class OneBotAdapter(PlatformAdapter):
                 return result.get("folders", []) or []
             return []
         except Exception as e:
-            logger.debug(f"OneBot 获取群文件夹列表失败: {e}")
+            logger.debug(f"OneBot lấy danh sách thư mục nhóm thất bại: {e}")
             return []
 
     async def find_or_create_folder(
@@ -1171,44 +1158,47 @@ class OneBotAdapter(PlatformAdapter):
         folder_name: str,
     ) -> str | None:
         """
-        查找或创建指定名称的群文件子文件夹，返回 folder_id。
+        Tìm hoặc tạo thư mục con tệp nhóm theo tên và trả folder_id.
 
-        先尝试在现有根目录文件夹中查找匹配名称的文件夹，
-        找不到则创建新文件夹。
+        Trước tiên tìm trong thư mục gốc hiện có, nếu không thấy thì tạo mới.
 
         Args:
-            group_id: 目标群号
-            folder_name: 文件夹名称
+            group_id: ID nhóm đích.
+            folder_name: Tên thư mục.
 
         """
         if not folder_name:
             return None
 
-        # 1. 先尝试查找已有文件夹
+        # 1. Tìm thư mục hiện có.
         folders = await self.get_group_file_root_folders(group_id)
         for folder in folders:
             name = folder.get("folder_name") or folder.get("name", "")
             fid = folder.get("folder_id") or folder.get("id", "")
             if name == folder_name and fid:
-                logger.debug(f"找到已有群文件夹: {folder_name} [ID: {fid}]")
+                logger.debug(
+                    f"Tìm thấy thư mục nhóm hiện có: {folder_name} [ID: {fid}]"
+                )
                 return fid
 
-        # 2. 未找到，尝试创建
+        # 2. Nếu chưa thấy, thử tạo.
         created_id = await self.create_group_file_folder(group_id, folder_name)
         if created_id:
             return created_id
 
-        # 3. 创建后再次查找（某些实现创建时不返回 ID）
+        # 3. Tìm lại sau khi tạo vì một số backend không trả ID.
         folders = await self.get_group_file_root_folders(group_id)
         for folder in folders:
             name = folder.get("folder_name") or folder.get("name", "")
             fid = folder.get("folder_id") or folder.get("id", "")
             if name == folder_name and fid:
-                logger.debug(f"创建后找到群文件夹: {folder_name} [ID: {fid}]")
+                logger.debug(
+                    f"Tìm thấy thư mục nhóm sau khi tạo: {folder_name} [ID: {fid}]"
+                )
                 return fid
 
         logger.warning(
-            f"无法获取群文件夹 ID: {folder_name} (群 {group_id})，将上传到根目录"
+            f"Không thể lấy ID thư mục nhóm: {folder_name} (nhóm {group_id}); sẽ upload vào thư mục gốc"
         )
         return None
 
@@ -1220,27 +1210,27 @@ class OneBotAdapter(PlatformAdapter):
         album_name: str | None = None,
         strict_mode: bool = False,
     ) -> bool:
-        """上传图片到群相册（NapCat 扩展 API）。"""
-        # 严格模式：指定了相册名但未解析到 album_id 时，禁止上传
+        """Upload ảnh vào album nhóm qua API mở rộng NapCat."""
+        # Strict mode: không upload khi có tên album nhưng không phân giải được ID.
         if strict_mode and album_name and not album_id:
             logger.info(
-                f"[群分析相册] 严格模式开启：未找到相册 '{album_name}' (群 {group_id})，停止上传。"
+                f"[Album phân tích nhóm] Strict mode: không thấy album '{album_name}' (nhóm {group_id}), dừng upload"
             )
             return False
 
-        # 兜底查询
+        # Truy vấn fallback.
         if not album_id:
             albums = await self.get_group_album_list(group_id)
             album_id = self._find_item_in_list(
                 albums, album_name, ["album_id"], ["name", "album_name"]
             )
-            # 如果仍没指定且没搜到特定相册，取第一个
+            # Nếu không chỉ định album, dùng album đầu tiên.
             if not album_id and not album_name and albums:
                 album_id = albums[0].get("album_id") or albums[0].get("id")
 
         if not album_id:
             logger.info(
-                f"[群分析相册] 未能确定目标相册 (群 {group_id})，跳过相册上传。"
+                f"[Album phân tích nhóm] Không xác định được album đích (nhóm {group_id}), bỏ qua upload"
             )
             return False
 
@@ -1248,8 +1238,7 @@ class OneBotAdapter(PlatformAdapter):
             await self._detect_llbot()
 
             if self._is_llbot:
-                # LLBot 模式：使用 files 参数 (列表)
-                # LLBot 的 upload_group_album 接收 files 作为数组
+                # LLBot dùng tham số files dạng list.
                 llbot_params = {
                     "group_id": int(group_id),
                     "album_id": str(album_id),
@@ -1258,12 +1247,12 @@ class OneBotAdapter(PlatformAdapter):
                 try:
                     await self.bot.call_action("upload_group_album", **llbot_params)
                     logger.debug(
-                        f"[群分析相册] 上传成功 (LLBot, {label}): 群 {group_id}"
+                        f"[Album phân tích nhóm] Upload thành công (LLBot, {label}): nhóm {group_id}"
                     )
                     return
                 except Exception as e:
                     logger.warning(
-                        f"[群分析相册] LLBot 上传接口调用失败: {e}，尝试 NapCat 模式..."
+                        f"[Album phân tích nhóm] API upload LLBot thất bại: {e}, thử chế độ NapCat..."
                     )
 
             params = {
@@ -1282,15 +1271,15 @@ class OneBotAdapter(PlatformAdapter):
                 try:
                     await self.bot.call_action(action, **params)
                     logger.debug(
-                        f"[群分析相册] 上传成功 ({label}, {action}): 群 {group_id}"
+                        f"[Album phân tích nhóm] Upload thành công ({label}, {action}): nhóm {group_id}"
                     )
                     return
                 except Exception:
                     continue
-            raise RuntimeError("所有相册上传 API 均调用失败")
+            raise RuntimeError("Mọi API upload album đều thất bại")
 
         return await self._execute_transmission_strategy(
-            image_path, do_upload, "OneBot 相册"
+            image_path, do_upload, "Album OneBot"
         )
 
     async def get_group_album_list(
@@ -1298,16 +1287,16 @@ class OneBotAdapter(PlatformAdapter):
         group_id: str,
     ) -> list[dict]:
         """
-        获取群分析相册列表（兼容多种 OneBot 扩展实现）。
+        Lấy danh sách album nhóm, tương thích nhiều extension OneBot.
         """
 
         def extract_list(payload: Any) -> list[dict]:
-            """从不同结构的响应中提取相册列表：直接列表、嵌套在 data 中、或直接在根字段中。"""
+            """Trích xuất album từ list trực tiếp, data lồng hoặc trường gốc."""
             if isinstance(payload, list):
                 return [item for item in payload if isinstance(item, dict)]
             if not isinstance(payload, dict):
                 logger.debug(
-                    f"[群分析相册] 提取相册列表失败: payload 非字典/列表类型 ({type(payload)})"
+                    f"[Album phân tích nhóm] Trích xuất thất bại: payload không phải dict/list ({type(payload)})"
                 )
                 return []
 
@@ -1317,16 +1306,20 @@ class OneBotAdapter(PlatformAdapter):
                 if isinstance(album_list, list):
                     return [item for item in album_list if isinstance(item, dict)]
                 else:
-                    logger.debug(f"[群分析相册] 在 data 字段中未找到列表: data={data}")
+                    logger.debug(
+                        f"[Album phân tích nhóm] Không tìm thấy list trong trường data: {data}"
+                    )
 
             album_list = payload.get("album_list") or payload.get("list")
             if isinstance(album_list, list):
                 return [item for item in album_list if isinstance(item, dict)]
 
-            logger.debug(f"[群分析相册] 无法从响应中提取相册列表: payload={payload}")
+            logger.debug(
+                f"[Album phân tích nhóm] Không thể trích xuất album từ phản hồi: {payload}"
+            )
             return []
 
-        # 候选 API 名称
+        # Tên API ứng viên.
         actions = [
             "get_qun_album_list",
             "get_group_album_list",
@@ -1337,22 +1330,24 @@ class OneBotAdapter(PlatformAdapter):
         for action in actions:
             try:
                 logger.debug(
-                    f"[群分析相册] 正在通过 {action} 获取列表 (群: {group_id})..."
+                    f"[Album phân tích nhóm] Đang lấy danh sách qua {action} (nhóm: {group_id})..."
                 )
                 result = await self.bot.call_action(
                     action,
                     group_id=int(group_id),
                 )
-                logger.debug(f"[群分析相册] 接口 {action} 原始响应内容: {result}")
+                logger.debug(
+                    f"[Album phân tích nhóm] Phản hồi thô từ {action}: {result}"
+                )
                 if result:
                     albums = extract_list(result)
                     if albums:
                         logger.debug(
-                            f"[群分析相册] {action} 成功获取并提取到 {len(albums)} 个相册对象"
+                            f"[Album phân tích nhóm] {action} lấy được {len(albums)} album"
                         )
                         return albums
             except Exception as e:
-                logger.debug(f"[群分析相册] 接口 {action} 尝试失败: {e}")
+                logger.debug(f"[Album phân tích nhóm] Thử API {action} thất bại: {e}")
 
         return []
 
@@ -1362,54 +1357,55 @@ class OneBotAdapter(PlatformAdapter):
         album_name: str,
     ) -> str | None:
         """
-        根据相册名称查找 album_id。找不到返回 None（将回退到默认相册）。
+        Tìm album_id theo tên, trả None để fallback album mặc định nếu không thấy.
 
         Args:
-            group_id: 目标群号
-            album_name: 目标相册名称
+            group_id: ID nhóm đích.
+            album_name: Tên album đích.
 
         Returns:
-            str | None: 匹配的 album_id，未找到返回 None
+            album_id khớp hoặc None.
         """
         if not album_name:
             return None
 
         logger.debug(
-            f"[群分析相册] 正在群 {group_id} 中查找名为 '{album_name}' 的相册..."
+            f"[Album phân tích nhóm] Đang tìm album '{album_name}' trong nhóm {group_id}..."
         )
         albums = await self.get_group_album_list(group_id)
         for album in albums:
             name = album.get("name") or album.get("album_name")
             logger.debug(
-                f"[群分析相册] 正在匹配相册: 目标='{album_name}', 当前相册名称='{name}', 原始数据={album}"
+                f"[Album phân tích nhóm] So khớp album: đích='{album_name}', hiện tại='{name}', dữ liệu={album}"
             )
             if name == album_name:
                 aid = album.get("album_id")
                 if aid:
                     logger.info(
-                        f"[群分析相册] 成功定位相册: '{album_name}' -> ID: {aid}"
+                        f"[Album phân tích nhóm] Xác định album thành công: '{album_name}' -> ID: {aid}"
                     )
                     return str(aid)
                 else:
                     logger.debug(
-                        f"[群分析相册] 相册 '{name}' 名称匹配，但未找到有效的 album_id"
+                        f"[Album phân tích nhóm] Tên album '{name}' khớp nhưng thiếu album_id hợp lệ"
                     )
 
-        logger.info(f"[群分析相册] 未能找到名为 '{album_name}' 的相册 (群 {group_id})")
+        logger.info(
+            f"[Album phân tích nhóm] Không tìm thấy album '{album_name}' (nhóm {group_id})"
+        )
         return None
 
     async def set_reaction(
         self, group_id: str, message_id: str, emoji: str | int, is_add: bool = True
     ) -> bool:
         """
-        OneBot 实现消息回应 (set_msg_emoji_like)。
-        支持 Go-CQHTTP, NapCat, Lagrange 等 OneBot 实现。
+        Triển khai reaction OneBot bằng set_msg_emoji_like.
         """
         try:
             reaction_key = str(emoji)
             emoji_id = {
-                "analysis_started": "289",  # 🫣 表情 (表示任务已接收)
-                "analysis_done": "124",  # 👌 表情 (表示任务处理完成)
+                "analysis_started": "289",  # Đã nhận tác vụ.
+                "analysis_done": "124",  # Đã xử lý xong tác vụ.
                 "🔍": "289",
                 "📊": "124",
             }.get(reaction_key, reaction_key)
@@ -1418,7 +1414,7 @@ class OneBotAdapter(PlatformAdapter):
                 "set_msg_emoji_like",
                 message_id=int(message_id),
                 emoji_id=emoji_id,
-                emoji_type="1",  # 还原为最稳定的系统表情类型
+                emoji_type="1",  # Loại emoji hệ thống ổn định nhất.
                 set=is_add,
             )
             self._record_mute_status(group_id, False)
@@ -1426,18 +1422,18 @@ class OneBotAdapter(PlatformAdapter):
         except Exception as e:
             if self._is_mute_exception(e):
                 self._record_mute_status(group_id, True)
-            logger.debug(f"OneBot set_reaction 失败 (API 可能不支持): {e}")
+            logger.debug(f"OneBot set_reaction thất bại, API có thể không hỗ trợ: {e}")
             return False
 
     def _get_use_base64(self) -> bool:
-        """从插件配置中获取是否启用 Base64"""
+        """Lấy trạng thái bật Base64 từ cấu hình plugin."""
         plugin: Any = self.config.get("plugin_instance") if self.config else None
         if plugin and hasattr(plugin, "config_manager"):
             return plugin.config_manager.get_enable_base64_image()
         return False
 
     def _prepare_path(self, path: str) -> tuple[str, bool, bool]:
-        """统一路径预处理。返回: (标准化后的绝对路径, 是否为远程/编码路径, 本地文件是否存在)"""
+        """Chuẩn hoá path và trả path, trạng thái remote/encoded, trạng thái tồn tại."""
         is_remote = path.startswith(("http://", "https://", "base64://"))
         if is_remote:
             return path, True, True
@@ -1453,7 +1449,7 @@ class OneBotAdapter(PlatformAdapter):
         id_keys: list[str],
         name_keys: list[str],
     ) -> str | None:
-        """从对象列表中根据名称查找 ID (通用辅助函数)"""
+        """Tìm ID theo tên trong danh sách object."""
         if not target_name:
             return None
 

@@ -6,15 +6,15 @@ from .logger import logger
 
 class CircuitBreaker:
     """
-    韧性设计：熔断器 (Circuit Breaker)
+    Circuit breaker cho khả năng phục hồi hệ thống.
 
-    用于监控外部服务（如 LLM API）的调用状态。当错误率达到阈值时，自动开启熔断，
-    拦截对故障服务的进一步请求，保护系统不被连锁故障拖累，直到服务窗口恢复。
+    Theo dõi lời gọi dịch vụ ngoài như API LLM. Khi lỗi đạt ngưỡng, tự mở
+    mạch để chặn yêu cầu tiếp theo và tránh lỗi dây chuyền cho đến khi hồi phục.
 
     States:
-        CLOSED: 正常工作状态，允许请求
-        OPEN: 熔断状态，拒绝请求
-        HALF_OPEN: 尝试恢复状态，允许少量测试请求
+        CLOSED: Hoạt động bình thường, cho phép yêu cầu.
+        OPEN: Mạch mở, từ chối yêu cầu.
+        HALF_OPEN: Thử hồi phục, cho phép một số yêu cầu kiểm tra.
     """
 
     STATE_CLOSED = "CLOSED"
@@ -28,12 +28,12 @@ class CircuitBreaker:
         name: str = "default",
     ):
         """
-        初始化熔断器。
+        Khởi tạo circuit breaker.
 
         Args:
-            failure_threshold (int): 连续失败触发熔断的次数上限
-            recovery_timeout (int): 熔断开启后尝试恢复之前的冷却时间（秒）
-            name (str): 熔断器标识符（用于日志区分）
+            failure_threshold: Số lỗi liên tiếp để mở mạch.
+            recovery_timeout: Thời gian chờ trước khi thử hồi phục, tính bằng giây.
+            name: Định danh circuit breaker dùng trong log.
         """
         self.name = name
         self.failure_threshold = failure_threshold
@@ -44,7 +44,7 @@ class CircuitBreaker:
         self.last_failure_time = 0.0
 
     def record_failure(self) -> None:
-        """记录一次调用失败，并根据阈值决定是否切换到 OPEN 状态。"""
+        """Ghi nhận một lỗi và mở mạch nếu đạt ngưỡng."""
         self.failure_count += 1
         if (
             self.state == self.STATE_CLOSED
@@ -52,26 +52,26 @@ class CircuitBreaker:
         ):
             self._open_circuit()
         elif self.state == self.STATE_HALF_OPEN:
-            # 半开状态下任何一次失败都将立即导致熔断重开
+            # Một lỗi trong trạng thái half-open sẽ mở mạch ngay.
             self._open_circuit()
 
     def record_success(self) -> None:
-        """记录一次调用成功，并尝试重置或关闭熔断器。"""
+        """Ghi nhận thành công và thử reset hoặc đóng mạch."""
         if self.state == self.STATE_HALF_OPEN:
             self._close_circuit()
         elif self.state == self.STATE_CLOSED:
-            # 正常状态下的成功重置累积计数值
+            # Thành công khi mạch đóng sẽ reset bộ đếm lỗi.
             self.failure_count = 0
 
     def allow_request(self) -> bool:
         """
-        判断是否允许本次服务请求。
+        Kiểm tra có cho phép yêu cầu dịch vụ này hay không.
 
         Returns:
-            bool: True 为允许，False 为拦截
+            True nếu cho phép, False nếu chặn.
         """
         if self.state == self.STATE_OPEN:
-            # 检查冷却时间是否已过，过则进入试探性的半开状态
+            # Chuyển sang half-open nếu đã hết thời gian chờ.
             if time.monotonic() - self.last_failure_time > self.recovery_timeout:
                 self._half_open_circuit()
                 return True
@@ -79,33 +79,31 @@ class CircuitBreaker:
         return True
 
     def _open_circuit(self) -> None:
-        """动作：开启熔断"""
+        """Mở circuit breaker."""
         self.state = self.STATE_OPEN
         self.last_failure_time = time.monotonic()
         logger.warning(
-            f"熔断器 CircuitBreaker[{self.name}] 已激活！将拦截请求 {self.recovery_timeout} 秒。"
+            f"CircuitBreaker[{self.name}] đã mở; chặn yêu cầu trong {self.recovery_timeout} giây."
         )
 
     def _close_circuit(self) -> None:
-        """动作：关闭熔断，恢复常态"""
+        """Đóng circuit breaker và trở về trạng thái bình thường."""
         self.state = self.STATE_CLOSED
         self.failure_count = 0
-        logger.info(f"熔断器 CircuitBreaker[{self.name}] 已恢复至关闭 (CLOSED) 状态。")
+        logger.info(f"CircuitBreaker[{self.name}] đã trở về trạng thái CLOSED.")
 
     def _half_open_circuit(self) -> None:
-        """动作：进入半开状态"""
+        """Chuyển circuit breaker sang trạng thái half-open."""
         self.state = self.STATE_HALF_OPEN
-        logger.info(
-            f"熔断器 CircuitBreaker[{self.name}] 进入半开 (HALF_OPEN) 测试模式。"
-        )
+        logger.info(f"CircuitBreaker[{self.name}] đã vào chế độ kiểm tra HALF_OPEN.")
 
 
 class GlobalRateLimiter:
     """
-    韧性设计：全局并发动态限流器
+    Bộ giới hạn đồng thời động toàn cục.
 
-    基于单例模式管理 asyncio.Semaphore，确保在插件内的异步任务
-    不会超过设定的最大并发限制（如保护 LLM 账单或避免 API 拥塞）。
+    Quản lý ``asyncio.Semaphore`` theo singleton để tác vụ bất đồng bộ không
+    vượt giới hạn, giúp kiểm soát chi phí LLM và tránh nghẽn API.
     """
 
     _instance: "GlobalRateLimiter | None" = None
@@ -119,24 +117,24 @@ class GlobalRateLimiter:
     @classmethod
     def get_instance(cls, max_concurrency: int | None = None) -> "GlobalRateLimiter":
         """
-        获取或创建限流器单例。
+        Lấy hoặc tạo singleton rate limiter.
 
         Args:
-            max_concurrency (int, optional): 允许的最大并发数。如果提供且与当前不同，则重置信号量。
+            max_concurrency: Số tác vụ đồng thời tối đa; thay đổi sẽ reset semaphore.
 
         Returns:
-            GlobalRateLimiter: 唯一实例
+            Instance GlobalRateLimiter duy nhất.
         """
         instance = cls()
         if max_concurrency is not None:
             instance.reconfigure(max_concurrency)
         elif cls._semaphore is None:
-            # 默认兜底
+            # Giá trị fallback mặc định.
             cls._semaphore = asyncio.Semaphore(3)
         return instance
 
     def reconfigure(self, max_concurrency: int):
-        """重新配置并发上限。注意：这会替换信号量对象。"""
+        """Cấu hình lại giới hạn đồng thời và thay thế semaphore."""
         if self._semaphore is None or (
             hasattr(self._semaphore, "_value")
             and self._semaphore._value != max_concurrency  # type: ignore
@@ -147,13 +145,13 @@ class GlobalRateLimiter:
                 else "None"
             )
             logger.info(
-                f"GlobalRateLimiter 重新配置并发上限：{old_val} -> {max_concurrency}"
+                f"GlobalRateLimiter đổi giới hạn đồng thời: {old_val} -> {max_concurrency}"
             )
             self.__class__._semaphore = asyncio.Semaphore(max_concurrency)
 
     @property
     def semaphore(self) -> asyncio.Semaphore:
-        """返回核心的异步信号量对象。"""
+        """Trả về semaphore bất đồng bộ cốt lõi."""
         if self._semaphore is None:
             self.__class__._semaphore = asyncio.Semaphore(3)
         assert self._semaphore is not None

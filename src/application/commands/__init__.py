@@ -1,4 +1,4 @@
-"""命令相关应用服务。"""
+"""Các dịch vụ application liên quan đến command."""
 
 from .template_command_service import TemplateCommandService
 

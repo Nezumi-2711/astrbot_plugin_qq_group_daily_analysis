@@ -1,7 +1,4 @@
-"""
-群聊活跃度可视化模块
-参考 astrbot_plugin_github_analyzer 的实现方式
-"""
+"""Module trực quan hoá mức độ hoạt động của nhóm."""
 
 from collections import defaultdict
 from datetime import datetime
@@ -11,7 +8,7 @@ from ...domain.repositories.visualization_repository import IActivityVisualizer
 
 
 class ActivityVisualizer(IActivityVisualizer):
-    """活跃度可视化器"""
+    """Trình trực quan hoá mức độ hoạt động."""
 
     def __init__(self):
         pass
@@ -19,32 +16,32 @@ class ActivityVisualizer(IActivityVisualizer):
     def generate_activity_visualization(
         self, messages: list[dict]
     ) -> ActivityVisualization:
-        """生成活跃度可视化数据 - 专注于小时级别分析"""
+        """Tạo dữ liệu trực quan hoạt động theo giờ."""
         hourly_activity = defaultdict(int)
         user_activity = defaultdict(int)
-        emoji_activity = defaultdict(int)  # 每小时表情统计
+        emoji_activity = defaultdict(int)  # Thống kê biểu cảm theo giờ.
 
-        # 分析消息数据
+        # Phân tích dữ liệu tin nhắn.
         for msg in messages:
-            # 时间分析 - 只关注小时
+            # Chỉ phân tích theo giờ.
             msg_time = datetime.fromtimestamp(msg.get("time", 0))
             hour = msg_time.hour
 
-            # # 用户分析
+            # # Phân tích thành viên.
             # sender = msg.get("sender", {})
             # user_id = str(sender.get("user_id", ""))
             # nickname = InfoUtils.get_user_nickname(self.config_manager, sender)
 
-            # 统计每小时消息数
+            # Đếm tin nhắn theo giờ.
             hourly_activity[hour] += 1
 
-            # # 统计用户活跃度
+            # # Thống kê hoạt động thành viên.
             # user_activity[user_id] = {
             #     "nickname": nickname,
             #     "count": user_activity.get(user_id, {}).get("count", 0) + 1
             # }
 
-            # 统计每小时表情数
+            # Đếm biểu cảm theo giờ.
             for content in msg.get("message", []):
                 if content.get("type") in ["face", "mface", "bface", "sface"]:
                     emoji_activity[hour] += 1
@@ -54,7 +51,7 @@ class ActivityVisualizer(IActivityVisualizer):
                     if "动画表情" in summary or "表情" in summary:
                         emoji_activity[hour] += 1
 
-        # 生成用户活跃度排行
+        # Tạo bảng xếp hạng hoạt động thành viên.
         user_ranking = []
         for user_id, data in user_activity.items():
             user_ranking.append(
@@ -66,7 +63,7 @@ class ActivityVisualizer(IActivityVisualizer):
             )
         user_ranking.sort(key=lambda x: x["message_count"], reverse=True)
 
-        # 找出高峰时段（活跃度最高的3个小时）
+        # Tìm ba khung giờ hoạt động cao nhất.
         peak_hours = sorted(hourly_activity.items(), key=lambda x: x[1], reverse=True)[
             :3
         ]
@@ -74,8 +71,8 @@ class ActivityVisualizer(IActivityVisualizer):
 
         return ActivityVisualization(
             hourly_activity=dict(hourly_activity),
-            daily_activity={},  # 不使用日期分析
-            user_activity_ranking=user_ranking[:10],  # 前10名
+            daily_activity={},  # Không phân tích theo ngày.
+            user_activity_ranking=user_ranking[:10],  # Top 10.
             peak_hours=peak_hours,
             activity_heatmap_data=self._generate_hourly_heatmap_data(
                 hourly_activity, emoji_activity
@@ -85,8 +82,8 @@ class ActivityVisualizer(IActivityVisualizer):
     def _generate_hourly_heatmap_data(
         self, hourly_activity: dict, emoji_activity: dict
     ) -> dict:
-        """生成小时级热力图数据"""
-        # 计算活跃度等级
+        """Tạo dữ liệu heatmap theo giờ."""
+        # Tính cấp độ hoạt động.
         max_hourly = max(hourly_activity.values()) if hourly_activity else 1
         max_emoji = max(emoji_activity.values()) if emoji_activity else 1
 
@@ -105,7 +102,7 @@ class ActivityVisualizer(IActivityVisualizer):
         }
 
     def _calculate_activity_levels(self, hourly_activity: dict) -> dict:
-        """计算活跃度等级"""
+        """Tính cấp độ hoạt động."""
         if not hourly_activity:
             return {}
 
@@ -127,7 +124,7 @@ class ActivityVisualizer(IActivityVisualizer):
         return levels
 
     def get_hourly_chart_data(self, hourly_activity: dict) -> list[dict]:
-        """生成每小时活动分布的数据"""
+        """Tạo dữ liệu phân bố hoạt động theo giờ."""
         chart_data = []
         max_activity = max(hourly_activity.values()) if hourly_activity else 1
 

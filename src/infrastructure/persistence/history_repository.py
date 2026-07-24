@@ -1,8 +1,8 @@
 """
-历史仓库 - 存储分析历史的实现
+Repository lịch sử - triển khai lưu trữ lịch sử phân tích.
 
-该模块提供分析结果和历史记录的持久化存储。
-它封装了现有的 history_manager 功能。
+Module cung cấp persistence cho kết quả phân tích và bản ghi lịch sử,
+đóng gói chức năng history_manager hiện có.
 """
 
 import json
@@ -15,33 +15,33 @@ from ...utils.logger import logger
 
 class HistoryRepository:
     """
-    基础设施：历史仓库
+    Infrastructure: repository lịch sử.
 
-    负责群聊分析历史记录的持久化存储与检索。目前使用本地 JSON 文件实现，
-    保持了与旧版 `history_manager` 的数据格式兼容性。
+    Lưu và truy xuất lịch sử phân tích nhóm bằng file JSON cục bộ,
+    duy trì tương thích định dạng dữ liệu với history_manager cũ.
 
     Attributes:
-        data_dir (Path): 插件数据存储的总根目录
-        history_dir (Path): 专门存放历史记录的子目录
+        data_dir: Thư mục gốc lưu dữ liệu plugin.
+        history_dir: Thư mục con lưu lịch sử.
     """
 
     def __init__(self, data_dir: str):
         """
-        初始化历史仓库。
+        Khởi tạo repository lịch sử.
 
         Args:
-            data_dir (str): 存储历史数据的基础目录路径
+            data_dir: Đường dẫn thư mục cơ sở lưu dữ liệu lịch sử.
         """
         self.data_dir = Path(data_dir)
         self.history_dir = self.data_dir / "history"
         self._ensure_directories()
 
     def _ensure_directories(self) -> None:
-        """内部方法：确保所需的目录结构已创建。"""
+        """Đảm bảo cấu trúc thư mục cần thiết đã tồn tại."""
         self.history_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_group_history_path(self, group_id: str) -> Path:
-        """内部方法：获取特定群组的历史 JSON 文件路径。"""
+        """Lấy đường dẫn JSON lịch sử của nhóm."""
         return self.history_dir / f"group_{group_id}.json"
 
     def save_analysis_result(
@@ -51,52 +51,54 @@ class HistoryRepository:
         date_str: str | None = None,
     ) -> bool:
         """
-        将分析结果保存到持久化存储。
+        Lưu kết quả phân tích vào persistence.
 
         Args:
-            group_id (str): 群组标识符
-            result (dict[str, Any]): 包含统计、金句等信息的分析结果字典
-            date_str (str, optional): 关联日期 (YYYY-MM-DD)，默认为执行日
+            group_id: Định danh nhóm.
+            result: Dict kết quả gồm thống kê, trích dẫn và thông tin liên quan.
+            date_str: Ngày liên quan (YYYY-MM-DD), mặc định là ngày thực thi.
 
         Returns:
-            bool: 保存成功返回 True，发生异常返回 False
+            True nếu lưu thành công, False nếu xảy ra lỗi.
         """
         try:
             date_str = date_str or datetime.now().strftime("%Y-%m-%d")
             history = self.load_group_history(group_id)
 
-            # 注入执行时间戳
+            # Gắn timestamp thực thi.
             if "timestamp" not in result:
                 result["timestamp"] = datetime.now().isoformat()
 
-            # 结构化存储：二级映射 {date -> result}
+            # Lưu có cấu trúc: ánh xạ hai cấp {date -> result}.
             if "daily" not in history:
                 history["daily"] = {}
 
             history["daily"][date_str] = result
             history["last_updated"] = datetime.now().isoformat()
 
-            # 原子写入（覆盖）
+            # Ghi nguyên tử (ghi đè).
             history_path = self._get_group_history_path(group_id)
             with open(history_path, "w", encoding="utf-8") as f:
                 json.dump(history, f, ensure_ascii=False, indent=2)
 
-            logger.debug(f"已保存群 {group_id} 在 {date_str} 的历史分析记录")
+            logger.debug(
+                f"Đã lưu bản ghi phân tích lịch sử của nhóm {group_id} ngày {date_str}"
+            )
             return True
 
         except Exception as e:
-            logger.error(f"保存群 {group_id} 的历史记录失败: {e}")
+            logger.error(f"Lưu lịch sử của nhóm {group_id} thất bại: {e}")
             return False
 
     def load_group_history(self, group_id: str) -> dict[str, Any]:
         """
-        加载特定群组的完整历史记录字典。
+        Tải toàn bộ dict lịch sử của nhóm.
 
         Args:
-            group_id (str): 群组标识符
+            group_id: Định danh nhóm.
 
         Returns:
-            dict[str, Any]: 历史数据字典，若文件不存在则返回包含空 daily 结构的初始字典
+            Dict lịch sử; nếu file chưa tồn tại thì trả cấu trúc daily rỗng.
         """
         try:
             history_path = self._get_group_history_path(group_id)
@@ -105,77 +107,77 @@ class HistoryRepository:
                     return json.load(f)
             return {"daily": {}, "group_id": group_id}
         except Exception as e:
-            logger.error(f"加载群 {group_id} 的历史记录失败: {e}")
+            logger.error(f"Tải lịch sử của nhóm {group_id} thất bại: {e}")
             return {"daily": {}, "group_id": group_id}
 
     def get_analysis_result(
         self, group_id: str, date_str: str
     ) -> dict[str, Any] | None:
         """
-        获取指定日期已存档的分析结果。
+        Lấy kết quả phân tích đã lưu của ngày chỉ định.
 
         Args:
-            group_id (str): 群组 ID
-            date_str (str): 目标日期 (YYYY-MM-DD)
+            group_id: ID nhóm.
+            date_str: Ngày đích (YYYY-MM-DD).
 
         Returns:
-            Optional[dict[str, Any]]: 分析结果字典，未找到则返回 None
+            Dict kết quả hoặc None nếu không tìm thấy.
         """
         history = self.load_group_history(group_id)
         return history.get("daily", {}).get(date_str)
 
     def get_recent_results(self, group_id: str, limit: int = 7) -> list[dict[str, Any]]:
         """
-        获取指定群组最近 N 次的分析结果列表。
+        Lấy N kết quả phân tích gần nhất của nhóm.
 
         Args:
-            group_id (str): 群组 ID
-            limit (int): 最大返回条数
+            group_id: ID nhóm.
+            limit: Số kết quả tối đa.
 
         Returns:
-            list[dict[str, Any]]: 按日期降序排列的结果列表
+            Danh sách kết quả sắp xếp giảm dần theo ngày.
         """
         history = self.load_group_history(group_id)
         daily = history.get("daily", {})
 
-        # 按日期字符串字典序降序排列（YYYY-MM-DD 天然有序）
+        # Sắp xếp giảm dần theo chuỗi ngày (YYYY-MM-DD vốn có thứ tự).
         sorted_dates = sorted(daily.keys(), reverse=True)[:limit]
         return [daily[date] for date in sorted_dates]
 
     def has_analysis_for_date(self, group_id: str, date_str: str) -> bool:
         """
-        检查指定日期是否已经生成过分析。
+        Kiểm tra ngày chỉ định đã có phân tích hay chưa.
 
         Args:
-            group_id (str): 群组 ID
-            date_str (str): 日期字符串
+            group_id: ID nhóm.
+            date_str: Chuỗi ngày.
 
         Returns:
-            bool: 存在记录则返回 True
+            True nếu bản ghi tồn tại.
         """
         return self.get_analysis_result(group_id, date_str) is not None
 
     def delete_old_history(self, group_id: str, keep_days: int = 30) -> int:
         """
-        自动清理超过天数限制的陈旧历史记录。
+        Tự động xoá bản ghi lịch sử cũ vượt quá số ngày giữ lại.
 
         Args:
-            group_id (str): 群组 ID
-            keep_days (int): 保留的天数上限
+            group_id: ID nhóm.
+            keep_days: Số ngày tối đa cần giữ lại.
 
         Returns:
-            int: 实际删除的记录条数
+            Số bản ghi thực tế đã xoá.
         """
         try:
             history = self.load_group_history(group_id)
             daily = history.get("daily", {})
 
-            # 计算截止日期边界
+            # Tính mốc ngày giới hạn.
             from datetime import timedelta
 
             cutoff = (datetime.now() - timedelta(days=keep_days)).strftime("%Y-%m-%d")
 
-            # 筛选已过期的日期
+            # Lọc các ngày đã hết hạn.
             dates_to_delete = [date for date in daily.keys() if date < cutoff]
 
             for date in dates_to_delete:
@@ -190,23 +192,23 @@ class HistoryRepository:
             return len(dates_to_delete)
 
         except Exception as e:
-            logger.error(f"清理群 {group_id} 的陈旧历史记录失败: {e}")
+            logger.error(f"Xoá lịch sử cũ của nhóm {group_id} thất bại: {e}")
             return 0
 
     def list_groups_with_history(self) -> list[str]:
         """
-        扫描文件系统，列出当前所有具有存档记录的群组 ID。
+        Quét filesystem và liệt kê ID của các nhóm có bản ghi lưu trữ.
 
         Returns:
-            list[str]: 群组 ID 字符串列表
+            Danh sách chuỗi ID nhóm.
         """
         try:
             groups = []
             for file_path in self.history_dir.glob("group_*.json"):
-                # 从文件名反推群组 ID (group_123.json -> 123)
+                # Suy ra ID nhóm từ tên tệp (group_123.json -> 123).
                 group_id = file_path.stem.replace("group_", "")
                 groups.append(group_id)
             return groups
         except Exception as e:
-            logger.error(f"列出历史记录群组失败: {e}")
+            logger.error(f"Liệt kê nhóm có lịch sử thất bại: {e}")
             return []

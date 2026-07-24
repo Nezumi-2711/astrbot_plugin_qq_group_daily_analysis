@@ -119,7 +119,7 @@ def test_local_history_sender_name_uses_group_scoped_alias_for_placeholder():
     assert empty_name_message is not None
     assert openid_name_message is not None
     assert other_group_message is not None
-    assert empty_name_message.sender_name.startswith("群友-")
+    assert empty_name_message.sender_name.startswith("Thành viên-")
     assert "A_OPENID" not in empty_name_message.sender_name
     assert openid_name_message.sender_name == empty_name_message.sender_name
     assert other_group_message.sender_name != empty_name_message.sender_name

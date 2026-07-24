@@ -1,7 +1,4 @@
-"""
-调度和自动化模块
-包含定时任务和自动分析功能
-"""
+"""Module lập lịch và tự động hoá, chứa tác vụ định kỳ và phân tích tự động."""
 
 from .auto_scheduler import AutoScheduler
 

@@ -1,7 +1,4 @@
-"""
-Bot实例管理模块 - 基础设施层
-统一管理bot实例的获取、设置和使用
-"""
+"""Quản lý tập trung các bot instance ở tầng infrastructure."""
 
 from __future__ import annotations
 
@@ -12,50 +9,47 @@ from . import PlatformAdapter, PlatformAdapterFactory
 
 
 class BotManager:
-    """
-    Bot实例管理器 - 统一管理所有bot相关操作
-
-    与 DDD 架构集成，为每个 bot 实例创建对应的 PlatformAdapter，
-    实现跨平台支持。
-    """
+    """Quản lý bot và tạo PlatformAdapter tương ứng để hỗ trợ đa nền tảng."""
 
     def __init__(self, config_manager):
         self.config_manager = config_manager
         self._bot_instances: dict[str, object] = {}  # {platform_id: bot_instance}
         self._adapters: dict[
             str, PlatformAdapter
-        ] = {}  # {platform_id: PlatformAdapter} - DDD 集成
-        self._platforms: dict[str, object] = {}  # 存储平台对象以访问配置
-        self._bot_self_ids: list[str] = []  # 支持多个机器人账号 ID (原 _bot_qq_ids)
+        ] = {}  # {platform_id: PlatformAdapter} - tích hợp DDD.
+        self._platforms: dict[str, object] = {}  # Lưu platform để truy cập cấu hình.
+        self._bot_self_ids: list[
+            str
+        ] = []  # Hỗ trợ nhiều ID bot, trước đây là _bot_qq_ids.
         self._context: object | None = None
         self._is_initialized = False
-        self._default_platform = "default"  # 默认平台
-        self._plugin_instance: object | None = None  # 插件实例引用，用于适配器回调
+        self._default_platform = "default"  # Nền tảng mặc định.
+        self._plugin_instance: object | None = None  # Dùng cho callback adapter.
 
     def set_context(self, context):
-        """设置AstrBot上下文，并传递给所有支持的适配器"""
+        """Thiết lập context AstrBot và truyền tới adapter có hỗ trợ."""
         self._context = context
 
-        # 将 context 传递给所有支持 set_context 的适配器
+        # Truyền context tới mọi adapter hỗ trợ set_context.
         for adapter in self._adapters.values():
             if hasattr(adapter, "set_context"):
                 adapter.set_context(context)
 
     def set_plugin_instance(self, plugin_instance: object):
-        """设置插件实例引用"""
+        """Thiết lập tham chiếu plugin instance."""
         self._plugin_instance = plugin_instance
 
     def set_bot_instance(self, bot_instance, platform_id=None, platform_name=None):
         """
-        设置bot实例，支持指定平台ID
+        Thiết lập bot instance với platform ID tùy chọn.
 
-        同时会创建对应的 PlatformAdapter（如果平台被支持）。
+        Đồng thời tạo PlatformAdapter nếu nền tảng được hỗ trợ.
         """
         if not platform_id:
             platform_id = self._get_platform_id_from_instance(bot_instance)
 
         if bot_instance and platform_id:
-            # 如果 bot_instance 没变，且已经有适配器，跳过重新创建，防止丢失内部状态（如缓存等）
+            # Không tạo lại adapter nếu instance không đổi để giữ trạng thái nội bộ.
             old_instance = self._bot_instances.get(platform_id)
             if bot_instance is old_instance and platform_id in self._adapters:
                 bot_self_id = self._extract_bot_self_id(bot_instance)
@@ -65,7 +59,7 @@ class BotManager:
 
             self._bot_instances[platform_id] = bot_instance
 
-            # 为 DDD 集成创建 PlatformAdapter
+            # Tạo PlatformAdapter để tích hợp DDD.
             if platform_name is None:
                 platform_name = self._detect_platform_name(bot_instance)
 
@@ -84,91 +78,91 @@ class BotManager:
                     platform_name, bot_instance, adapter_config
                 )
                 if adapter:
-                    # 如果有 context，传递给适配器
+                    # Truyền context tới adapter nếu có.
                     if self._context is not None:
                         adapter.set_context(self._context)
                     self._adapters[platform_id] = adapter
                     logger.debug(
-                        f"已为 {platform_id} ({platform_name}) 创建 PlatformAdapter"
+                        f"Đã tạo PlatformAdapter cho {platform_id} ({platform_name})"
                     )
 
-            # 自动提取机器人 ID
+            # Tự trích xuất ID bot.
             bot_self_id = self._extract_bot_self_id(bot_instance)
             if bot_self_id and bot_self_id not in self._bot_self_ids:
                 self._bot_self_ids.append(str(bot_self_id))
 
     def set_bot_self_ids(self, bot_self_ids):
-        """设置机器人 ID 列表（支持单个 ID 或 ID 列表）"""
+        """Thiết lập một ID bot hoặc danh sách ID bot."""
         if isinstance(bot_self_ids, list):
             self._bot_self_ids = [str(uid) for uid in bot_self_ids if uid]
         elif bot_self_ids:
             self._bot_self_ids = [str(bot_self_ids)]
 
-        # 同步更新所有现有适配器的 ID 列表
+        # Đồng bộ danh sách ID tới mọi adapter hiện có.
         for adapter in self._adapters.values():
             if hasattr(adapter, "bot_self_ids"):
                 adapter.bot_self_ids = self._bot_self_ids.copy()
 
     def get_bot_instance(self, platform_id=None):
-        """获取指定平台的bot实例，如果不指定则返回第一个可用的实例"""
+        """Lấy bot instance theo platform hoặc instance khả dụng duy nhất."""
         if platform_id:
-            # 如果指定了平台ID，尝试获取
+            # Thử lấy theo platform ID được chỉ định.
             instance = self._bot_instances.get(platform_id)
             if not instance and platform_id in self._platforms:
                 self._refresh_from_stored_platforms()
                 instance = self._bot_instances.get(platform_id)
             return instance
 
-        # 没有指定平台ID
+        # Không có platform ID.
         if not self._bot_instances and self._platforms:
             self._refresh_from_stored_platforms()
 
         if self._bot_instances:
-            # 如果只有一个实例，直接返回
+            # Trả trực tiếp nếu chỉ có một instance.
             if len(self._bot_instances) == 1:
                 return list(self._bot_instances.values())[0]
 
-            # 如果有多个实例，必须指定 platform_id
+            # Bắt buộc chỉ định platform_id khi có nhiều instance.
             logger.error(
-                f"存在多个Bot实例 {list(self._bot_instances.keys())} 但未指定 platform_id，"
-                "无法确定使用哪个实例。请明确指定 platform_id。"
+                f"Có nhiều bot instance {list(self._bot_instances.keys())} nhưng chưa chỉ định platform_id; "
+                "không thể xác định instance cần dùng"
             )
             return None
 
-        # 没有任何平台可用
-        logger.error("没有任何可用的bot实例")
+        # Không có nền tảng khả dụng.
+        logger.error("Không có bot instance khả dụng")
         return None
 
     def _refresh_from_stored_platforms(self):
-        """尝试从已存储的平台对象中刷新 bot 实例 (Lazy Load)"""
+        """Thử làm mới bot instance từ platform đã lưu theo lazy load."""
         for platform_id, platform in self._platforms.items():
             bot_client = None
-            # Lark 平台优先使用 API client，避免拿到仅支持长连接的 ws client
+            # Lark ưu tiên API client thay vì ws client chỉ hỗ trợ kết nối dài.
             bot_client = getattr(platform, "lark_api", None)
-            # 优先尝试 get_client()
+            # Ưu tiên get_client().
             get_client = getattr(platform, "get_client", None)
             if not bot_client and callable(get_client):
                 bot_client = get_client()
 
-            # 如果 get_client() 返回 None，尝试直接访问属性
+            # Nếu get_client() trả None, thử truy cập thuộc tính trực tiếp.
             if not bot_client:
                 bot_client = getattr(platform, "bot", None)
             if not bot_client:
-                # AstrBot v4.14.4 DiscordPlatformAdapter 使用 'client' 属性
+                # DiscordPlatformAdapter AstrBot v4.14.4 dùng thuộc tính client.
                 bot_client = getattr(platform, "client", None)
 
             if bot_client:
-                # 检查是否已存在且是否发生变化（防止重复创建适配器）
+                # Kiểm tra client có thay đổi để tránh tạo adapter lặp.
                 old_client = self._bot_instances.get(platform_id)
 
-                # 如果 client 对象没变且已经有适配器，跳过
+                # Bỏ qua nếu client không đổi và adapter đã tồn tại.
                 if bot_client is old_client and platform_id in self._adapters:
                     continue
 
                 platform_name = None
                 metadata_obj = getattr(platform, "metadata", None)
                 if metadata_obj is not None:
-                    # 优先使用 type
+                    # Ưu tiên type.
                     type_val = getattr(metadata_obj, "type", None)
                     if isinstance(type_val, str):
                         platform_name = type_val
@@ -177,7 +171,7 @@ class BotManager:
                         if isinstance(name_val, str):
                             platform_name = name_val
 
-                # 兼容不同版本的元数据获取
+                # Tương thích cách lấy metadata ở các phiên bản.
                 if not platform_name:
                     meta = getattr(platform, "meta", None)
                     if callable(meta):
@@ -187,7 +181,7 @@ class BotManager:
                         except Exception:
                             pass
 
-                # 后备检测：如果不支持名称
+                # Phát hiện fallback nếu tên không được hỗ trợ.
                 if not platform_name or not PlatformAdapterFactory.is_supported(
                     str(platform_name)
                 ):
@@ -196,76 +190,77 @@ class BotManager:
                         platform_name = detected
 
                 self.set_bot_instance(bot_client, platform_id, platform_name)
-                logger.info(f"已刷新/发现平台 {platform_id} 的 bot 实例 (变动或懒加载)")
+                logger.info(
+                    f"Đã làm mới/phát hiện bot instance của platform {platform_id}"
+                )
 
     def get_all_bot_instances(self) -> dict:
-        """获取所有已加载的bot实例 {platform_id: bot_instance}"""
+        """Lấy mọi bot instance đã tải theo platform_id."""
         return self._bot_instances.copy()
 
     def get_platform_count(self) -> int:
-        """获取当前已加载的平台数量"""
+        """Lấy số nền tảng hiện đã tải."""
         return len(self._bot_instances)
 
     def get_platform_ids(self) -> list[str]:
-        """获取所有已加载的平台 ID 列表"""
+        """Lấy danh sách platform ID đã tải."""
         return list(self._bot_instances.keys())
 
     def has_bot_instance(self) -> bool:
-        """检查是否有可用的bot实例"""
+        """Kiểm tra có bot instance khả dụng hay không."""
         return bool(self._bot_instances)
 
     def has_bot_self_id(self) -> bool:
-        """检查是否有配置的机器人 ID"""
+        """Kiểm tra có ID bot đã cấu hình hay không."""
         return bool(self._bot_self_ids)
 
     def is_ready_for_auto_analysis(self) -> bool:
-        """检查是否准备好进行了自动分析"""
+        """Kiểm tra đã sẵn sàng phân tích tự động hay chưa."""
         if not self.has_bot_instance():
-            logger.debug("[BotManager] 自动分析就绪检查失败：没有可用的 bot 实例。")
+            logger.debug(
+                "[BotManager] Chưa sẵn sàng phân tích tự động: không có bot instance"
+            )
             return False
 
         if not self.has_bot_self_id():
-            # 允许在没有配置/自动提取到 ID 的情况下尝试，但记录调试信息
-            # 这有助于诊断某些平台（如 Telegram）自动获取 ID 失败的情况
+            # Vẫn cho phép thử khi chưa cấu hình/trích xuất được ID và ghi debug.
             logger.debug(
-                "[BotManager] 自动分析就绪检查警告：bot_self_ids 列表为空。可能会影响消息过滤能力。"
+                "[BotManager] Cảnh báo sẵn sàng tự động: bot_self_ids rỗng, có thể ảnh hưởng lọc tin nhắn"
             )
-            # 为了解决 #128 及其后续反馈，我们将此检查放宽
-            # 只要有 bot 实例就可以尝试运行
+            # Nới lỏng kiểm tra theo #128: có bot instance là có thể thử chạy.
             return True
 
         return True
 
     def _get_platform_id_from_instance(self, bot_instance):
-        """从bot实例获取平台ID"""
+        """Lấy platform ID từ bot instance."""
         if hasattr(bot_instance, "platform") and isinstance(bot_instance.platform, str):
             return bot_instance.platform
         return self._default_platform
 
     def _detect_platform_name(self, bot_instance) -> str | None:
         """
-        从 bot 实例检测平台名称，用于创建适配器。
+        Phát hiện tên nền tảng từ bot instance để tạo adapter.
 
-        返回平台名称如 'aiocqhttp', 'discord' 等。
+        Trả về tên như ``aiocqhttp`` hoặc ``discord``.
         """
-        # 优先使用 platform 属性
+        # Ưu tiên thuộc tính platform.
         if hasattr(bot_instance, "platform"):
             platform = bot_instance.platform
             if isinstance(platform, str):
                 return platform
 
-        # 检查已知的 API 特征（平台无关的方式）
-        # OneBot/aiocqhttp 特征: 有 call_action 方法
+        # Kiểm tra đặc trưng API đã biết; OneBot/aiocqhttp có call_action.
         if hasattr(bot_instance, "call_action"):
             return "aiocqhttp"
 
-        # 使用工厂的已注册平台列表进行类名匹配
+        # Khớp tên class với nền tảng đã đăng ký trong factory.
         class_name = type(bot_instance).__name__.lower()
         for platform_name in PlatformAdapterFactory.get_supported_platforms():
             if platform_name in class_name:
                 return platform_name
 
-        # 通用类名模式匹配（用于尚未注册的平台）
+        # Khớp mẫu tên class chung cho nền tảng chưa đăng ký.
         known_patterns = {
             "cqhttp": "aiocqhttp",
             "onebot": "aiocqhttp",
@@ -276,16 +271,16 @@ class BotManager:
 
         return None
 
-    # ==================== DDD 集成方法 ====================
+    # ==================== Phương thức tích hợp DDD ====================
 
     def get_adapter(self, platform_id: str | None = None) -> PlatformAdapter | None:
         """
-        获取指定平台的 PlatformAdapter。
+        Lấy PlatformAdapter của nền tảng được chỉ định.
 
-        这是 DDD 架构操作的主要方法。
+        Đây là phương thức chính cho thao tác kiến trúc DDD.
         """
         if platform_id:
-            # 无论是否存在适配器，都尝试检测一次 client 是否有变（如重启后 session 变化）
+            # Luôn kiểm tra client có đổi hay không, ví dụ sau khi restart phiên.
             if platform_id in self._platforms:
                 self._refresh_from_stored_platforms()
 
@@ -296,11 +291,11 @@ class BotManager:
                 return list(self._adapters.values())[0]
 
             logger.warning(
-                f"存在多个适配器 {list(self._adapters.keys())}，但未指定 platform_id。"
+                f"Có nhiều adapter {list(self._adapters.keys())} nhưng chưa chỉ định platform_id"
             )
             return None
 
-        # 如果没有任何适配器，尝试全局刷新一次
+        # Nếu không có adapter, thử làm mới toàn cục một lần.
         self._refresh_from_stored_platforms()
         if self._adapters:
             if platform_id:
@@ -311,17 +306,17 @@ class BotManager:
         return None
 
     def get_all_adapters(self) -> dict:
-        """获取所有 PlatformAdapter 实例 {platform_id: adapter}"""
+        """Lấy mọi PlatformAdapter theo platform_id."""
         return self._adapters.copy()
 
     def has_adapter(self, platform_id: str | None = None) -> bool:
-        """检查指定平台是否有适配器"""
+        """Kiểm tra nền tảng chỉ định có adapter hay không."""
         if platform_id:
             return platform_id in self._adapters
         return bool(self._adapters)
 
     def can_analyze(self, platform_id: str | None = None) -> bool:
-        """使用 DDD 能力检查平台是否支持分析"""
+        """Dùng capability DDD để kiểm tra nền tảng có hỗ trợ phân tích hay không."""
         adapter = self.get_adapter(platform_id)
         if adapter:
             return adapter.get_capabilities().can_analyze()
@@ -329,16 +324,16 @@ class BotManager:
 
     async def auto_discover_bot_instances(self):
         """
-        自动发现所有可用的bot实例
+        Tự phát hiện mọi bot instance khả dụng.
 
-        同时为每个发现的 bot 创建对应的 PlatformAdapter。
+        Đồng thời tạo PlatformAdapter tương ứng cho mỗi bot.
         """
         platform_manager = getattr(self._context, "platform_manager", None)
         get_insts = getattr(platform_manager, "get_insts", None)
         if self._context is None or not callable(get_insts):
             return {}
 
-        # 使用新版 API 获取所有平台实例
+        # Dùng API mới để lấy mọi platform instance.
         raw_platforms = get_insts()
         if isinstance(raw_platforms, list):
             platforms: list[object] = raw_platforms
@@ -352,11 +347,11 @@ class BotManager:
         discovered = {}
 
         logger.info(
-            f"auto_discover_bot_instances: 在管理器中发现 {len(platforms)} 个平台。"
+            f"auto_discover_bot_instances: phát hiện {len(platforms)} nền tảng trong manager"
         )
 
         for platform in platforms:
-            # 获取bot实例
+            # Lấy bot instance.
             bot_client = None
             bot_client = getattr(platform, "lark_api", None)
             platform_get_client = getattr(platform, "get_client", None)
@@ -368,7 +363,7 @@ class BotManager:
             if not bot_client:
                 bot_client = getattr(platform, "client", None)
 
-            # 健壮地获取元数据
+            # Lấy metadata an toàn.
             metadata = getattr(platform, "metadata", None)
             platform_meta_method = getattr(platform, "meta", None)
             if not metadata and callable(platform_meta_method):
@@ -377,7 +372,7 @@ class BotManager:
                 except Exception:
                     pass
 
-            # 检查是否有有效的元数据和ID
+            # Kiểm tra metadata và ID hợp lệ.
             platform_id = None
             if metadata:
                 metadata_id = getattr(metadata, "id", None)
@@ -387,17 +382,17 @@ class BotManager:
                     platform_id = metadata.get("id")
 
             if platform_id:
-                # 确保平台 ID 是 str
+                # Chuẩn hoá platform ID thành str.
                 platform_id = str(platform_id)
 
-                # 知识点发现: 记录元数据以调试自定义 ID
+                # Ghi metadata để debug ID tuỳ chỉnh.
                 logger.info(
-                    f"[群分析插件 BotManager]: Log metadata for debugging custom IDs ,Platform: {platform_id}, Metadata Type: {getattr(metadata, 'type', 'N/A') if not isinstance(metadata, Mapping) else metadata.get('type', 'N/A')}, Metadata Name: {getattr(metadata, 'name', 'N/A') if not isinstance(metadata, Mapping) else metadata.get('name', 'N/A')}"
+                    f"[Plugin phân tích nhóm BotManager] Metadata debug ID tuỳ chỉnh, platform: {platform_id}, type: {getattr(metadata, 'type', 'N/A') if not isinstance(metadata, Mapping) else metadata.get('type', 'N/A')}, name: {getattr(metadata, 'name', 'N/A') if not isinstance(metadata, Mapping) else metadata.get('name', 'N/A')}"
                 )
 
-                # 从元数据检测平台名称
+                # Phát hiện tên nền tảng từ metadata.
                 platform_name = None
-                # 优先使用 type
+                # Ưu tiên type.
                 type_val = getattr(metadata, "type", None)
                 if isinstance(type_val, str):
                     platform_name = type_val
@@ -414,7 +409,7 @@ class BotManager:
                         if isinstance(dict_name, str):
                             platform_name = dict_name
 
-                # 验证此平台名称是否受支持，如果不支持，尝试从bot实例检测（如果可用）
+                # Nếu tên chưa được hỗ trợ, thử phát hiện từ bot instance.
                 if (
                     not platform_name
                     or not PlatformAdapterFactory.is_supported(str(platform_name))
@@ -424,47 +419,47 @@ class BotManager:
                         platform_name = detected
 
                 logger.debug(
-                    f"发现平台: {platform_id} ({platform_name}), 客户端就绪: {bool(bot_client)}"
+                    f"Phát hiện platform: {platform_id} ({platform_name}), client sẵn sàng: {bool(bot_client)}"
                 )
 
-                # 无论bot客户端状态如何，都存储平台实例
+                # Luôn lưu platform instance dù client đã sẵn sàng hay chưa.
                 self._platforms[platform_id] = platform
 
                 if bot_client:
                     logger.info(
-                        f"[BotManager] 为平台 {platform_id} ({platform_name}) 注册 bot 实例"
+                        f"[BotManager] Đăng ký bot instance cho {platform_id} ({platform_name})"
                     )
                     self.set_bot_instance(bot_client, platform_id, platform_name)
                     discovered[platform_id] = bot_client
                 else:
                     logger.info(
-                        f"发现平台 {platform_id} 但客户端未就绪。将进行懒加载。"
+                        f"Phát hiện platform {platform_id} nhưng client chưa sẵn sàng; sẽ lazy load"
                     )
                     discovered[platform_id] = platform
 
         if self._adapters:
             logger.info(
-                f"已创建 {len(self._adapters)} 个 PlatformAdapter: "
+                f"Đã tạo {len(self._adapters)} PlatformAdapter: "
                 f"{list(self._adapters.keys())}"
             )
 
         return discovered
 
     async def initialize_from_config(self):
-        """从配置初始化bot管理器"""
-        # 设置配置的bot ID 列表
+        """Khởi tạo bot manager từ cấu hình."""
+        # Thiết lập danh sách ID bot trong cấu hình.
         bot_self_ids = self.config_manager.get_bot_self_ids()
         if bot_self_ids:
             self.set_bot_self_ids(bot_self_ids)
 
-        # 自动发现所有bot实例
+        # Tự phát hiện mọi bot instance.
         discovered = await self.auto_discover_bot_instances()
         self._is_initialized = True
 
         return discovered
 
     def get_status_info(self) -> dict[str, object]:
-        """获取bot管理器状态信息"""
+        """Lấy thông tin trạng thái bot manager."""
         adapter_info = {}
         for pid, adapter in self._adapters.items():
             caps = adapter.get_capabilities()
@@ -479,17 +474,17 @@ class BotManager:
             "bot_self_ids": self._bot_self_ids,
             "platform_count": len(self._bot_instances),
             "platforms": list(self._bot_instances.keys()),
-            "adapters": adapter_info,  # DDD 集成信息
+            "adapters": adapter_info,  # Thông tin tích hợp DDD.
             "ready_for_auto_analysis": self.is_ready_for_auto_analysis(),
         }
 
     def update_from_event(self, event):
-        """从事件更新bot实例（用于手动命令）"""
-        # 兼容不同平台的 bot 实例属性名 (OneBot 使用 bot, Discord 使用 client)
+        """Cập nhật bot instance từ event cho command thủ công."""
+        # Tương thích tên thuộc tính giữa các nền tảng.
         bot_instance = getattr(event, "bot", None) or getattr(event, "client", None)
 
         if bot_instance:
-            # 从事件中获取平台ID
+            # Lấy platform ID từ event.
             platform_id = None
             if hasattr(event, "get_platform_id"):
                 platform_id = event.get_platform_id()
@@ -500,7 +495,7 @@ class BotManager:
 
             self.set_bot_instance(bot_instance, platform_id)
 
-            # 优先从事件中提取机器人自身 ID，避免获取到 functools.partial 等异常对象
+            # Ưu tiên lấy ID bot từ event, tránh object bất thường như functools.partial.
             bot_self_id = None
             if hasattr(event, "get_self_id"):
                 val = event.get_self_id()
@@ -516,10 +511,10 @@ class BotManager:
                 bot_self_id = self._extract_bot_self_id(bot_instance)
 
             if bot_self_id:
-                # 将单个ID转换为列表，保持统一处理
+                # Chuyển một ID thành list để xử lý thống nhất.
                 self.set_bot_self_ids([bot_self_id])
             else:
-                # 如果bot实例没有ID，尝试使用配置的ID列表
+                # Nếu instance không có ID, thử danh sách trong cấu hình.
                 config_self_ids = self.config_manager.get_bot_self_ids()
                 if config_self_ids:
                     self.set_bot_self_ids(config_self_ids)
@@ -527,12 +522,12 @@ class BotManager:
         return False
 
     def _extract_bot_self_id(self, bot_instance):
-        """从bot实例中提取自身ID（单个）"""
+        """Trích xuất một self ID từ bot instance."""
         return self._extract_bot_self_id_impl(bot_instance)
 
     def _extract_bot_self_id_impl(self, bot_instance):
-        """从bot实例中提取ID（通用实现）"""
-        # 尝试多种方式获取bot ID，并严格限制类型为 str/int 且不可调用，防止 OneBot (aiocqhttp) 动态代理返回 functools.partial
+        """Trích xuất ID từ bot instance bằng triển khai chung."""
+        # Chỉ nhận str/int không callable để tránh dynamic proxy trả functools.partial.
         if hasattr(bot_instance, "self_id") and bot_instance.self_id:
             val = bot_instance.self_id
             if isinstance(val, (str, int)) and not callable(val):
@@ -554,20 +549,20 @@ class BotManager:
         return None
 
     def validate_for_message_fetching(self, group_id: str) -> bool:
-        """验证是否可以进行消息获取"""
+        """Xác thực có thể lấy tin nhắn hay không."""
         return self.has_bot_instance() and bool(group_id)
 
     def should_filter_bot_message(self, sender_id: str) -> bool:
-        """判断是否应该过滤bot自己的消息（支持多个ID）"""
+        """Kiểm tra có nên lọc tin nhắn của bot, hỗ trợ nhiều ID."""
         if not self._bot_self_ids:
             return False
 
         sender_id_str = str(sender_id)
-        # 检查是否在ID列表中
+        # Kiểm tra sender có trong danh sách ID.
         return sender_id_str in self._bot_self_ids
 
     def is_plugin_enabled(self, platform_id: str, plugin_name: str) -> bool:
-        """检查指定平台是否启用了该插件"""
+        """Kiểm tra plugin có được bật trên nền tảng chỉ định hay không."""
         if platform_id not in self._platforms:
             return True
 

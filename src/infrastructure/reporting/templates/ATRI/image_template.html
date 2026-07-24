@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATRI 群聊日报 · {{ current_date }}</title>
+    <title>Báo cáo nhóm ATRI · {{ current_date }}</title>
     <style>
         @font-face {
             font-family: 'LXGW WenKai';
@@ -1674,9 +1674,9 @@
             <header class="header">
                 <div class="header-copy">
                     <div class="eyebrow">A.T.R.I · Daily Communication Report</div>
-                    <h1>亚托莉的群聊观测日志</h1>
+                    <h1>Nhật ký quan sát nhóm của ATRI</h1>
                     <div class="header-subtitle">
-                        主人，今天群里的大家也超级精神呢！身为高性能的亚托莉，已经把所有闪闪发光的聊天记忆，像打捞海底宝藏一样全都收集好啦！
+                        Chủ nhân, hôm nay mọi người trong nhóm cũng tràn đầy năng lượng! Là ATRI hiệu năng cao, em đã gom hết những ký ức trò chuyện lấp lánh như kho báu dưới đáy biển rồi!
                     </div>
                 </div>
                 <div class="date-box">
@@ -1699,10 +1699,10 @@
                             src="{{ t2i_atri_font_mirror }}/file/1775130600453_1774881268554_可爱.webp"
                             alt="cute icon">
                     </div>
-                    <h2 class="hero-title">来看看今天<br>都发生了什<br>么吧！</h2>
+                    <h2 class="hero-title">Cùng xem hôm<br>nay đã có chuyện<br>gì nhé!</h2>
                     <div class="hero-desc">
-                        报告主人！今天一共捕获了 <strong>{{ message_count }}</strong> 条消息，有 <strong>{{ participant_count }}</strong>
-                        位群友浮出水面参与了互动哦！我都仔细做好了备忘录哦，哼哼！
+                        Báo cáo chủ nhân! Hôm nay em đã ghi nhận <strong>{{ message_count }}</strong> tin nhắn, với <strong>{{ participant_count }}</strong>
+                        thành viên tham gia tương tác! Em đã ghi chú thật cẩn thận rồi đó, hừm hừm!
                     </div>
                     <img class="hero-character"
                         src="{{ t2i_atri_font_mirror }}/file/1775130626446_1774881312214_atri1.webp"
@@ -1716,7 +1716,7 @@
                             <div class="peak-date-subtitle">{{ current_datetime }}</div>
                             <div class="peak-time">{{ most_active_period }}</div>
                             <div class="peak-note">
-                                这段时间的心跳值达到最高峰！大家的讨论就像退缩时沙滩上的贝壳一样密集，是今天最棒的高光时刻！
+                                Nhịp tim đã đạt đỉnh trong khoảng thời gian này! Cuộc trò chuyện dày đặc như vỏ sò trên bãi biển khi thuỷ triều rút, đúng là khoảnh khắc nổi bật nhất hôm nay!
                             </div>
                         </div>
                     </div>
@@ -1733,7 +1733,7 @@
                         </svg></div>
                     <div class="stat-copy">
                         <div class="stat-value">{{ message_count }}</div>
-                        <div class="stat-label">消息总数</div>
+                        <div class="stat-label">Tổng tin nhắn</div>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -1742,7 +1742,7 @@
                         </svg></div>
                     <div class="stat-copy">
                         <div class="stat-value">{{ participant_count }}</div>
-                        <div class="stat-label">参与人数</div>
+                        <div class="stat-label">Người tham gia</div>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -1751,7 +1751,7 @@
                         </svg></div>
                     <div class="stat-copy">
                         <div class="stat-value">{{ total_characters }}</div>
-                        <div class="stat-label">总字符数</div>
+                        <div class="stat-label">Tổng ký tự</div>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -1760,7 +1760,7 @@
                         </svg></div>
                     <div class="stat-copy">
                         <div class="stat-value">{{ emoji_count }}</div>
-                        <div class="stat-label">表情数量</div>
+                        <div class="stat-label">Số biểu cảm</div>
                     </div>
                 </div>
             </section>
@@ -1772,10 +1772,10 @@
                                 <use href="#icon-bar-chart-3"></use>
                             </svg></div>
                         <div>
-                            <h3 class="section-title">心跳潮汐<img class="section-kawaii"
+                            <h3 class="section-title">Thuỷ triều nhịp tim<img class="section-kawaii"
                                     src="{{ t2i_atri_font_mirror }}/file/1775130585446_1774881263342_观察.webp"
                                     alt="kawaii icon"></h3>
-                            <div class="section-sub">一整天的心跳节拍，由亚托莉为您完美记录</div>
+                            <div class="section-sub">ATRI đã ghi lại hoàn hảo nhịp điệu suốt cả ngày</div>
                         </div>
                     </div>
                     <div class="section-badge">TIDE CHART <img class="badge-kawaii"
@@ -1792,10 +1792,10 @@
                                 <use href="#icon-flame"></use>
                             </svg></div>
                         <div>
-                            <h3 class="section-title">高亮记忆碎片<img class="section-kawaii"
+                            <h3 class="section-title">Mảnh ký ức nổi bật<img class="section-kawaii"
                                     src="{{ t2i_atri_font_mirror }}/file/1775130581843_1774881262835_疑惑.webp"
                                     alt="kawaii icon"></h3>
-                            <div class="section-sub">亚托莉捕获的最亮眼的记忆碎片！</div>
+                            <div class="section-sub">Những mảnh ký ức rực rỡ nhất ATRI đã ghi lại!</div>
                         </div>
                     </div>
                     <div class="section-badge">TOPIC BOARD <img class="badge-kawaii"
@@ -1812,10 +1812,10 @@
                                 <use href="#icon-badge-check"></use>
                             </svg></div>
                         <div>
-                            <h3 class="section-title">神人名片颁发<img class="section-kawaii"
+                            <h3 class="section-title">Danh hiệu thành viên<img class="section-kawaii"
                                     src="{{ t2i_atri_font_mirror }}/file/1775130598778_1774881267181_得意.webp"
                                     alt="kawaii icon"></h3>
-                            <div class="section-sub">颁发给各位的高性能称号！</div>
+                            <div class="section-sub">Những danh hiệu hiệu năng cao dành tặng mọi người!</div>
                         </div>
                     </div>
                     <div class="section-badge">SPOTLIGHT <img class="badge-kawaii"
@@ -1832,10 +1832,10 @@
                                 <use href="#icon-quote"></use>
                             </svg></div>
                         <div>
-                            <h3 class="section-title">亚托莉的宝藏瓶<img class="section-kawaii"
+                            <h3 class="section-title">Bình kho báu của ATRI<img class="section-kawaii"
                                     src="{{ t2i_atri_font_mirror }}/file/1775130605165_1774881270686_爱心.webp"
                                     alt="kawaii icon"></h3>
-                            <div class="section-sub">亚托莉偷偷记在小本子上的宝藏名言！</div>
+                            <div class="section-sub">Những câu nói quý giá ATRI đã bí mật ghi vào sổ!</div>
                         </div>
                     </div>
                     <div class="section-badge">PRECIOUS WORDS <img class="badge-kawaii"
@@ -1853,10 +1853,10 @@
                                 <use href="#icon-flower-2"></use>
                             </svg></div>
                         <div>
-                            <h3 class="section-title">亚托莉观测报告<img class="section-kawaii"
+                            <h3 class="section-title">Báo cáo quan sát ATRI<img class="section-kawaii"
                                     src="{{ t2i_atri_font_mirror }}/file/1775130609119_1774881269400_可爱-1.webp"
                                     alt="kawaii icon"></h3>
-                            <div class="section-sub">来自高性能亚托莉的每日特别观测报告！</div>
+                            <div class="section-sub">Báo cáo quan sát đặc biệt hằng ngày từ ATRI hiệu năng cao!</div>
                         </div>
                     </div>
                     <div class="section-badge">GROUP VIBE <img class="badge-kawaii"
@@ -1874,10 +1874,10 @@
                                 <use href="#icon-sparkles"></use>
                             </svg></div>
                         <div>
-                            <h3 class="section-title">能量解析雷达<img class="section-kawaii"
+                            <h3 class="section-title">Radar phân tích năng lượng<img class="section-kawaii"
                                     src="{{ t2i_atri_font_mirror }}/file/1775130591277_1774881264350_睡觉.webp"
                                     alt="kawaii icon"></h3>
-                            <div class="section-sub">维持亚托莉运行与心跳的能量消耗~</div>
+                            <div class="section-sub">Năng lượng duy trì hoạt động và nhịp tim của ATRI~</div>
                         </div>
                     </div>
                     <div class="section-badge">ENERGY COST <img class="badge-kawaii"
@@ -1886,15 +1886,15 @@
                 </div>
                 <div class="token-grid">
                     <div class="token-card">
-                        <div class="token-label">总消耗</div>
+                        <div class="token-label">Tổng tiêu thụ</div>
                         <div class="token-value">{{ total_tokens }}</div>
                     </div>
                     <div class="token-card">
-                        <div class="token-label">提示词 Token</div>
+                        <div class="token-label">Token prompt</div>
                         <div class="token-value">{{ prompt_tokens }}</div>
                     </div>
                     <div class="token-card">
-                        <div class="token-label">生成内容 Token</div>
+                        <div class="token-label">Token nội dung</div>
                         <div class="token-value">{{ completion_tokens }}</div>
                     </div>
                 </div>
@@ -1914,7 +1914,7 @@
                             <span>SXP-Simon/astrbot_plugin_qq_group_daily_analysis</span>
                         </a>
                     </div>
-                    <div style="font-size: 13px; opacity: 0.85;">亚托莉会永远把大家珍贵的聊天记忆藏在海底哦。</div>
+                    <div style="font-size: 13px; opacity: 0.85;">ATRI sẽ luôn cất giữ những ký ức trò chuyện quý giá của mọi người dưới đáy biển.</div>
                 </div>
             </footer>
         </div>

@@ -1,7 +1,8 @@
 """
-分析应用服务 - 应用层
-实现"每日群聊分析并生成报告"及"增量分析"核心用例。
-负责协调领域服务、基础设施适配器及持久化层。
+Dịch vụ application cho phân tích.
+
+Triển khai các use case cốt lõi gồm phân tích nhóm hằng ngày, tạo báo cáo
+và phân tích gia tăng; điều phối domain service, platform adapter và persistence.
 """
 
 from __future__ import annotations
@@ -31,13 +32,13 @@ from ...utils.logger import logger
 
 
 class DuplicateGroupTaskError(Exception):
-    """当同一个群组在同一时间尝试启动相同类型的重复分析任务时抛出。"""
+    """Được phát sinh khi một nhóm khởi chạy trùng loại tác vụ cùng lúc."""
 
     pass
 
 
 class AnalysisApplicationService:
-    """分析应用服务 - 协调业务流程（每日分析 + 增量分析）"""
+    """Điều phối quy trình phân tích hằng ngày và phân tích gia tăng."""
 
     def __init__(
         self,
@@ -61,44 +62,51 @@ class AnalysisApplicationService:
         self.incremental_store = incremental_store
         self.incremental_merge_service = incremental_merge_service
         self._locks = weakref.WeakValueDictionary()
-        # 全局 LLM 分析信号量，控制对外 API 的并发压力
-        # 使用专用的 LLM 并发配置项
+        # Semaphore LLM toàn cục để kiểm soát tải đồng thời lên API.
+        # Dùng giá trị cấu hình đồng thời riêng cho LLM.
         max_concurrent = self.config_manager.get_llm_max_concurrent()
         self.llm_semaphore = asyncio.Semaphore(max_concurrent)
-        # 用于追踪当前正在执行的任务，实现原子的“检查并设置”逻辑，避免 locked() 竞态
+        # Theo dõi tác vụ đang chạy để kiểm tra và thiết lập nguyên tử,
+        # tránh điều kiện tranh chấp khi dùng locked().
         self._active_tasks = set()
 
     @asynccontextmanager
     async def group_lock(self, group_id: str, task_type: str = "analysis"):
         """
-        同一时间、同一个群、同一种任务只能有一个在执行
-        锁将在退出上下文时自动释放。
+        Chỉ cho phép một tác vụ cùng loại của cùng một nhóm chạy tại một thời điểm.
+        Khoá tự động được giải phóng khi thoát khỏi context.
         """
         lock_key = f"{task_type}:{group_id}"
 
-        # 获取或创建该群组特有的锁（保留锁作为第二道资源限流防线）
+        # Lấy hoặc tạo khoá riêng cho nhóm, làm lớp giới hạn tài nguyên thứ hai.
         lock = self._locks.get(lock_key)
         if lock is None:
             lock = asyncio.Lock()
             self._locks[lock_key] = lock
 
-        # 使用同步集合实现原子化的“运行中”检查
-        # 在 asyncio 的单线程循环中，同步代码段不会被中断，因此这是原子操作
+        # Dùng set đồng bộ để kiểm tra trạng thái đang chạy theo cách nguyên tử.
+        # Trong event loop đơn luồng của asyncio, đoạn đồng bộ không bị ngắt.
         if lock_key in self._active_tasks:
-            logger.warning(f"群 {group_id} 的 {task_type} 任务已在运行，跳过本次请求")
+            logger.warning(
+                f"Tác vụ {task_type} của nhóm {group_id} đang chạy; bỏ qua yêu cầu này"
+            )
             raise DuplicateGroupTaskError(f"Duplicate task for {lock_key}")
 
-        # 占位：标记任务开始
+        # Đánh dấu bắt đầu tác vụ.
         self._active_tasks.add(lock_key)
 
         try:
             async with lock:
-                logger.debug(f"[Lock] 已获取群 {group_id} 的 {task_type} 排他锁")
+                logger.debug(
+                    f"[Lock] Đã lấy khoá độc quyền {task_type} của nhóm {group_id}"
+                )
                 yield
         finally:
-            # 释放：标记任务结束
+            # Giải phóng: đánh dấu tác vụ kết thúc.
             self._active_tasks.discard(lock_key)
-            logger.debug(f"[Lock] 已释放群 {group_id} 的 {task_type} 排他锁")
+            logger.debug(
+                f"[Lock] Đã giải phóng khoá độc quyền {task_type} của nhóm {group_id}"
+            )
 
     async def execute_daily_analysis(
         self,
@@ -108,45 +116,47 @@ class AnalysisApplicationService:
         days: int | None = None,
     ) -> dict[str, Any]:
         """
-        执行每日分析用例。
+        Thực thi use case phân tích hằng ngày.
 
-        流程：
-        1. 获取适配器
-        2. 拉取消息 (Infrastructure)
-        3. 基础统计 (Domain Service)
-        4. 用户分析 (Domain Service)
-        5. LLM 语义分析 (Infrastructure/Analysis Bridge)
-        6. 生成报告 (Visualization/Infrastructure)
-        7. 持久化摘要 (Persistence)
-        8. 返回结果
+        Quy trình:
+        1. Lấy adapter.
+        2. Lấy tin nhắn (infrastructure).
+        3. Thống kê cơ bản (domain service).
+        4. Phân tích thành viên (domain service).
+        5. Phân tích ngữ nghĩa bằng LLM.
+        6. Tạo báo cáo.
+        7. Lưu bản tóm tắt.
+        8. Trả kết quả.
         """
 
         async with self.group_lock(group_id, "daily"):
             logger.info(
-                f"开始执行分析用例: 群 {group_id}, platform_id={platform_id or '默认'}, days={days or '默认'}"
+                f"Bắt đầu use case phân tích: nhóm {group_id}, platform_id={platform_id or 'mặc định'}, days={days or 'mặc định'}"
             )
 
-            # 1. 获取适配器
+            # 1. Lấy adapter
             adapter = self.bot_manager.get_adapter(platform_id)
             if not adapter:
                 raise ValueError(f"Không tìm thấy adapter cho nền tảng {platform_id}")
 
-            # 检查群聊是否被禁言（包括全体禁言或对 Bot 自身禁言）
+            # Kiểm tra nhóm có bị tắt quyền gửi tin hay không.
             if hasattr(adapter, "is_group_muted"):
                 try:
                     if await adapter.is_group_muted(group_id):
                         logger.info(
-                            f"群 {group_id} 开启了全群禁言或对 Bot 禁言，跳过本次群分析"
+                            f"Nhóm {group_id} đang tắt quyền gửi tin toàn nhóm hoặc với bot; bỏ qua phân tích"
                         )
                         return {"success": False, "reason": "muted"}
                 except Exception as e:
-                    logger.warning(f"检查群 {group_id} 禁言状态时出错: {e}")
+                    logger.warning(
+                        f"Lỗi khi kiểm tra trạng thái tắt quyền gửi của nhóm {group_id}: {e}"
+                    )
 
-            # 飞书平台在分析前进行一次性权限与成员头像预热，避免报告阶段出现大面积默认头像。
+            # Feishu kiểm tra quyền và làm nóng cache ảnh thành viên trước khi phân tích.
             if hasattr(adapter, "prepare_group_member_cache"):
                 try:
                     logger.info(
-                        "执行平台成员预检查: group=%s, platform=%s",
+                        "Kiểm tra trước thành viên nền tảng: group=%s, platform=%s",
                         group_id,
                         platform_id or "default",
                     )
@@ -154,7 +164,7 @@ class AnalysisApplicationService:
                     if not ok and err:
                         raise ValueError(err)
                     logger.info(
-                        "平台成员预检查通过: group=%s, platform=%s",
+                        "Kiểm tra trước thành viên nền tảng thành công: group=%s, platform=%s",
                         group_id,
                         platform_id or "default",
                     )
@@ -164,7 +174,7 @@ class AnalysisApplicationService:
                         f"vui lòng cấp đủ quyền cho ứng dụng: {e}"
                     ) from e
 
-            # 2. 拉取消息
+            # 2. Lấy tin nhắn
             if days is None:
                 days = self.config_manager.get_analysis_days()
             max_count = self.config_manager.get_max_messages()
@@ -173,7 +183,7 @@ class AnalysisApplicationService:
                 group_id=group_id, days=days, max_count=max_count
             )
             logger.info(
-                "消息拉取完成: group=%s, platform=%s, raw_count=%s, days=%s, max_count=%s",
+                "Đã lấy tin nhắn: group=%s, platform=%s, raw_count=%s, days=%s, max_count=%s",
                 group_id,
                 platform_id or "default",
                 len(raw_messages),
@@ -182,10 +192,12 @@ class AnalysisApplicationService:
             )
 
             if not raw_messages:
-                logger.warning(f"群 {group_id} 在最近 {days} 天内无消息或无法获取")
+                logger.warning(
+                    f"Nhóm {group_id} không có tin nhắn hoặc không thể lấy tin trong {days} ngày gần đây"
+                )
                 return {"success": False, "reason": "no_messages"}
 
-            # 3. 清理消息 (Filter commands, bot messages, noise)
+            # 3. Làm sạch tin nhắn: lọc command, tin nhắn bot và nhiễu.
             from ...domain.services.message_cleaner_service import MessageCleanerService
 
             cleaner = MessageCleanerService()
@@ -198,32 +210,32 @@ class AnalysisApplicationService:
                 bot_self_ids,
             )
 
-            # 对于自动任务，强制过滤指令；对于手动任务，也建议过滤以保持报告纯净
+            # Luôn lọc command để báo cáo không bị nhiễu.
             unified_messages = cleaner.clean_messages(
                 raw_messages, bot_self_ids=bot_self_ids, filter_commands=True
             )
             logger.info(
-                "消息清洗完成: group=%s, platform=%s, cleaned_count=%s, dropped=%s",
+                "Đã làm sạch tin nhắn: group=%s, platform=%s, cleaned_count=%s, dropped=%s",
                 group_id,
                 platform_id or "default",
                 len(unified_messages),
                 max(len(raw_messages) - len(unified_messages), 0),
             )
 
-            # 4. 检查最小消息阈值 (在清理后进行)
+            # 4. Kiểm tra ngưỡng tin nhắn tối thiểu sau khi làm sạch.
             threshold = self.config_manager.get_min_messages_threshold()
             if len(unified_messages) < threshold and not manual:
                 logger.info(
-                    f"群 {group_id} 有效消息数 ({len(unified_messages)}) 未达到自动分析阈值 ({threshold})"
+                    f"Số tin nhắn hợp lệ của nhóm {group_id} ({len(unified_messages)}) chưa đạt ngưỡng phân tích tự động ({threshold})"
                 )
                 return {"success": False, "reason": "below_threshold"}
 
-            # 5. 基础统计 (Domain Service)
+            # 5. Thống kê cơ bản (domain service)
             statistics = await asyncio.to_thread(
                 self.statistics_service.calculate_group_statistics, unified_messages
             )
 
-            # 4. 用户分析 (Domain Service)
+            # 4. Phân tích thành viên (domain service)
             user_activity = await asyncio.to_thread(
                 self.analysis_domain_service.analyze_user_activity,
                 unified_messages,
@@ -235,8 +247,8 @@ class AnalysisApplicationService:
                 user_activity, limit=max_user_titles
             )
 
-            # 5. LLM 语义分析 (为了保持兼容，目前直接传 UnifiedMessage，后续如需传 raw dict 再加转换)
-            # LLMAnalyzer 内部可能已经处理了转换（见之前代码）
+            # 5. Phân tích ngữ nghĩa bằng LLM.
+            # LLMAnalyzer có thể tự xử lý việc chuyển đổi dữ liệu.
             topic_enabled = self.config_manager.get_topic_analysis_enabled()
             user_title_enabled = self.config_manager.get_user_title_analysis_enabled()
             golden_quote_enabled = (
@@ -252,8 +264,8 @@ class AnalysisApplicationService:
             chat_quality_review = None
             total_token_usage = TokenUsage()
 
-            # Note: LLMAnalyzer 目前可能只接收 legacy 格式或特定的 UnifiedMessage 适配
-            # 暂时转换回 legacy 格式以确保稳定性，直到 LLMAnalyzer 被重构
+            # LLMAnalyzer hiện có thể chỉ nhận format cũ hoặc adapter UnifiedMessage.
+            # Tạm chuyển về format cũ để ổn định cho đến khi LLMAnalyzer được refactor.
             legacy_messages = self.statistics_service._convert_to_legacy_dict(
                 unified_messages
             )
@@ -269,7 +281,7 @@ class AnalysisApplicationService:
                 or chat_quality_enabled
             ):
                 async with self.llm_semaphore:
-                    logger.debug(f"[LLM] 已进入分析队列 (群: {group_id})")
+                    logger.debug(f"[LLM] Đã vào hàng đợi phân tích (nhóm: {group_id})")
                     (
                         topics,
                         user_titles,
@@ -287,7 +299,7 @@ class AnalysisApplicationService:
                         chat_quality_enabled=chat_quality_enabled,
                     )
 
-            # 回填结果
+            # Gắn kết quả trở lại
             statistics.golden_quotes = golden_quotes
             statistics.token_usage = total_token_usage
 
@@ -299,11 +311,11 @@ class AnalysisApplicationService:
                 "chat_quality_review": chat_quality_review,
             }
 
-            # 6. 持久化摘要 (Persistence)
+            # 6. Lưu bản tóm tắt (persistence)
             await self.history_manager.save_analysis(group_id, analysis_result)
 
-            # 7. 生成报告并发送 (应用层编排发送动作)
-            # 这里由调用方处理发送，本服务只返回分析结果和可能的视觉产物
+            # 7. Tạo và gửi báo cáo (application điều phối thao tác gửi).
+            # Caller xử lý việc gửi; service chỉ trả kết quả và sản phẩm trực quan.
             return {
                 "success": True,
                 "analysis_result": analysis_result,
@@ -314,37 +326,29 @@ class AnalysisApplicationService:
             }
 
     # ----------------------------------------------------------------
-    # 增量分析用例
+    # Use case phân tích gia tăng
     # ----------------------------------------------------------------
 
     async def execute_incremental_analysis(
         self, group_id: str, platform_id: str | None = None
     ) -> dict[str, Any]:
         """
-        执行一次增量分析用例（滑动窗口批次架构）。
+        Thực thi một use case phân tích gia tăng theo kiến trúc batch cửa sổ trượt.
 
-        与每日分析不同，增量分析每次仅处理最近一段时间的消息，
-        提取少量话题和金句，将结果作为独立批次存储到 KV。
-        不生成用户称号（留到最终报告时再做），不生成报告。
+        Khác với phân tích hằng ngày, mỗi lần chỉ xử lý tin nhắn gần đây,
+        trích xuất một số chủ đề và trích dẫn rồi lưu kết quả thành batch độc
+        lập trong KV. Danh hiệu thành viên và báo cáo được tạo ở bước cuối.
 
-        流程：
-        1. 获取适配器
-        2. 拉取消息（使用增量配置的 max_messages）
-        3. 清理消息
-        4. 按时间戳去重：过滤已分析过的消息
-        5. 检查最小消息阈值
-        6. 计算基础统计（小时分布、用户活跃、表情）
-        7. LLM 增量分析（仅话题 + 金句）
-        8. 构建 IncrementalBatch 并保存
-        9. 更新最后分析消息时间戳
-        10. 返回批次结果
+        Quy trình: lấy adapter và tin nhắn, làm sạch, loại trùng theo timestamp,
+        kiểm tra ngưỡng, tính thống kê, phân tích gia tăng bằng LLM, lưu
+        ``IncrementalBatch``, cập nhật tiến độ và trả kết quả batch.
 
         Args:
-            group_id: 群组 ID
-            platform_id: 平台标识，缺省为默认
+            group_id: ID nhóm.
+            platform_id: ID nền tảng; mặc định dùng nền tảng mặc định.
 
         Returns:
-            dict: 包含 success、batch_summary 等信息
+            Dict chứa success, batch_summary và các thông tin liên quan.
         """
         async with self.group_lock(group_id, "incremental"):
             if not self.incremental_store:
@@ -353,34 +357,36 @@ class AnalysisApplicationService:
                 )
 
             logger.info(
-                f"开始增量分析用例: 群 {group_id}, 平台 {platform_id or '默认'}"
+                f"Bắt đầu phân tích gia tăng: nhóm {group_id}, nền tảng {platform_id or 'mặc định'}"
             )
 
-            # 1. 获取适配器
+            # 1. Lấy adapter
             adapter = self.bot_manager.get_adapter(platform_id)
             if not adapter:
                 raise ValueError(f"Không tìm thấy adapter cho nền tảng {platform_id}")
 
-            # 检查群聊是否被禁言（包括全体禁言或对 Bot 自身禁言）
+            # Kiểm tra nhóm có tắt quyền gửi tin hay không.
             if hasattr(adapter, "is_group_muted"):
                 try:
                     if await adapter.is_group_muted(group_id):
                         logger.info(
-                            f"群 {group_id} 开启了全群禁言或对 Bot 禁言，跳过本次增量群分析"
+                            f"Nhóm {group_id} đang tắt quyền gửi tin toàn nhóm hoặc với bot; bỏ qua phân tích gia tăng"
                         )
                         return {"success": False, "reason": "muted"}
                 except Exception as e:
-                    logger.warning(f"检查群 {group_id} 禁言状态时出错: {e}")
+                    logger.warning(
+                        f"Lỗi khi kiểm tra trạng thái tắt quyền gửi của nhóm {group_id}: {e}"
+                    )
 
-            # 2. 拉取消息，获取进度并确定拉取量
+            # 2. Lấy tiến độ và xác định số lượng tin nhắn cần truy xuất.
             last_analyzed_ts = await self.incremental_store.get_last_analyzed_timestamp(
                 group_id
             )
             days = self.config_manager.get_analysis_days()
-            # 在增量模式下，拉取上限由安全限制 (Safe Count) 统一控制，确保能追平进度且不溢出
+            # Giới hạn an toàn giúp bắt kịp tiến độ mà không gây tràn dữ liệu.
             max_count = self.config_manager.get_incremental_safe_limit()
 
-            # 3. 拉取消息（优先从上次进度点开始回溯，确保不遗漏高活跃期间的 Gap）
+            # 3. Lấy tin nhắn từ điểm tiến độ gần nhất để không bỏ sót khoảng trống.
             raw_messages = await adapter.fetch_messages(
                 group_id=group_id,
                 days=days,
@@ -389,10 +395,12 @@ class AnalysisApplicationService:
             )
 
             if not raw_messages:
-                logger.warning(f"群 {group_id} 在最近 {days} 天内无消息或无法获取")
+                logger.warning(
+                    f"Nhóm {group_id} không có tin nhắn hoặc không thể lấy tin trong {days} ngày gần đây"
+                )
                 return {"success": False, "reason": "no_messages"}
 
-            # 3. 清理消息
+            # 3. Làm sạch tin nhắn
             from ...domain.services.message_cleaner_service import MessageCleanerService
 
             cleaner = MessageCleanerService()
@@ -408,22 +416,22 @@ class AnalysisApplicationService:
                 raw_messages, bot_self_ids=bot_self_ids, filter_commands=True
             )
 
-            # 5. 二次去重，确保只保留断点之后的真正新消息
+            # 5. Loại trùng lần hai để chỉ giữ tin nhắn mới sau điểm tiến độ.
             if last_analyzed_ts > 0:
                 unified_messages = [
                     msg for msg in unified_messages if msg.timestamp > last_analyzed_ts
                 ]
 
-            # 5. 检查最小消息阈值
+            # 5. Kiểm tra ngưỡng tin nhắn tối thiểu.
             min_messages = self.config_manager.get_incremental_min_messages()
             if len(unified_messages) < min_messages:
                 logger.info(
-                    f"群 {group_id} 增量分析：新消息数 ({len(unified_messages)}) "
-                    f"未达到阈值 ({min_messages})，跳过本次分析"
+                    f"Phân tích gia tăng nhóm {group_id}: số tin nhắn mới ({len(unified_messages)}) "
+                    f"chưa đạt ngưỡng ({min_messages}); bỏ qua lần phân tích này"
                 )
                 return {"success": False, "reason": "below_threshold"}
 
-            # 6. 计算基础统计
+            # 6. Tính thống kê cơ bản
             statistics = await asyncio.to_thread(
                 self.statistics_service.calculate_group_statistics, unified_messages
             )
@@ -433,16 +441,16 @@ class AnalysisApplicationService:
                 bot_self_ids,
             )
 
-            # 计算本批次的小时分布
+            # Tính phân bố theo giờ của batch này
             hourly_msg_counts, hourly_char_counts = self._compute_hourly_counts(
                 unified_messages
             )
 
-            # 7. LLM 增量分析（仅话题 + 金句）
+            # 7. Phân tích gia tăng bằng LLM (chủ đề và trích dẫn)
             topics_per_batch = self.config_manager.get_incremental_topics_per_batch()
             quotes_per_batch = self.config_manager.get_incremental_quotes_per_batch()
 
-            # 获取功能开关状态
+            # Lấy trạng thái các công tắc tính năng
             topic_enabled = self.config_manager.get_topic_analysis_enabled()
             golden_quote_enabled = (
                 self.config_manager.get_golden_quote_analysis_enabled()
@@ -451,7 +459,7 @@ class AnalysisApplicationService:
                 self.config_manager.get_chat_quality_analysis_enabled()
             )
 
-            # 需要将 UnifiedMessage 转换为 legacy 格式供 LLM 分析器使用
+            # Chuyển UnifiedMessage sang format cũ cho analyzer LLM
             legacy_messages = self.statistics_service._convert_to_legacy_dict(
                 unified_messages
             )
@@ -466,7 +474,9 @@ class AnalysisApplicationService:
 
             if topic_enabled or golden_quote_enabled or chat_quality_enabled:
                 async with self.llm_semaphore:
-                    logger.debug(f"[LLM] 已进入增量分析队列 (群: {group_id})")
+                    logger.debug(
+                        f"[LLM] Đã vào hàng đợi phân tích gia tăng (nhóm: {group_id})"
+                    )
                     (
                         topics,
                         golden_quotes,
@@ -482,8 +492,8 @@ class AnalysisApplicationService:
                         chat_quality_enabled=chat_quality_enabled,
                     )
 
-            # 8. 构建 IncrementalBatch
-            # 8a. 转换话题: SummaryTopic -> dict
+            # 8. Xây dựng IncrementalBatch
+            # 8a. Chuyển chủ đề: SummaryTopic -> dict
             new_topics = [
                 {
                     "topic": t.topic,
@@ -494,7 +504,7 @@ class AnalysisApplicationService:
                 for t in topics
             ]
 
-            # 8b. 转换金句: GoldenQuote -> dict
+            # 8b. Chuyển trích dẫn: GoldenQuote -> dict
             new_quotes = [
                 {
                     "content": q.content,
@@ -505,19 +515,19 @@ class AnalysisApplicationService:
                 for q in golden_quotes
             ]
 
-            # 8c. 转换 token 消耗: TokenUsage -> dict
+            # 8c. Chuyển mức sử dụng token: TokenUsage -> dict
             token_usage_dict = {
                 "prompt_tokens": token_usage.prompt_tokens,
                 "completion_tokens": token_usage.completion_tokens,
                 "total_tokens": token_usage.total_tokens,
             }
 
-            # 8d. 转换用户统计: AnalysisDomainService 格式 -> IncrementalBatch 格式
+            # 8d. Chuyển thống kê thành viên sang format IncrementalBatch
             user_stats = self._convert_user_activity_for_merge(
                 user_activity, unified_messages
             )
 
-            # 8e. 转换表情统计: EmojiStatistics -> dict
+            # 8e. Chuyển thống kê biểu cảm: EmojiStatistics -> dict
             emoji_stats = {
                 "face_count": statistics.emoji_statistics.face_count,
                 "mface_count": statistics.emoji_statistics.mface_count,
@@ -527,7 +537,7 @@ class AnalysisApplicationService:
                 "face_details": statistics.emoji_statistics.face_details,
             }
 
-            # 8f. 转换聊天质量锐评: QualityReview -> dict
+            # 8f. Chuyển đánh giá chất lượng: QualityReview -> dict
             chat_quality_dict = None
             if chat_quality_review:
                 chat_quality_dict = {
@@ -545,16 +555,16 @@ class AnalysisApplicationService:
                     "summary": chat_quality_review.summary,
                 }
 
-            # 8g. 获取参与者 ID 和最后消息时间戳
+            # 8g. Lấy ID người tham gia và timestamp tin nhắn cuối
             participant_ids = list({msg.sender_id for msg in unified_messages})
             last_message_timestamp = max(
                 (msg.timestamp for msg in unified_messages), default=0
             )
 
-            # 8g. 计算本批次总字符数
+            # 8g. Tính tổng số ký tự của batch
             characters_count = sum(msg.get_text_length() for msg in unified_messages)
 
-            # 构建批次对象
+            # Xây dựng đối tượng batch
             batch = IncrementalBatch(
                 group_id=group_id,
                 timestamp=time_mod.time(),
@@ -572,10 +582,10 @@ class AnalysisApplicationService:
                 participant_ids=participant_ids,
             )
 
-            # 9. 保存批次并更新最后分析时间戳
+            # 9. Lưu batch và cập nhật timestamp phân tích cuối.
             await self.incremental_store.save_batch(batch)
 
-            # 安全更新水位线：取消息最大时间戳，但不能超过当前时间+1分钟，防止未来时间戳毒化导致后续分析死锁
+            # Cập nhật mốc an toàn, không vượt quá hiện tại + 1 phút để tránh timestamp tương lai.
             import time
 
             safe_now = int(time.time()) + 60
@@ -586,9 +596,9 @@ class AnalysisApplicationService:
             )
 
             logger.info(
-                f"群 {group_id} 增量分析完成: "
-                f"本批次消息={len(unified_messages)}, "
-                f"新话题={len(new_topics)}, 新金句={len(new_quotes)}"
+                f"Hoàn tất phân tích gia tăng nhóm {group_id}: "
+                f"tin nhắn batch={len(unified_messages)}, "
+                f"chủ đề mới={len(new_topics)}, trích dẫn mới={len(new_quotes)}"
             )
 
             return {
@@ -603,28 +613,21 @@ class AnalysisApplicationService:
         self, group_id: str, platform_id: str | None = None
     ) -> dict[str, Any]:
         """
-        基于滑动窗口内的增量批次生成最终报告。
+        Tạo báo cáo cuối từ các batch gia tăng trong cửa sổ trượt.
 
-        按 analysis_days × 24h 的时间窗口查询所有批次，
-        合并为 IncrementalState，额外执行用户称号分析，
-        然后生成与传统每日分析格式完全一致的 analysis_result。
+        Truy vấn batch theo cửa sổ ``analysis_days × 24 giờ``, gộp thành
+        ``IncrementalState``, phân tích thêm danh hiệu thành viên rồi tạo
+        ``analysis_result`` cùng định dạng với phân tích hằng ngày.
 
-        流程：
-        1. 计算滑动窗口范围
-        2. 查询窗口内的所有批次
-        3. 检查批次有效性
-        4. 合并批次为 IncrementalState
-        5. 执行用户称号 LLM 分析（基于合并后的累积数据）
-        6. 使用 IncrementalMergeService 构建 analysis_result
-        7. 持久化到 history_manager
-        8. 返回结果
+        Quy trình: tính cửa sổ, truy vấn và kiểm tra batch, gộp trạng thái,
+        phân tích danh hiệu bằng LLM, dựng kết quả, lưu lịch sử và trả kết quả.
 
         Args:
-            group_id: 群组 ID
-            platform_id: 平台标识，缺省为默认
+            group_id: ID nhóm.
+            platform_id: ID nền tảng; mặc định dùng nền tảng mặc định.
 
         Returns:
-            dict: 包含 success、analysis_result、adapter 等信息
+            Dict chứa success, analysis_result, adapter và thông tin liên quan.
         """
         async with self.group_lock(group_id, "final"):
             if not self.incremental_store or not self.incremental_merge_service:
@@ -634,48 +637,50 @@ class AnalysisApplicationService:
                 )
 
             logger.info(
-                f"开始增量最终报告: 群 {group_id}, 平台 {platform_id or '默认'}"
+                f"Bắt đầu báo cáo gia tăng cuối: nhóm {group_id}, nền tảng {platform_id or 'mặc định'}"
             )
 
-            # 1. 计算滑动窗口范围
+            # 1. Tính phạm vi cửa sổ trượt
             analysis_days = self.config_manager.get_analysis_days()
             window_end = time_mod.time()
             window_start = window_end - (analysis_days * 24 * 3600)
 
-            # 2. 查询窗口内的所有批次
+            # 2. Truy vấn mọi batch trong cửa sổ
             batches = await self.incremental_store.query_batches(
                 group_id, window_start, window_end
             )
 
-            # 3. 检查批次有效性
+            # 3. Kiểm tra tính hợp lệ của batch
             if not batches:
                 logger.warning(
-                    f"群 {group_id} 滑动窗口内无增量分析数据，无法生成最终报告"
+                    f"Nhóm {group_id} không có dữ liệu gia tăng trong cửa sổ trượt; không thể tạo báo cáo cuối"
                 )
                 return {"success": False, "reason": "no_incremental_data"}
 
-            # 4. 合并批次为 IncrementalState
+            # 4. Gộp batch thành IncrementalState
             state = self.incremental_merge_service.merge_batches(
                 batches, window_start, window_end
             )
 
-            # 5. 获取适配器（报告发送需要）
+            # 5. Lấy adapter cần cho việc gửi báo cáo
             adapter = self.bot_manager.get_adapter(platform_id)
             if not adapter:
                 raise ValueError(f"Không tìm thấy adapter cho nền tảng {platform_id}")
 
-            # 检查群聊是否被禁言（包括全体禁言或对 Bot 自身禁言）
+            # Kiểm tra nhóm có tắt quyền gửi tin hay không.
             if hasattr(adapter, "is_group_muted"):
                 try:
                     if await adapter.is_group_muted(group_id):
                         logger.info(
-                            f"群 {group_id} 开启了全群禁言或对 Bot 禁言，跳过本次增量最终报告生成"
+                            f"Nhóm {group_id} đang tắt quyền gửi tin toàn nhóm hoặc với bot; bỏ qua báo cáo cuối"
                         )
                         return {"success": False, "reason": "muted"}
                 except Exception as e:
-                    logger.warning(f"检查群 {group_id} 禁言状态时出错: {e}")
+                    logger.warning(
+                        f"Lỗi khi kiểm tra trạng thái tắt quyền gửi của nhóm {group_id}: {e}"
+                    )
 
-            # 6. 执行分析相关的变量准备
+            # 6. Chuẩn bị biến cho quá trình phân tích
             user_titles = []
             user_title_enabled = self.config_manager.get_user_title_analysis_enabled()
             unified_msg_origin = (
@@ -684,24 +689,26 @@ class AnalysisApplicationService:
 
             if user_title_enabled and state.user_activities:
                 max_user_titles = self.config_manager.get_max_user_titles()
-                # 从合并后的 user_activities 中取出 top 用户
+                # Lấy các thành viên hàng đầu từ user_activities đã gộp
                 top_users = state.get_user_activity_ranking(max_user_titles)
 
                 try:
                     async with self.llm_semaphore:
-                        logger.debug(f"[LLM] 已进入称号分析队列 (群: {group_id})")
+                        logger.debug(
+                            f"[LLM] Đã vào hàng đợi phân tích danh hiệu (nhóm: {group_id})"
+                        )
                         (
                             user_titles_result,
                             title_token_usage,
                         ) = await self.llm_analyzer.analyze_user_titles(
-                            messages=[],  # 增量模式下不传原始消息
+                            messages=[],  # Không truyền tin nhắn gốc ở chế độ gia tăng
                             user_activity=state.user_activities,
                             umo=unified_msg_origin,
                             top_users=top_users,
                         )
                     user_titles = user_titles_result
 
-                    # 将称号分析的 token 消耗追加到状态中
+                    # Cộng mức sử dụng token của phân tích danh hiệu vào trạng thái
                     state.total_token_usage["prompt_tokens"] = (
                         state.total_token_usage.get("prompt_tokens", 0)
                         + title_token_usage.prompt_tokens
@@ -715,9 +722,12 @@ class AnalysisApplicationService:
                         + title_token_usage.total_tokens
                     )
                 except Exception as e:
-                    logger.error(f"增量最终报告用户称号分析失败: {e}", exc_info=True)
+                    logger.error(
+                        f"Phân tích danh hiệu cho báo cáo gia tăng cuối thất bại: {e}",
+                        exc_info=True,
+                    )
 
-            # 6.5 执行聊天质量汇总分析 (如果有多个批次的质量报告)
+            # 6.5 Tổng hợp chất lượng trò chuyện nếu có đánh giá từ nhiều batch
             if (
                 self.config_manager.get_chat_quality_analysis_enabled()
                 and state.all_quality_reviews
@@ -725,7 +735,7 @@ class AnalysisApplicationService:
                 try:
                     async with self.llm_semaphore:
                         logger.debug(
-                            f"[LLM] 已进入聊天质量汇总分析队列 (群: {group_id})"
+                            f"[LLM] Đã vào hàng đợi tổng hợp chất lượng trò chuyện (nhóm: {group_id})"
                         )
                         (
                             summarized_review,
@@ -735,9 +745,8 @@ class AnalysisApplicationService:
                             umo=unified_msg_origin,
                         )
                     if summarized_review:
-                        # 更新 state 中的 review 为汇总后的结果
-                        # 这里我们需要将 QualityReview 对象存回 dict 或直接在后续处理中使用
-                        # build_analysis_result 会使用 state.chat_quality_review
+                        # Cập nhật review trong state bằng kết quả tổng hợp.
+                        # build_analysis_result sử dụng state.chat_quality_review.
                         state.chat_quality_review = {
                             "title": summarized_review.title,
                             "subtitle": summarized_review.subtitle,
@@ -753,7 +762,7 @@ class AnalysisApplicationService:
                             "summary": summarized_review.summary,
                         }
 
-                        # 累加 Token
+                        # Cộng dồn token
                         state.total_token_usage["prompt_tokens"] = (
                             state.total_token_usage.get("prompt_tokens", 0)
                             + quality_token_usage.prompt_tokens
@@ -767,22 +776,25 @@ class AnalysisApplicationService:
                             + quality_token_usage.total_tokens
                         )
                 except Exception as e:
-                    logger.error(f"增量最终报告聊天质量汇总失败: {e}", exc_info=True)
+                    logger.error(
+                        f"Tổng hợp chất lượng trò chuyện cho báo cáo cuối thất bại: {e}",
+                        exc_info=True,
+                    )
 
-            # 7. 构建 analysis_result
+            # 7. Xây dựng analysis_result
             analysis_result = self.incremental_merge_service.build_analysis_result(
                 state, user_titles
             )
 
-            # 8. 持久化到 history_manager
+            # 8. Lưu vào history_manager
             await self.history_manager.save_analysis(group_id, analysis_result)
 
             logger.info(
-                f"群 {group_id} 增量最终报告完成: "
-                f"窗口={state.get_window_date_str()}, "
-                f"累计消息={state.total_message_count}, "
-                f"话题={len(state.topics)}, 金句={len(state.golden_quotes)}, "
-                f"批次={state.total_analysis_count}"
+                f"Hoàn tất báo cáo gia tăng cuối của nhóm {group_id}: "
+                f"cửa sổ={state.get_window_date_str()}, "
+                f"tin nhắn tích luỹ={state.total_message_count}, "
+                f"chủ đề={len(state.topics)}, trích dẫn={len(state.golden_quotes)}, "
+                f"batch={state.total_analysis_count}"
             )
 
             return {
@@ -795,7 +807,7 @@ class AnalysisApplicationService:
             }
 
     # ----------------------------------------------------------------
-    # 辅助方法
+    # Phương thức hỗ trợ
     # ----------------------------------------------------------------
 
     @staticmethod
@@ -803,13 +815,13 @@ class AnalysisApplicationService:
         messages: list[UnifiedMessage],
     ) -> tuple[dict[int, int], dict[int, int]]:
         """
-        从消息列表计算按小时的消息数和字符数分布。
+        Tính phân bố số tin nhắn và ký tự theo giờ từ danh sách tin nhắn.
 
         Args:
-            messages: 统一格式的消息列表
+            messages: Danh sách tin nhắn thống nhất.
 
         Returns:
-            tuple: (每小时消息计数, 每小时字符计数)
+            Tuple gồm số tin nhắn và số ký tự theo giờ.
         """
         hourly_msg: dict[int, int] = defaultdict(int)
         hourly_char: dict[int, int] = defaultdict(int)
@@ -827,22 +839,22 @@ class AnalysisApplicationService:
         messages: list[UnifiedMessage],
     ) -> dict[str, dict]:
         """
-        将 AnalysisDomainService.analyze_user_activity() 的返回格式
-        转换为 IncrementalBatch 所需的 user_stats 格式。
+        Chuyển kết quả của ``AnalysisDomainService.analyze_user_activity()``
+        sang format ``user_stats`` mà ``IncrementalBatch`` yêu cầu.
 
-        转换映射：
+        Ánh xạ chuyển đổi:
         - nickname -> name
         - hours (defaultdict) -> active_hours (list)
-        - 新增 last_message_time（从消息时间戳中提取）
+        - Thêm last_message_time lấy từ timestamp tin nhắn.
 
         Args:
-            user_activity: AnalysisDomainService 返回的用户活跃数据
-            messages: 本批次的消息列表（用于提取每个用户的最后发言时间）
+            user_activity: Dữ liệu hoạt động do AnalysisDomainService trả về.
+            messages: Tin nhắn batch dùng để lấy thời gian cuối của từng thành viên.
 
         Returns:
-            dict: IncrementalBatch 所需的 user_stats 格式
+            Dict ``user_stats`` theo format IncrementalBatch yêu cầu.
         """
-        # 预先计算每个用户的最后消息时间戳
+        # Tính trước timestamp tin nhắn cuối của từng thành viên
         user_last_time: dict[str, int] = {}
         for msg in messages:
             current = user_last_time.get(msg.sender_id, 0)
@@ -859,7 +871,7 @@ class AnalysisApplicationService:
                 "reply_count": stats.get("reply_count", 0),
                 "hours": dict(
                     stats.get("hours", {})
-                ),  # 这里的 hours 是 defaultdict(int)，转为 dict
+                ),  # hours là defaultdict(int), chuyển thành dict
                 "last_message_time": user_last_time.get(user_id, 0),
             }
 

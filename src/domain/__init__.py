@@ -1,1 +1,1 @@
-# 领域层 - 与平台无关的业务逻辑
+# Tầng domain - logic nghiệp vụ độc lập với nền tảng

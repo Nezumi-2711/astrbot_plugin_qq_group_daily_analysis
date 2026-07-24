@@ -207,7 +207,7 @@ class TraceContext:
             str: Chuỗi Caption của báo cáo.
         """
         ts = datetime.now().strftime("%m-%d %H:%M:%S")
-        return f"📊 每日群聊分析报告已生成 | {ts}"
+        return f"📊 Báo cáo phân tích nhóm hằng ngày đã được tạo | {ts}"
 
     @classmethod
     def set(cls, trace_id: str) -> None:

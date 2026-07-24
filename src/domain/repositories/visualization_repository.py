@@ -1,6 +1,7 @@
 """
-可视化仓储接口 - 领域层
-定义活跃度可视化的抽象契约。
+Giao diện repository trực quan hoá thuộc tầng domain.
+
+Định nghĩa hợp đồng trừu tượng cho chức năng trực quan hoá hoạt động.
 """
 
 from abc import ABC, abstractmethod
@@ -9,11 +10,11 @@ from ..models.data_models import ActivityVisualization
 
 
 class IActivityVisualizer(ABC):
-    """活跃度可视化接口 - 领域层抽象"""
+    """Giao diện trực quan hoá hoạt động của tầng domain."""
 
     @abstractmethod
     def generate_activity_visualization(
         self, messages: list[dict]
     ) -> ActivityVisualization:
-        """从消息列表生成活跃度可视化数据"""
+        """Tạo dữ liệu trực quan hoá hoạt động từ danh sách tin nhắn."""
         pass

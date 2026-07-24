@@ -1,7 +1,4 @@
-"""
-用户称号分析模块
-专门处理用户称号和MBTI类型分析
-"""
+"""Module phân tích danh hiệu thành viên và kiểu MBTI."""
 
 from ....domain.models.data_models import TokenUsage, UserTitle
 from ....utils.logger import logger
@@ -13,21 +10,18 @@ from .base_analyzer import BaseAnalyzer
 
 
 class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
-    """
-    用户称号分析器
-    专门处理用户称号分配和MBTI类型分析
-    """
+    """Analyzer phân bổ danh hiệu thành viên và phân tích MBTI."""
 
     def get_provider_id_key(self) -> str:
-        """获取 Provider ID 配置键名"""
+        """Lấy tên key cấu hình Provider ID."""
         return "user_title_provider_id"
 
     def get_data_type(self) -> str:
-        """获取数据类型标识"""
+        """Lấy định danh loại dữ liệu."""
         return "Danh hiệu thành viên"
 
     def get_max_count(self) -> int:
-        """获取最大用户称号数量"""
+        """Lấy số danh hiệu thành viên tối đa."""
         return self.config_manager.get_max_user_titles()
 
     def get_response_schema_name(self) -> str:
@@ -38,89 +32,91 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
 
     def build_prompt(self, data: dict) -> str:
         """
-        构建用户称号分析提示词
+        Xây dựng prompt phân tích danh hiệu thành viên.
 
         Args:
-            user_data: 用户数据字典，包含用户统计信息
+            user_data: Dict dữ liệu và thống kê thành viên.
 
         Returns:
-            提示词字符串
+            Chuỗi prompt.
         """
         user_summaries = data.get("user_summaries", [])
 
         if not user_summaries:
             return ""
 
-        # 构建用户数据文本
+        # Xây dựng văn bản dữ liệu thành viên.
         users_text = "\n".join(
             [
                 f"- {user['name']} (ID:{user['user_id']}): "
-                f"发言{user['message_count']}条, 平均{user['avg_chars']}字, "
-                f"表情比例{user['emoji_ratio']}, 夜间发言比例{user['night_ratio']}, "
-                f"回复比例{user['reply_ratio']}"
+                f"{user['message_count']} tin nhắn, trung bình {user['avg_chars']} ký tự, "
+                f"tỷ lệ biểu cảm {user['emoji_ratio']}, tỷ lệ chat ban đêm {user['night_ratio']}, "
+                f"tỷ lệ trả lời {user['reply_ratio']}"
                 for user in user_summaries
             ]
         )
 
-        # 从配置读取 prompt 模板（默认使用 "default" 风格）
+        # Đọc template prompt từ cấu hình, mặc định kiểu ``default``.
         prompt_template = self.config_manager.get_user_title_analysis_prompt()
 
         if prompt_template:
             try:
                 prompt = render_template(prompt_template, users_text=users_text)
-                logger.info("使用配置中的用户称号分析提示词")
+                logger.info("Đang dùng prompt phân tích danh hiệu trong cấu hình")
                 return prompt
             except Exception as e:
-                logger.warning(f"应用用户称号分析提示词失败: {e}")
+                logger.warning(f"Áp dụng prompt phân tích danh hiệu thất bại: {e}")
 
-        logger.warning("未找到有效的用户称号分析提示词配置，请检查配置文件")
+        logger.warning("Không tìm thấy cấu hình prompt phân tích danh hiệu hợp lệ")
         return ""
 
     def extract_with_regex(self, result_text: str, max_count: int) -> list[dict]:
         """
-        使用正则表达式提取用户称号信息
+        Trích xuất thông tin danh hiệu bằng regex.
 
         Args:
-            result_text: LLM响应文本
-            max_count: 最大提取数量
+            result_text: Văn bản phản hồi LLM.
+            max_count: Số lượng tối đa.
 
         Returns:
-            用户称号数据列表
+            Danh sách dữ liệu danh hiệu.
         """
         return extract_user_titles_with_regex(result_text, max_count)
 
     def create_data_objects(self, data_list: list[dict]) -> list[UserTitle]:
         """
-        创建用户称号对象列表
+        Tạo danh sách object danh hiệu.
 
         Args:
-            titles_data: 原始用户称号数据列表
+            titles_data: Danh sách dữ liệu danh hiệu gốc.
 
         Returns:
-            UserTitle对象列表
+            Danh sách object UserTitle.
         """
         try:
             titles = []
             max_titles = self.get_max_count()
 
             for title_data in data_list[:max_titles]:
-                # 确保数据格式正确
+                # Đảm bảo định dạng dữ liệu đúng.
                 name = title_data.get("name", "").strip()
                 user_id = title_data.get("user_id")
                 title = title_data.get("title", "").strip()
                 mbti = title_data.get("mbti", "").strip()
                 reason = title_data.get("reason", "").strip()
 
-                # 验证必要字段
+                # Xác thực trường bắt buộc.
                 if not name or not title or not mbti or not reason:
-                    logger.warning(f"用户称号数据格式不完整，跳过: {title_data}")
+                    logger.warning(
+                        f"Dữ liệu danh hiệu không đầy đủ, bỏ qua: {title_data}"
+                    )
                     continue
 
-                # 确保 user_id 是字符串
+                # Đảm bảo user_id là chuỗi.
                 if user_id is not None:
                     user_id = str(user_id)
                 else:
-                    logger.warning(f"未找到用户ID (user_id)，跳过: {title_data}")
+                    logger.warning(f"Không tìm thấy user_id, bỏ qua: {title_data}")
                     continue
 
                 titles.append(
@@ -136,7 +132,7 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
             return titles
 
         except Exception as e:
-            logger.error(f"创建用户称号对象失败: {e}")
+            logger.error(f"Tạo object danh hiệu thất bại: {e}")
             return []
 
     def validate_parsed_data(
@@ -151,31 +147,33 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
         top_users: list[dict] | None = None,
     ) -> dict:
         """
-        准备用户数据
+        Chuẩn bị dữ liệu thành viên.
 
         Args:
-            messages: 群聊消息列表
-            user_analysis: 用户分析统计
-            top_users: 活跃用户列表(从get_top_users获取)
+            messages: Danh sách tin nhắn nhóm.
+            user_analysis: Thống kê phân tích thành viên.
+            top_users: Danh sách thành viên tích cực từ get_top_users.
 
         Returns:
-            准备好的用户数据字典
+            Dict dữ liệu thành viên đã chuẩn bị.
         """
         try:
-            # 获取机器人 ID 列表用于过滤
+            # Lấy danh sách ID bot để lọc.
             bot_self_ids = self.config_manager.get_bot_self_ids()
 
             user_summaries = []
 
-            # 如果提供了top_users列表,只分析这些活跃用户
+            # Chỉ phân tích thành viên tích cực nếu có top_users.
             if top_users:
                 logger.info(
-                    f"使用get_top_users筛选出的 {len(top_users)} 个活跃用户进行称号分析"
+                    f"Phân tích danh hiệu cho {len(top_users)} thành viên tích cực do get_top_users lọc"
                 )
                 target_user_ids = {str(user["user_id"]) for user in top_users}
             else:
-                # 兼容旧逻辑:如果没有提供top_users,则使用所有消息数>=5的用户
-                logger.info("未提供活跃用户列表,使用消息数>=5的用户")
+                # Tương thích logic cũ: dùng thành viên có ít nhất 5 tin nhắn.
+                logger.info(
+                    "Không có danh sách tích cực, dùng thành viên có ít nhất 5 tin nhắn"
+                )
                 target_user_ids = {
                     user_id
                     for user_id, stats in user_analysis.items()
@@ -184,23 +182,22 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
 
             for user_id, stats in user_analysis.items():
                 user_id_str = str(user_id)
-                # 过滤机器人由 MessageCleaner 已处理，此处仅作为二级防御
+                # MessageCleaner đã lọc bot; đây là lớp phòng vệ thứ hai.
                 if bot_self_ids and user_id_str in [str(uid) for uid in bot_self_ids]:
                     continue
 
-                # 只处理活跃用户 (top_users 或 消息数>=5)
+                # Chỉ xử lý thành viên tích cực.
                 if user_id_str not in target_user_ids:
                     continue
 
-                # 分析用户特征 (此处已基于已清理的 stats)
-                # 兼容性处理：优先使用 hours (dict)，如果没有则尝试从消息推断或使用空
+                # Phân tích đặc trưng từ stats đã làm sạch; ưu tiên hours dạng dict.
                 hours_data = stats.get("hours")
                 if hours_data is None:
-                    # 尝试兼容旧 schema 或简化版
+                    # Tương thích schema cũ hoặc bản đơn giản.
                     active_hours = stats.get("active_hours", [])
                     hours_data = dict.fromkeys(active_hours, 1)
 
-                # 安全计算夜间发言数
+                # Tính an toàn số tin nhắn ban đêm.
                 night_messages = sum(hours_data.get(h, 0) for h in range(6))
 
                 message_count = stats.get("message_count", 0)
@@ -209,7 +206,7 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
 
                 avg_chars = stats.get("char_count", 0) / message_count
 
-                # 称号所需维度
+                # Các chiều cần cho danh hiệu.
                 user_summaries.append(
                     {
                         "name": stats.get("nickname", stats.get("name", user_id_str)),
@@ -229,13 +226,13 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
             if not user_summaries:
                 return {"user_summaries": []}
 
-            # 按消息数量排序
+            # Sắp xếp theo số tin nhắn.
             user_summaries.sort(key=lambda x: x["message_count"], reverse=True)
 
             return {"user_summaries": user_summaries}
 
         except Exception as e:
-            logger.error(f"准备用户数据失败: {e}")
+            logger.error(f"Chuẩn bị dữ liệu thành viên thất bại: {e}")
             return {"user_summaries": []}
 
     async def analyze_user_titles(
@@ -247,29 +244,31 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle, dict]):
         session_id: str | None = None,
     ) -> tuple[list[UserTitle], TokenUsage]:
         """
-        分析用户称号
+        Phân tích danh hiệu thành viên.
 
         Args:
-            messages: 群聊消息列表
-            user_analysis: 用户分析统计
-            umo: 模型唯一标识符
-            top_users: 活跃用户列表(从get_top_users获取,可选)
-            session_id: 会话ID (用于调试模式)
+            messages: Danh sách tin nhắn nhóm.
+            user_analysis: Thống kê phân tích thành viên.
+            umo: Định danh model.
+            top_users: Danh sách thành viên tích cực, tuỳ chọn.
+            session_id: ID phiên dùng cho debug mode.
 
         Returns:
-            (用户称号列表, Token使用统计)
+            Tuple danh sách danh hiệu và thống kê token.
         """
         try:
-            # 准备用户数据,传入活跃用户列表
+            # Chuẩn bị dữ liệu và truyền danh sách thành viên tích cực.
             user_data = self.prepare_user_data(messages, user_activity, top_users)
 
             if not user_data["user_summaries"]:
-                logger.info("没有符合条件的用户，返回空结果")
+                logger.info("Không có thành viên phù hợp, trả về kết quả rỗng")
                 return [], TokenUsage()
 
-            logger.info(f"开始分析 {len(user_data['user_summaries'])} 个活跃用户的称号")
+            logger.info(
+                f"Bắt đầu phân tích danh hiệu cho {len(user_data['user_summaries'])} thành viên tích cực"
+            )
             return await self.analyze(user_data, umo, session_id)
 
         except Exception as e:
-            logger.error(f"用户称号分析失败: {e}")
+            logger.error(f"Phân tích danh hiệu thất bại: {e}")
             return [], TokenUsage()

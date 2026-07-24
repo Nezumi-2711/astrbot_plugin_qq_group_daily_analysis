@@ -7,17 +7,17 @@
     <title>Một ngày đầy sắc màu — cùng xem nhóm đã có gì nhé! · {{current_date}}</title>
     <link rel="preconnect" href="{{ t2i_google_fonts_mirror }}">
     <link rel="preconnect" href="{{ t2i_gstatic_mirror }}" crossorigin>
-    <!-- 引入手写字体和正文阅读字体 -->
+    <!-- Tải font viết tay và font nội dung -->
     <link
         href="{{ t2i_google_fonts_mirror }}/css2?family=ZCOOL+KuaiLe&family=Long+Cang&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&family=Patrick+Hand&display=swap"
         rel="stylesheet">
 
     <style>
         :root {
-            /* 卡通手账调色板 */
+            /* Bảng màu sổ tay hoạt hình */
             --bg-paper: #fdfbf7;
             --ink-primary: #5d4037;
-            /* 像铅笔/墨水的深褐色 */
+            /* Nâu đậm như bút chì hoặc mực */
             --ink-secondary: #8d6e63;
 
             --color-yellow: #fff9c4;
@@ -28,22 +28,22 @@
 
             --accent-orange: #ff7043;
 
-            /* MBTI 专属高对比色 */
+            /* Màu tương phản cao dành cho MBTI */
             --mbti-bg: #ede7f6;
             --mbti-border: #9575cd;
             --mbti-text: #512da8;
 
-            /* 称号专属色 */
+            /* Màu riêng cho danh hiệu */
             --title-bg: #fffde7;
             --title-border: #ffb74d;
             --title-text: #bf360c;
 
             --font-title: 'ZCOOL KuaiLe', cursive;
-            /* 标题字体 */
+            /* Font tiêu đề */
             --font-hand: 'Patrick Hand', "KaiTi", "STKaiti", serif;
-            /* 手写体 */
+            /* Font viết tay */
             --font-body: {% if t2i_font_source == 'Mainland' %}'Noto Sans SC', 'Noto Sans TC'{% else %}'Noto Sans TC', 'Noto Sans SC'{% endif %}, sans-serif;
-            /* 正文体 */
+            /* Font nội dung */
         }
 
         * {
@@ -164,7 +164,7 @@
             font-family: var(--font-body);
             color: var(--ink-primary);
             background-color: var(--bg-paper);
-            /* 点阵纸背景纹理 */
+            /* Hoạ tiết nền giấy chấm bi */
             background-image: radial-gradient(#ddd 2px, transparent 2px);
             background-size: 20px 20px;
             min-height: 100vh;
@@ -172,7 +172,7 @@
             line-height: 1.6;
         }
 
-        /* SVG 图标通用样式 */
+        /* Kiểu chung cho biểu tượng SVG */
         .doodle {
             width: 1em;
             height: 1em;
@@ -210,7 +210,7 @@
             opacity: 0.5;
         }
 
-        /* ==================== 1. 头部设计 ==================== */
+        /* ==================== 1. Thiết kế header ==================== */
         .header {
             text-align: center;
             margin-bottom: 50px;
@@ -264,8 +264,8 @@
             mask-repeat: repeat-x;
         }
 
-        /* ==================== 2. 统计邮票 ==================== */
-        /* ==================== 2. 统计区域 (新版) ==================== */
+        /* ==================== 2. Tem thống kê ==================== */
+        /* ==================== 2. Vùng thống kê mới ==================== */
         .stats-wrapper {
             display: flex;
             gap: 25px;
@@ -296,7 +296,7 @@
             transition: transform 0.2s;
         }
 
-        /* 装饰性背景纹理 */
+        /* Hoạ tiết nền trang trí */
         .stamp::after {
             content: "";
             position: absolute;
@@ -332,7 +332,7 @@
             color: var(--ink-secondary);
         }
 
-        /* ==================== 布局容器 ==================== */
+        /* ==================== Container bố cục ==================== */
         .grid-layout {
             display: grid;
             grid-template-columns: repeat(12, 1fr);
@@ -353,7 +353,7 @@
             font-size: 1.3em;
         }
 
-        /* ==================== 3. 图表区 ==================== */
+        /* ==================== 3. Vùng biểu đồ ==================== */
         .chart-section {
             grid-column: span 7;
             background: #fff;
@@ -374,7 +374,7 @@
             border-left: 2px solid #999;
         }
 
-        /* 手绘条形图模拟 */
+        /* Mô phỏng biểu đồ cột vẽ tay */
         .hand-chart-row {
             display: flex;
             align-items: center;
@@ -450,8 +450,8 @@
             text-align: center;
         }
 
-        /* ==================== 4. 活跃时段 ==================== */
-        /* ==================== 4. 活跃时段 (新版) ==================== */
+        /* ==================== 4. Khung giờ hoạt động ==================== */
+        /* ==================== 4. Khung giờ hoạt động mới ==================== */
         .highlight-section {
             flex: 1;
             background: var(--color-yellow);
@@ -491,7 +491,7 @@
             font-size: 1.5rem;
         }
 
-        /* ==================== 5. 话题列表 ==================== */
+        /* ==================== 5. Danh sách chủ đề ==================== */
         .topic-section {
             grid-column: span 12;
             background: #fff;
@@ -522,7 +522,7 @@
             box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.1);
         }
 
-        /* 话题项样式 - 确保在 image_template 中正确定义 */
+        /* Kiểu mục chủ đề, đồng bộ với image_template */
         .topic-item {
             display: flex;
             align-items: flex-start;
@@ -579,7 +579,7 @@
             margin-top: 8px;
         }
 
-        /* ==================== 6. 群友画像 ==================== */
+        /* ==================== 6. Hồ sơ thành viên ==================== */
         .user-section {
             grid-column: span 12;
             margin-top: 20px;
@@ -755,7 +755,7 @@
             /* Removed big quote mark to clean up */
         }
 
-        /* ==================== 7. 每日回响 ==================== */
+        /* ==================== 7. Dư âm hằng ngày ==================== */
         .quotes-section {
             grid-column: span 12;
             display: flex;
@@ -1023,7 +1023,7 @@
 <body>
     <div class="container">
 
-        <!-- 1. 头部 -->
+        <!-- 1. Header -->
         <div class="header">
             <div class="title-sticker">
                 <div class="tape"></div>
@@ -1032,7 +1032,7 @@
             </div>
         </div>
 
-        <!-- 2. 统计邮票和活跃时段 -->
+        <!-- 2. Tem thống kê và khung giờ hoạt động -->
         <div class="stats-wrapper">
             <!-- Left: Stats Grid (2x2) -->
             <div class="stats-grid">
@@ -1096,7 +1096,7 @@
 
         <div class="grid-layout">
 
-            <!-- 3. 24小时活跃图表 -->
+            <!-- 3. Biểu đồ hoạt động 24 giờ -->
             <div class="chart-section" style="grid-column: span 12;">
                 <div class="coil"></div>
                 <div class="section-title">

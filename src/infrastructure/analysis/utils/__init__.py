@@ -1,7 +1,4 @@
-"""
-分析工具模块
-包含JSON处理和LLM API请求处理工具
-"""
+"""Module tiện ích phân tích, xử lý JSON và yêu cầu API LLM."""
 
 from .info_utils import InfoUtils
 from .json_utils import (

@@ -1,6 +1,3 @@
-"""
-工具函数模块
-包含通用工具函数
-"""
+"""Module chứa các hàm tiện ích dùng chung."""
 
 __all__ = []

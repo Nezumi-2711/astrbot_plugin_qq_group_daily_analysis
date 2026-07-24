@@ -1,7 +1,4 @@
-"""
-报告生成器模块
-负责生成各种格式的分析报告
-"""
+"""Tạo báo cáo phân tích ở nhiều định dạng."""
 
 import asyncio
 import base64
@@ -147,16 +144,15 @@ DEFAULT_PROFILE_NAME_TRANSLATIONS = {
 
 
 class ReportGenerator(IReportGenerator):
-    """报告生成器"""
+    """Trình tạo báo cáo phân tích."""
 
     def __init__(self, config_manager, data_dir):
         self._avatar_session = None
         self.config_manager = config_manager
         self.data_dir = data_dir
         self.activity_visualizer = ActivityVisualizer()
-        self.html_templates = HTMLTemplates(config_manager)  # 实例化HTML模板管理器
-        # 全局 T2I 渲染信号量，保护本地资源
-        # 使用专用的 T2I 并发配置项
+        self.html_templates = HTMLTemplates(config_manager)
+        # Semaphore render T2I toàn cục bảo vệ tài nguyên local.
         max_concurrent = self.config_manager.get_t2i_max_concurrent()
         self._render_semaphore = asyncio.Semaphore(max_concurrent)
         self._qq_official_markdown_generator = QQOfficialMarkdownReportGenerator(
@@ -165,7 +161,7 @@ class ReportGenerator(IReportGenerator):
             self._render_semaphore,
         )
 
-        # 运行时缓存，用于在一次分析任务中避免重复下载同一个头像
+        # Cache runtime để tránh tải lặp avatar trong một tác vụ phân tích.
         self._avatar_cache = Cache(
             str(self.data_dir / "avatar")
         )  # user_id -> base64_uri
@@ -176,7 +172,7 @@ class ReportGenerator(IReportGenerator):
         self._profile_asset_manifest = self._load_profile_asset_manifest()
 
     def _load_profile_asset_manifest(self) -> dict[str, dict]:
-        """加载人格资源清单。"""
+        """Tải manifest tài nguyên hồ sơ."""
         manifest_path = (
             Path(__file__).resolve().parents[3]
             / "assets"
@@ -184,13 +180,13 @@ class ReportGenerator(IReportGenerator):
             / "manifest.json"
         )
         if not manifest_path.exists():
-            logger.warning(f"人格资源清单不存在: {manifest_path}")
+            logger.warning(f"Manifest tài nguyên hồ sơ không tồn tại: {manifest_path}")
             return {"sbti": {}, "acgti": {}}
 
         try:
             raw = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
         except Exception as e:
-            logger.warning(f"加载人格资源清单失败: {e}")
+            logger.warning(f"Tải manifest tài nguyên hồ sơ thất bại: {e}")
             return {"sbti": {}, "acgti": {}}
 
         manifest: dict[str, dict] = {"sbti": {}, "acgti": {}}
@@ -205,7 +201,7 @@ class ReportGenerator(IReportGenerator):
         return manifest
 
     def _get_profile_mapping_overrides(self) -> dict[str, dict]:
-        """解析用户配置的人格映射覆盖项。"""
+        """Parse cấu hình override ánh xạ hồ sơ của người dùng."""
         raw = self.config_manager.get_profile_mapping_config()
         if not raw:
             return {}
@@ -227,13 +223,15 @@ class ReportGenerator(IReportGenerator):
                             profile["name_zh"] = translated_name
                 return data
         except Exception as e:
-            logger.warning(f"人格映射配置 JSON 解析失败，已回退到默认映射: {e}")
+            logger.warning(
+                f"Parse JSON ánh xạ hồ sơ thất bại, dùng ánh xạ mặc định: {e}"
+            )
         return {}
 
     def _build_profile_image_from_manifest_pattern(
         self, profile_mode: str, asset_code: str
     ) -> str:
-        """当 manifest 缺少具体 code 时，根据已有资源路径模式推导图片地址。"""
+        """Suy ra URL ảnh theo mẫu path khi manifest thiếu code cụ thể."""
         system_manifest = self._profile_asset_manifest.get(profile_mode, {})
         for item in system_manifest.values():
             if not isinstance(item, dict):
@@ -251,7 +249,7 @@ class ReportGenerator(IReportGenerator):
     def _get_manifest_profile_item_by_mbti(
         self, profile_mode: str, mbti: str
     ) -> dict | None:
-        """按 MBTI 从 manifest 中寻找可用资源。"""
+        """Tìm tài nguyên khả dụng trong manifest theo MBTI."""
         normalized_mbti = str(mbti or "").strip().upper()
         system_manifest = self._profile_asset_manifest.get(profile_mode, {})
         for item in system_manifest.values():
@@ -268,14 +266,14 @@ class ReportGenerator(IReportGenerator):
         profile_mode: str,
         overrides: dict[str, dict],
     ) -> dict[str, str | float]:
-        """根据当前展示模式解析人格标签展示信息。"""
+        """Phân giải thông tin nhãn hồ sơ theo chế độ hiển thị hiện tại."""
         normalized_mbti = str(mbti or "").strip().upper()
 
-        # 1. 基础信息获取：从默认映射或用户覆盖中获取核心属性
+        # 1. Lấy thuộc tính cốt lõi từ mặc định hoặc override.
         profile_defaults = DEFAULT_PROFILE_MAPPING.get(profile_mode, {})
         base_info = dict(profile_defaults.get(normalized_mbti, {}))
 
-        # 用户覆盖优先级最高
+        # Override người dùng có ưu tiên cao nhất.
         user_override = overrides.get(profile_mode, {}).get(normalized_mbti, {})
         if isinstance(user_override, dict):
             base_info.update(user_override)
@@ -285,23 +283,23 @@ class ReportGenerator(IReportGenerator):
         asset_code = str(base_info.get("asset_code", code)).strip() or code
         image = str(base_info.get("image", "")).strip()
 
-        # 2. 图片与属性补全 (基于 manifest.json 可信源)
+        # 2. Bổ sung ảnh và thuộc tính từ manifest.json.
         if not image:
             system_manifest = self._profile_asset_manifest.get(profile_mode, {})
-            # A. 优先按 asset_code 索引
+            # A. Ưu tiên index theo asset_code.
             asset_item = system_manifest.get(asset_code)
             if isinstance(asset_item, dict):
                 image = str(asset_item.get("file", "")).strip()
                 if not name_zh:
                     name_zh = str(asset_item.get("name", "")).strip()
 
-            # B. 按照 asset_code 的资源规律推导图片地址 (尝试根据同目录下其他资源的规律猜测当前角色的 CDN 地址)
+            # B. Suy ra URL ảnh theo mẫu tài nguyên asset_code.
             if not image:
                 image = self._build_profile_image_from_manifest_pattern(
                     profile_mode, asset_code
                 )
 
-            # C. 对于 acgti 模式，如果没找到明确映射也没能推导出图片，尝试通过 MBTI 反查该类型下的第一个可用资源作为兜底
+            # C. Với acgti, fallback về tài nguyên đầu tiên cùng MBTI.
             if not image and profile_mode == "acgti":
                 fallback_item = self._get_manifest_profile_item_by_mbti(
                     profile_mode, normalized_mbti
@@ -313,7 +311,7 @@ class ReportGenerator(IReportGenerator):
                     if not code or code == normalized_mbti:
                         code = str(fallback_item.get("code", code)).strip()
 
-        # 3. 构造显示文本 (Code + 中文名)
+        # 3. Dựng văn bản hiển thị gồm code và tên.
         display = str(base_info.get("display", "")).strip()
         if not display:
             display = f"{code}（{name_zh}）" if name_zh else code
@@ -330,22 +328,22 @@ class ReportGenerator(IReportGenerator):
 
     @staticmethod
     def _sanitize_path_component(name: str) -> str:
-        """消毒单个路径/文件名片段，禁止路径穿越和非法字符。"""
-        # 禁止空组件、相对路径控制符："."、".."
+        """Làm sạch một thành phần path/tên tệp, chặn traversal và ký tự lỗi."""
+        # Chặn thành phần rỗng và ký hiệu path tương đối.
         if not name or name in {".", ".."}:
-            raise ValueError(f"无效的路径片段: {name!r}")
+            raise ValueError(f"Thành phần path không hợp lệ: {name!r}")
 
-        # 不允许包含路径分隔符
+        # Không cho phép ký tự phân cách path.
         name = name.replace("/", "_")
         name = name.replace("\\", "_")
 
-        # 去除非打印字符和非法文件名字符
+        # Loại ký tự không in được và ký tự tên tệp không hợp lệ.
         name = re.sub(r'[\x00-\x1f<>:"|?*]', "_", name)
 
-        # 保留中文、字母、数字、下划线、横线和点
+        # Giữ nội dung hợp lệ sau khi làm sạch.
         name = name.strip()
         if not name:
-            raise ValueError("路径片段经过消毒后为空")
+            raise ValueError("Thành phần path rỗng sau khi làm sạch")
 
         return name
 
@@ -356,7 +354,7 @@ class ReportGenerator(IReportGenerator):
         group_id: str,
         date: str,
     ) -> Path:
-        """根据格式构建安全输出路径，支持子目录和 {ulid}。"""
+        """Dựng path output an toàn theo format, hỗ trợ thư mục con và ulid."""
         generated_ulid = str(ulid.new())
         safe_context = {
             "group_id": group_id,
@@ -367,16 +365,16 @@ class ReportGenerator(IReportGenerator):
         try:
             formatted = render_template(filename_format, strict=True, **safe_context)
         except Exception as e:
-            raise ValueError(f"文件名模板渲染失败: {e}") from e
+            raise ValueError(f"Render template tên tệp thất bại: {e}") from e
 
         if os.path.isabs(formatted):
-            raise ValueError("文件名格式不得为绝对路径")
+            raise ValueError("Định dạng tên tệp không được là path tuyệt đối")
 
         relative_path = Path(formatted)
         sanitized_parts = []
         for part in relative_path.parts:
             if part in {".", ".."}:
-                raise ValueError("路径中不得包含 '.' 或 '..'。")
+                raise ValueError("Path không được chứa '.' hoặc '..'")
             sanitized_parts.append(self._sanitize_path_component(part))
 
         safe_relative = Path(*sanitized_parts)
@@ -384,13 +382,15 @@ class ReportGenerator(IReportGenerator):
         output_dir_resolved = output_dir.resolve(strict=False)
         target_path = (output_dir_resolved / safe_relative).resolve(strict=False)
 
-        # 防止回退到上级目录（使用 Path.relative_to 进行目录包含校验）
+        # Chặn traversal lên thư mục cha bằng Path.relative_to.
         try:
             target_path.relative_to(output_dir_resolved)
         except ValueError:
-            raise ValueError("文件路径不在输出目录之内，可能包含路径穿越")
+            raise ValueError(
+                "Path tệp nằm ngoài thư mục output, có thể chứa path traversal"
+            )
 
-        # 防止与已有文件覆盖（如果用户格式没有唯一标记），追加 ULID 后缀
+        # Thêm hậu tố ULID để tránh ghi đè khi format không có định danh duy nhất.
         if target_path.exists():
             suffix = target_path.suffix
             stem = target_path.stem
@@ -408,25 +408,25 @@ class ReportGenerator(IReportGenerator):
         nickname_getter=None,
         avatar_cache_namespace: str | None = None,
         hide_user_names: bool = False,
-        # Also controls ID normalization and fallback display name ("群友").
+        # Đồng thời kiểm soát chuẩn hoá ID và tên hiển thị fallback.
         allow_alphanumeric_user_ids: bool = False,
     ) -> tuple[str | None, str | None]:
         """
-        生成图片格式的分析报告
+        Tạo báo cáo phân tích dạng ảnh.
 
         Args:
-            analysis_result: 分析结果字典
-            group_id: 群组ID
-            html_render_func: HTML渲染函数
-            avatar_url_getter: 异步回调函数，接收 user_id 返回 avatar_url/data
-            nickname_getter: 昵称获取函数
+            analysis_result: Dict kết quả phân tích.
+            group_id: ID nhóm.
+            html_render_func: Hàm render HTML.
+            avatar_url_getter: Callback async lấy avatar theo user_id.
+            nickname_getter: Hàm lấy nickname.
 
         Returns:
             tuple[str | None, str | None]: (image_url, html_content)
         """
         html_content = None
         try:
-            # 准备渲染数据
+            # Chuẩn bị dữ liệu render.
             render_payload = await self._prepare_render_data(
                 analysis_result,
                 chart_template="activity_chart.html",
@@ -437,7 +437,7 @@ class ReportGenerator(IReportGenerator):
                 allow_alphanumeric_user_ids=allow_alphanumeric_user_ids,
             )
 
-            # 先渲染HTML模板（使用 Jinja2 渲染器以支持逻辑标签）
+            # Render template HTML bằng Jinja2.
             html_content = self.html_templates.render_template(
                 "image_template.html", **render_payload
             )
@@ -447,19 +447,21 @@ class ReportGenerator(IReportGenerator):
                 render_payload.get("avatar_reuse_aliases", {}),
             )
 
-            # 检查HTML内容是否有效
+            # Kiểm tra nội dung HTML hợp lệ.
             if not html_content:
-                logger.error("图片报告HTML渲染失败：返回空内容")
+                logger.error("Render HTML báo cáo ảnh thất bại: nội dung rỗng")
                 return None, None
 
-            logger.info(f"图片报告HTML渲染完成，长度: {len(html_content)} 字符")
+            logger.info(
+                f"Render HTML báo cáo ảnh hoàn tất, độ dài: {len(html_content)} ký tự"
+            )
 
-            # 从配置中获取两轮渲染策略
+            # Lấy hai chiến lược render từ cấu hình.
             render_strategies = self.config_manager.get_t2i_rendering_strategies()
 
-            # 使用信号量控制并发进入渲染引擎
+            # Dùng semaphore kiểm soát concurrency render.
             async with self._render_semaphore:
-                logger.debug(f"[T2I] 已进入渲染队列 (群: {group_id})")
+                logger.debug(f"[T2I] Đã vào hàng đợi render (nhóm: {group_id})")
 
                 last_exception = None
 
@@ -469,18 +471,20 @@ class ReportGenerator(IReportGenerator):
                         if image_options.get("type") == "png":
                             image_options.pop("quality", None)
 
-                        logger.info(f"正在尝试第 {attempt} 轮渲染策略: {image_options}")
+                        logger.info(
+                            f"Đang thử chiến lược render lượt {attempt}: {image_options}"
+                        )
 
-                        # 改为获取 bytes 数据，避免 OneBot 无法访问内部 URL
+                        # Lấy bytes để tránh OneBot không truy cập được URL nội bộ.
                         image_data = await html_render_func(
-                            html_content,  # 渲染后的HTML内容
-                            {},  # 空数据字典，因为数据已包含在HTML中
-                            False,  # return_url=False，直接获取图片数据
+                            html_content,
+                            {},
+                            False,
                             image_options,
                         )
 
                         if image_data:
-                            # 校验是否为合法图片（防止 T2I 返回 500 错误 HTML 字符流）
+                            # Xác thực ảnh để tránh T2I trả trang lỗi HTML.
                             is_valid = False
                             actual_data_head = None
 
@@ -493,16 +497,16 @@ class ReportGenerator(IReportGenerator):
                                     with open(image_data, "rb") as f:
                                         actual_data_head = f.read(10)
                                 except Exception as e:
-                                    logger.warning(f"读取图片临时文件失败: {e}")
+                                    logger.warning(f"Đọc tệp ảnh tạm thất bại: {e}")
 
                             if actual_data_head:
-                                # 检查 magic numbers (JPEG: FF D8, PNG: 89 50 4E 47)
+                                # Kiểm tra magic number JPEG/PNG.
                                 if actual_data_head.startswith(
                                     b"\xff\xd8"
                                 ) or actual_data_head.startswith(b"\x89PNG"):
                                     is_valid = True
                                 else:
-                                    # 尝试解析 HTML 错误（如 502 Bad Gateway）
+                                    # Thử parse lỗi HTML như 502 Bad Gateway.
                                     html_error = None
                                     if isinstance(image_data, bytes):
                                         html_error = self._extract_html_error_summary(
@@ -513,7 +517,7 @@ class ReportGenerator(IReportGenerator):
                                     ):
                                         try:
                                             with open(image_data, "rb") as f:
-                                                # 读取前 4KB 即可识别 HTML 错误
+                                                # 4 KB đầu đủ để nhận diện lỗi HTML.
                                                 html_error = (
                                                     self._extract_html_error_summary(
                                                         f.read(4096)
@@ -524,11 +528,11 @@ class ReportGenerator(IReportGenerator):
 
                                     if html_error:
                                         logger.warning(
-                                            f"[T2I] 渲染引擎返回了错误页面而非图片: {html_error}"
+                                            f"[T2I] Engine render trả trang lỗi thay vì ảnh: {html_error}"
                                         )
                                     else:
                                         logger.warning(
-                                            f"渲染结果似乎不是有效的图片数据 (头部: {actual_data_head.hex()})"
+                                            f"Kết quả render có vẻ không phải ảnh hợp lệ (header: {actual_data_head.hex()})"
                                         )
 
                             if is_valid:
@@ -536,35 +540,35 @@ class ReportGenerator(IReportGenerator):
                                     b64 = base64.b64encode(image_data).decode("utf-8")
                                     image_url = f"base64://{b64}"
                                     logger.info(
-                                        f"图片生成成功 (轮次 {attempt}): [Base64 Data {len(image_data)} bytes]"
+                                        f"Tạo ảnh thành công (lượt {attempt}): [Base64 Data {len(image_data)} bytes]"
                                     )
                                     return image_url, html_content
                                 elif isinstance(image_data, str):
                                     logger.info(
-                                        f"图片生成成功 (轮次 {attempt}): {image_data}"
+                                        f"Tạo ảnh thành công (lượt {attempt}): {image_data}"
                                     )
                                     return image_data, html_content
 
                         logger.warning(
-                            f"渲染轮次 {attempt} ({image_options['type']}) 返回了无效或空数据"
+                            f"Lượt render {attempt} ({image_options['type']}) trả dữ liệu rỗng hoặc không hợp lệ"
                         )
 
                     except Exception as e:
-                        logger.warning(f"渲染轮次 {attempt} 失败: {e}")
+                        logger.warning(f"Lượt render {attempt} thất bại: {e}")
                         last_exception = e
                         if attempt < len(render_strategies):
-                            logger.info("准备尝试下一轮回退策略")
+                            logger.info("Chuẩn bị thử chiến lược fallback tiếp theo")
                         continue
 
-                # 如果所有策略都失败
-                logger.error(f"所有渲染尝试都失败。最后一个错误: {last_exception}")
+                # Mọi chiến lược đều thất bại.
+                logger.error(f"Mọi lần render đều thất bại. Lỗi cuối: {last_exception}")
                 return None, html_content
 
         except Exception as e:
-            logger.error(f"生成图片报告过程发生严重错误: {e}", exc_info=True)
+            logger.error(f"Lỗi nghiêm trọng khi tạo báo cáo ảnh: {e}", exc_info=True)
             return None, html_content
         finally:
-            # 清理本次运行的 session 和缓存
+            # Dọn session và cache của lần chạy này.
             if self._avatar_session:
                 await self._avatar_session.close()
                 self._avatar_session = None
@@ -580,25 +584,25 @@ class ReportGenerator(IReportGenerator):
         allow_alphanumeric_user_ids: bool = False,
     ) -> tuple[str | None, str | None]:
         """
-        生成HTML格式的分析报告，保存到指定目录
+        Tạo báo cáo HTML và lưu vào thư mục chỉ định.
 
         Args:
-            analysis_result: 分析结果字典
-            group_id: 群组ID
-            avatar_url_getter: 异步回调函数，接收 user_id 返回 avatar_url/data
-            nickname_getter: 昵称获取函数
+            analysis_result: Dict kết quả phân tích.
+            group_id: ID nhóm.
+            avatar_url_getter: Callback async lấy avatar theo user_id.
+            nickname_getter: Hàm lấy nickname.
 
         Returns:
-            tuple[str | None, str | None]: (html_path, json_path) - HTML文件路径和JSON文件路径
+            Tuple path tệp HTML và JSON.
         """
         try:
             import json
 
-            # 确保输出目录存在（使用 asyncio.to_thread 避免阻塞）
+            # Đảm bảo thư mục output tồn tại mà không block event loop.
             output_dir = Path(self.config_manager.get_html_output_dir())
             await asyncio.to_thread(output_dir.mkdir, parents=True, exist_ok=True)
 
-            # 生成文件路径
+            # Tạo path tệp.
             current_date = datetime.now().strftime("%Y%m%d")
             base_html_path = self._build_safe_report_path(
                 output_dir,
@@ -615,7 +619,7 @@ class ReportGenerator(IReportGenerator):
 
             html_path.parent.mkdir(parents=True, exist_ok=True)
 
-            # 准备渲染数据
+            # Chuẩn bị dữ liệu render.
             render_data = await self._prepare_render_data(
                 analysis_result,
                 chart_template="activity_chart.html",
@@ -625,9 +629,11 @@ class ReportGenerator(IReportGenerator):
                 hide_user_names=hide_user_names,
                 allow_alphanumeric_user_ids=allow_alphanumeric_user_ids,
             )
-            logger.info(f"HTML 渲染数据准备完成，包含 {len(render_data)} 个字段")
+            logger.info(
+                f"Chuẩn bị dữ liệu render HTML hoàn tất, gồm {len(render_data)} trường"
+            )
 
-            # 生成 HTML 内容（使用 Jinja2 渲染器，尝试 html_template.html，失败则回退到 image_template.html）
+            # Render bằng html_template.html, fallback sang image_template.html.
             html_content = None
             try:
                 html_content = self.html_templates.render_template(
@@ -638,10 +644,10 @@ class ReportGenerator(IReportGenerator):
                     render_data.get("avatar_reuse_registry", {}),
                     render_data.get("avatar_reuse_aliases", {}),
                 )
-                logger.info("使用 html_template.html 渲染成功")
+                logger.info("Render bằng html_template.html thành công")
             except Exception as e:
                 logger.warning(
-                    f"html_template.html 不存在或渲染失败，回退到 image_template.html: {e}"
+                    f"html_template.html không tồn tại hoặc render lỗi, fallback sang image_template.html: {e}"
                 )
                 html_content = self.html_templates.render_template(
                     "image_template.html", **render_data
@@ -651,20 +657,22 @@ class ReportGenerator(IReportGenerator):
                     render_data.get("avatar_reuse_registry", {}),
                     render_data.get("avatar_reuse_aliases", {}),
                 )
-                logger.info("使用 image_template.html 渲染成功")
+                logger.info("Render bằng image_template.html thành công")
 
-            # 检查HTML内容是否有效
+            # Kiểm tra nội dung HTML hợp lệ.
             if not html_content:
-                logger.error("HTML报告渲染失败：返回空内容")
+                logger.error("Render báo cáo HTML thất bại: nội dung rỗng")
                 return None, None
 
-            logger.info(f"HTML 内容生成完成，长度: {len(html_content)} 字符")
+            logger.info(
+                f"Tạo nội dung HTML hoàn tất, độ dài: {len(html_content)} ký tự"
+            )
 
-            # 保存 HTML 文件
+            # Lưu tệp HTML.
             await asyncio.to_thread(
                 html_path.write_text, html_content, encoding="utf-8"
             )
-            logger.info(f"HTML 报告已保存: {html_path}")
+            logger.info(f"Đã lưu báo cáo HTML: {html_path}")
 
             def json_default_encoder(obj):
                 if hasattr(obj, "to_dict") and callable(obj.to_dict):
@@ -681,7 +689,7 @@ class ReportGenerator(IReportGenerator):
                     f"Object of type {type(obj).__name__} is not JSON serializable"
                 )
 
-            # 保存原始 JSON 数据
+            # Lưu dữ liệu JSON gốc.
             json_data = {
                 "analysis_result": (
                     self._sanitize_analysis_result_for_export(analysis_result)
@@ -701,23 +709,23 @@ class ReportGenerator(IReportGenerator):
                 ),
                 encoding="utf-8",
             )
-            logger.info(f"JSON 数据已保存: {json_path}")
+            logger.info(f"Đã lưu dữ liệu JSON: {json_path}")
 
             return str(html_path.absolute()), str(json_path.absolute())
 
         except Exception as e:
-            logger.error(f"生成 HTML 报告失败: {e}", exc_info=True)
+            logger.error(f"Tạo báo cáo HTML thất bại: {e}", exc_info=True)
             return None, None
 
     def build_html_caption(self, html_path: str) -> str:
-        """根据 html_base_url 生成 HTML 报告链接 caption。由调用方决定是否发送。"""
+        """Tạo caption liên kết báo cáo từ html_base_url."""
 
         caption = "📊 Đã tạo báo cáo phân tích nhóm hàng ngày"
         base_url = self.config_manager.get_html_base_url()
         if not base_url or not html_path:
             return caption
 
-        # 支持 html_filename_format 中的子目录，保持相对路径
+        # Giữ path tương đối để hỗ trợ thư mục con trong format tên tệp.
         output_dir = Path(self.config_manager.get_html_output_dir()).resolve(
             strict=False
         )
@@ -733,7 +741,7 @@ class ReportGenerator(IReportGenerator):
         return caption + f"\n{base_url.rstrip('/')}/{encoded_relative_url}"
 
     def generate_text_report(self, analysis_result: dict) -> str:
-        """生成文本格式的分析报告"""
+        """Tạo báo cáo phân tích dạng văn bản."""
         stats = analysis_result["statistics"]
         topics = analysis_result["topics"]
         user_titles = analysis_result["user_titles"]
@@ -865,13 +873,13 @@ class ReportGenerator(IReportGenerator):
         hide_user_names: bool = False,
         allow_alphanumeric_user_ids: bool = False,
     ) -> dict:
-        """准备渲染数据"""
+        """Chuẩn bị dữ liệu render."""
         stats = analysis_result["statistics"]
         topics = analysis_result["topics"]
         user_titles = analysis_result["user_titles"]
         activity_viz = stats.activity_visualization
 
-        # 使用Jinja2模板构建话题HTML（批量渲染）
+        # Dựng HTML chủ đề hàng loạt bằng Jinja2.
         max_topics = self.config_manager.get_max_topics()
         topics_list = []
         user_analysis = analysis_result.get("user_analysis")
@@ -879,7 +887,7 @@ class ReportGenerator(IReportGenerator):
         avatar_reuse_aliases: dict[str, str] = {}
 
         for i, topic in enumerate(topics[:max_topics], 1):
-            # 处理话题详情中的用户引用头像
+            # Xử lý avatar trong tham chiếu người dùng của chi tiết chủ đề.
             processed_detail = await self._render_mentions(
                 topic.detail,
                 avatar_url_getter,
@@ -900,7 +908,7 @@ class ReportGenerator(IReportGenerator):
                     avatar_reuse_aliases,
                 )
             else:
-                contributors = "、".join(topic.contributors)
+                contributors = ", ".join(topic.contributors)
             topics_list.append(
                 {
                     "index": i,
@@ -914,7 +922,7 @@ class ReportGenerator(IReportGenerator):
                 }
             )
 
-        # 通用模板上下文，包含可能被子模板引用的全局配置
+        # Context chung gồm cấu hình toàn cục dùng bởi template con.
         common_context = {
             "hide_user_names": hide_user_names,
             "t2i_font_source": self.config_manager.get_t2i_font_source(),
@@ -926,16 +934,16 @@ class ReportGenerator(IReportGenerator):
         topics_html = self.html_templates.render_template(
             "topic_item.html", topics=topics_list, **common_context
         )
-        logger.info(f"话题HTML生成完成，长度: {len(topics_html)}")
+        logger.info(f"Tạo HTML chủ đề hoàn tất, độ dài: {len(topics_html)}")
 
-        # 使用Jinja2模板构建用户称号HTML（批量渲染，包含头像）
+        # Dựng HTML danh hiệu hàng loạt bằng Jinja2, gồm avatar.
         max_user_titles = self.config_manager.get_max_user_titles()
         titles_list = []
         profile_mode = self.config_manager.get_profile_display_mode()
         profile_mapping_overrides = self._get_profile_mapping_overrides()
         for title in user_titles[:max_user_titles]:
             user_id = str(title.user_id)
-            # 获取用户头像
+            # Lấy avatar người dùng.
             avatar_data = await self._get_user_avatar(
                 user_id, avatar_url_getter, avatar_cache_namespace
             )
@@ -974,9 +982,9 @@ class ReportGenerator(IReportGenerator):
         titles_html = self.html_templates.render_template(
             "user_title_item.html", titles=titles_list, **common_context
         )
-        logger.info(f"用户称号HTML生成完成，长度: {len(titles_html)}")
+        logger.info(f"Tạo HTML danh hiệu hoàn tất, độ dài: {len(titles_html)}")
 
-        # 使用Jinja2模板构建金句HTML（批量渲染）
+        # Dựng HTML trích dẫn hàng loạt bằng Jinja2.
         max_golden_quotes = self.config_manager.get_max_golden_quotes()
         quotes_list = []
         for golden_quote in stats.golden_quotes[:max_golden_quotes]:
@@ -999,7 +1007,7 @@ class ReportGenerator(IReportGenerator):
                         quote_user_id, avatar_cache_namespace
                     ),
                 )
-            # 处理解析锐评中的用户引用头像
+            # Xử lý avatar trong tham chiếu người dùng của nhận xét.
             processed_reason = await self._render_mentions(
                 golden_quote.reason,
                 avatar_url_getter,
@@ -1025,25 +1033,27 @@ class ReportGenerator(IReportGenerator):
         quotes_html = self.html_templates.render_template(
             "quote_item.html", quotes=quotes_list, **common_context
         )
-        logger.info(f"金句HTML生成完成，长度: {len(quotes_html)}")
+        logger.info(f"Tạo HTML trích dẫn hoàn tất, độ dài: {len(quotes_html)}")
 
-        # 生成活跃度可视化HTML
+        # Tạo HTML biểu đồ hoạt động.
         chart_data = self.activity_visualizer.get_hourly_chart_data(
             activity_viz.hourly_activity
         )
         hourly_chart_html = self.html_templates.render_template(
             chart_template, chart_data=chart_data, **common_context
         )
-        logger.info(f"活跃度图表HTML生成完成，长度: {len(hourly_chart_html)}")
+        logger.info(
+            f"Tạo HTML biểu đồ hoạt động hoàn tất, độ dài: {len(hourly_chart_html)}"
+        )
 
-        # 生成聊天质量锐评HTML
+        # Tạo HTML đánh giá chất lượng trò chuyện.
         chat_quality_html = ""
         chat_quality_review = analysis_result.get("chat_quality_review")
         if not chat_quality_review and hasattr(stats, "chat_quality_review"):
             chat_quality_review = stats.chat_quality_review
 
         if chat_quality_review:
-            # 如果是对象，转为字典（为了统一渲染）
+            # Chuyển object thành dict để render thống nhất.
             if hasattr(chat_quality_review, "dimensions"):
                 review_data = {
                     "title": chat_quality_review.title,
@@ -1092,15 +1102,17 @@ class ReportGenerator(IReportGenerator):
             chat_quality_html = self.html_templates.render_template(
                 "chat_quality_item.html", **review_data, **common_context
             )
-            logger.info(f"聊天质量锐评HTML生成完成，长度: {len(chat_quality_html)}")
+            logger.info(
+                f"Tạo HTML chất lượng trò chuyện hoàn tất, độ dài: {len(chat_quality_html)}"
+            )
 
-        # 准备最终渲染数据
+        # Chuẩn bị dữ liệu render cuối.
         render_data = {
             "t2i_font_source": self.config_manager.get_t2i_font_source(),
             "t2i_google_fonts_mirror": self.config_manager.get_t2i_google_fonts_mirror(),
             "t2i_gstatic_mirror": self.config_manager.get_t2i_gstatic_mirror(),
             "t2i_atri_font_mirror": self.config_manager.get_t2i_atri_font_mirror(),
-            "current_date": datetime.now().strftime("%Y年%m月%d日"),
+            "current_date": datetime.now().strftime("%d/%m/%Y"),
             "current_datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "message_count": stats.message_count,
             "participant_count": stats.participant_count,
@@ -1125,7 +1137,7 @@ class ReportGenerator(IReportGenerator):
             "avatar_reuse_aliases": avatar_reuse_aliases,
         }
 
-        logger.info(f"渲染数据准备完成，包含 {len(render_data)} 个字段")
+        logger.info(f"Chuẩn bị dữ liệu render hoàn tất, gồm {len(render_data)} trường")
         return render_data
 
     async def _render_avatar_only_ids(
@@ -1185,7 +1197,7 @@ class ReportGenerator(IReportGenerator):
         allow_alphanumeric_user_ids: bool = False,
     ) -> Markup:
         """
-        处理文本，将 [用户ID] 格式的引用替换为头像胶囊。
+        Thay tham chiếu dạng ``[user ID]`` trong văn bản bằng capsule avatar.
         """
         if not text:
             return Markup("")
@@ -1198,7 +1210,7 @@ class ReportGenerator(IReportGenerator):
         source_text = str(text)
         supports_extended_ids = hide_user_names or allow_alphanumeric_user_ids
         if supports_extended_ids:
-            # LLM 偶尔会直接输出 ID；先标准化为引用，避免 OpenID 以明文形式显示。
+            # Chuẩn hoá ID do LLM trả trực tiếp thành tham chiếu để ẩn OpenID.
             for user_id in sorted(known_ids, key=len, reverse=True):
                 source_text = re.sub(
                     rf"(?<!\[)(?<![A-Za-z0-9_-]){re.escape(user_id)}"
@@ -1221,26 +1233,26 @@ class ReportGenerator(IReportGenerator):
                 return Markup(html.escape(f"[{uid}]", quote=True))
             url = await self._get_user_avatar(
                 uid, avatar_url_getter, avatar_cache_namespace
-            )  # 内部已有缓存，无需顶层并发获取
+            )  # Đã có cache nội bộ, không cần concurrency cấp trên.
 
             name = None
-            # 1. 尝试从 LLM 分析结果获取
+            # 1. Thử lấy từ kết quả phân tích LLM.
             if user_analysis and uid in user_analysis:
                 stats = user_analysis[uid]
                 name = stats.get("nickname") or stats.get("name")
                 if self._is_placeholder_display_name(name, uid):
                     name = None
 
-            # 2. 尝试通过回调获取实时昵称
+            # 2. Thử lấy nickname thời gian thực qua callback.
             if not name and nickname_getter:
                 try:
                     name = await nickname_getter(uid)
                     if self._is_placeholder_display_name(name, uid):
                         name = None
                 except Exception as e:
-                    logger.warning(f"获取昵称失败 {uid}: {e}")
+                    logger.warning(f"Lấy nickname thất bại {uid}: {e}")
 
-            # 胶囊样式 (Capsule Style) - 统一使用
+            # Dùng thống nhất kiểu capsule.
             capsule_style = (
                 "display:inline-flex;align-items:center;background:rgba(0,0,0,0.05);"
                 "padding:2px 6px 2px 2px;border-radius:12px;margin:0 2px;"
@@ -1252,12 +1264,12 @@ class ReportGenerator(IReportGenerator):
             )
             name_style = "font-size:0.85em;color:inherit;font-weight:500;line-height:1;"
 
-            # 3. 最终后备: 确保有头像和名称
+            # 3. Fallback cuối: đảm bảo có avatar và tên.
             final_url = url if url else self._get_default_avatar_base64()
             final_name = (
                 name
                 if (name and not self._is_placeholder_display_name(name, uid))
-                else ("群友" if allow_alphanumeric_user_ids else str(uid))
+                else ("Thành viên nhóm" if allow_alphanumeric_user_ids else str(uid))
             )
 
             avatar_ref = self._register_reusable_avatar(
@@ -1330,7 +1342,7 @@ class ReportGenerator(IReportGenerator):
 
     @staticmethod
     def _is_placeholder_display_name(name: str | None, user_id: str) -> bool:
-        """判断展示名称是否为占位值。"""
+        """Kiểm tra tên hiển thị có phải placeholder hay không."""
         if not name:
             return True
         normalized = str(name).strip()
@@ -1342,7 +1354,7 @@ class ReportGenerator(IReportGenerator):
 
     @staticmethod
     def _safe_url_for_log(url: str | None) -> str:
-        """对日志中的 URL 进行脱敏，避免泄露 token。"""
+        """Che token trong URL ghi log."""
         if not url:
             return ""
         # Telegram file URL: .../file/bot<token>/<file_path>
@@ -1350,7 +1362,7 @@ class ReportGenerator(IReportGenerator):
 
     @staticmethod
     def _build_avatar_ref(avatar_key: str | None, avatar_url: str) -> str:
-        """根据稳定输入生成不暴露平台或用户 ID 的头像引用。"""
+        """Tạo tham chiếu avatar ổn định mà không lộ platform hay user ID."""
         if avatar_key:
             digest = hashlib.sha256(avatar_key.encode("utf-8")).hexdigest()[:24]
             return f"avatar-{digest}"
@@ -1365,7 +1377,7 @@ class ReportGenerator(IReportGenerator):
         avatar_reuse_aliases: dict[str, str] | None = None,
         avatar_key: str | None = None,
     ) -> str | None:
-        """将 Data URI 头像登记为可复用资源，并返回短引用 ID。"""
+        """Đăng ký avatar Data URI làm tài nguyên tái sử dụng và trả ID ngắn."""
         if not avatar_url or avatar_reuse_registry is None:
             return None
         if not avatar_url.startswith("data:image/"):
@@ -1382,7 +1394,7 @@ class ReportGenerator(IReportGenerator):
 
     @staticmethod
     def _build_avatar_reuse_styles(avatar_reuse_registry: dict[str, str]) -> str:
-        """为头像生成一次性复用样式。"""
+        """Tạo style tái sử dụng một lần cho avatar."""
         if not avatar_reuse_registry:
             return ""
 
@@ -1406,7 +1418,7 @@ class ReportGenerator(IReportGenerator):
         avatar_reuse_registry: dict[str, str],
         avatar_reuse_aliases: dict[str, str] | None = None,
     ) -> str:
-        """将最终 HTML 中的内联 Data URI 头像 img 改为短引用。"""
+        """Đổi avatar Data URI inline trong HTML cuối thành tham chiếu ngắn."""
         if not html_content:
             return html_content
 
@@ -1440,7 +1452,7 @@ class ReportGenerator(IReportGenerator):
         avatar_reuse_registry: dict[str, str] | None,
         avatar_reuse_aliases: dict[str, str] | None = None,
     ) -> str:
-        """复用最终 HTML 中所有内联头像资源，并注入复用样式。"""
+        """Tái sử dụng avatar inline trong HTML cuối và inject style."""
         if not html_content:
             return html_content
 
@@ -1455,7 +1467,7 @@ class ReportGenerator(IReportGenerator):
 
     @staticmethod
     def _inject_avatar_reuse_styles(html_content: str, avatar_reuse_styles: str) -> str:
-        """将头像复用样式注入最终 HTML。"""
+        """Inject style tái sử dụng avatar vào HTML cuối."""
         if not html_content or not avatar_reuse_styles:
             return html_content
 
@@ -1472,7 +1484,7 @@ class ReportGenerator(IReportGenerator):
     def _get_avatar_cache_key(
         self, avatar_id: str, avatar_cache_namespace: str | None = None
     ) -> str:
-        """生成头像缓存键，避免不同平台的同一数字 ID 互相污染。"""
+        """Tạo cache key avatar để tránh xung đột ID giữa các nền tảng."""
         namespace = str(avatar_cache_namespace or "legacy").strip() or "legacy"
         return f"{namespace}:{avatar_id}"
 
@@ -1483,39 +1495,42 @@ class ReportGenerator(IReportGenerator):
         avatar_cache_namespace: str | None = None,
     ) -> str:
         """
-        获取用户头像的 Base64 Data URI。
-        使用磁盘缓存，支持跨任务复用。获取失败时不缓存结果，以便后续请求重试。
+        Lấy Data URI Base64 của avatar người dùng.
+
+        Dùng disk cache giữa các tác vụ; không cache thất bại để có thể retry.
         """
         cache_key = self._get_avatar_cache_key(avatar_id, avatar_cache_namespace)
-        # 1. 检查缓存 (仅包含成功的头像数据)
+        # 1. Kiểm tra cache, chỉ chứa avatar thành công.
         if cache_key in self._avatar_cache:
             data = self._avatar_cache[cache_key]
             if isinstance(data, str):
                 return data
             return str(data)
 
-        # 2. 尝试获取头像字节流
+        # 2. Thử lấy bytes avatar.
         avatar_bytes = await self._get_user_avatar_bytes(avatar_id, avatar_url_getter)
 
         if not avatar_bytes:
-            # 获取失败时返回默认头像，但不存入缓存，以便下次重试
-            logger.warning(f"获取用户头像失败 {avatar_id}，本次将使用回退头像")
+            # Trả avatar mặc định nhưng không cache để lần sau có thể retry.
+            logger.warning(
+                f"Lấy avatar người dùng thất bại {avatar_id}; dùng avatar fallback"
+            )
             return self._get_default_avatar_base64()
 
-        # 3. 获取成功：转换并缓存
+        # 3. Chuyển đổi và cache khi thành công.
         avatar = self._b64_with_mime(avatar_bytes)
         if avatar:
             self._avatar_cache.set(cache_key, avatar, expire=AVATAR_CACHE_EXPIRE_TIME)
             return avatar
 
-        # 最终兜底
+        # Fallback cuối.
         return self._get_default_avatar_base64()
 
     def _b64_with_mime(self, _bytes: bytes) -> str | None:
-        """将字节数据转换为 Base64 Data URI，并自动识别 MIME 类型。"""
+        """Chuyển bytes thành Data URI Base64 và tự nhận diện MIME type."""
         try:
             b64 = base64.b64encode(_bytes).decode("utf-8")
-            # 简单判断 mime type
+            # Nhận diện MIME type đơn giản.
             mime = "image/jpeg"
             if _bytes.startswith(b"\x89PNG"):
                 mime = "image/png"
@@ -1528,13 +1543,13 @@ class ReportGenerator(IReportGenerator):
 
             return f"data:{mime};base64,{b64}"
         except Exception as e:
-            logger.error(f"base64 转换失败: {e}", exc_info=True)
+            logger.error(f"Chuyển Base64 thất bại: {e}", exc_info=True)
         return None
 
     async def _get_user_avatar_bytes(
         self, user_id: str, avatar_url_getter=None
     ) -> bytes | None:
-        """核心头像获取逻辑"""
+        """Logic lõi lấy avatar."""
         file_content = None
         if not self._avatar_session:
             self._avatar_session = aiohttp.ClientSession(
@@ -1544,7 +1559,7 @@ class ReportGenerator(IReportGenerator):
             avatar_url = None
             if avatar_url_getter:
                 try:
-                    # avatar_url_getter 应该返回 URL
+                    # avatar_url_getter dự kiến trả URL.
                     result = await avatar_url_getter(user_id)
                     if result:
                         if result.startswith("http"):
@@ -1557,10 +1572,12 @@ class ReportGenerator(IReportGenerator):
                                 return base64.b64decode(parts[1])
                         else:
                             logger.warning(
-                                f"custom avatar_url_getter 返回了非 HTTP URL: {result[:50]}..."
+                                f"avatar_url_getter tuỳ chỉnh trả URL không phải HTTP: {result[:50]}..."
                             )
                 except Exception as e:
-                    logger.warning(f"使用 custom avatar_url_getter 获取头像失败: {e}")
+                    logger.warning(
+                        f"Lấy avatar bằng avatar_url_getter tuỳ chỉnh thất bại: {e}"
+                    )
 
             if not avatar_url:
                 if (
@@ -1568,22 +1585,22 @@ class ReportGenerator(IReportGenerator):
                     and user_id.isdigit()
                     and 5 <= len(user_id) <= 12
                 ):
-                    # 强制使用 spec=40
+                    # Buộc dùng spec=40.
                     avatar_url = (
                         f"https://q4.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=40"
                     )
                 else:
-                    # 其他平台若无 URL，无法获取头像
+                    # Nền tảng khác không thể lấy avatar nếu thiếu URL.
                     return None
 
-            # 5. 下载并保存
+            # 5. Tải và lưu.
             safe_avatar_url = self._safe_url_for_log(avatar_url)
             try:
                 async with self._avatar_session.get(avatar_url) as response:
                     if response.status == 200:
                         content = await response.read()
                         if content:
-                            # 校验文件头
+                            # Xác thực header tệp.
                             is_valid_image = False
                             if content.startswith(b"\xff\xd8"):  # JPEG
                                 is_valid_image = True
@@ -1600,26 +1617,26 @@ class ReportGenerator(IReportGenerator):
                                 file_content = content
                             else:
                                 logger.warning(
-                                    f"下载的头像数据格式无效 ({safe_avatar_url})"
+                                    f"Dữ liệu avatar tải về không hợp lệ ({safe_avatar_url})"
                                 )
                     else:
                         logger.warning(
-                            f"下载头像失败 {safe_avatar_url}: {response.status}"
+                            f"Tải avatar thất bại {safe_avatar_url}: {response.status}"
                         )
             except Exception as e:
-                logger.warning(f"下载头像网络错误 {safe_avatar_url}: {e}")
+                logger.warning(f"Lỗi mạng khi tải avatar {safe_avatar_url}: {e}")
 
             return file_content
 
     def _get_default_avatar_base64(self) -> str:
-        """返回默认头像 (灰色圆形占位符)"""
-        # 一个简单的灰色圆圈 SVG 转 Base64
+        """Trả avatar mặc định là placeholder hình tròn màu xám."""
+        # SVG hình tròn xám đơn giản dưới dạng Base64.
         svg = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50" fill="#ddd"/></svg>'
         b64 = base64.b64encode(svg.encode("utf-8")).decode("utf-8")
         return f"data:image/svg+xml;base64,{b64}"
 
     async def close(self):
-        """释放资源，关闭缓存和 session"""
+        """Giải phóng tài nguyên, đóng cache và session."""
         if self._avatar_session:
             await self._avatar_session.close()
             self._avatar_session = None
@@ -1627,31 +1644,31 @@ class ReportGenerator(IReportGenerator):
         try:
             if self._avatar_cache:
                 self._avatar_cache.close()
-                logger.debug("头像缓存已关闭")
+                logger.debug("Đã đóng cache avatar")
         except Exception as e:
-            logger.warning(f"关闭头像缓存失败: {e}")
+            logger.warning(f"Đóng cache avatar thất bại: {e}")
 
     def _extract_html_error_summary(self, data: bytes) -> str | None:
-        """从返回的字节流中尝试提取 HTML 错误信息（如 <title>）"""
+        """Thử trích xuất lỗi HTML như title từ bytes phản hồi."""
         try:
             content = data.decode("utf-8", errors="ignore")
             content_lower = content.lower()
             if "<html" in content_lower or "<!doctype html" in content_lower:
-                # 尝试提取标题
+                # Thử trích xuất title.
                 title_match = re.search(
                     r"<title>(.*?)</title>", content, re.IGNORECASE | re.DOTALL
                 )
                 if title_match:
-                    return f"HTML 错误页: {title_match.group(1).strip()}"
+                    return f"Trang lỗi HTML: {title_match.group(1).strip()}"
 
-                # 尝试提取 h1
+                # Thử trích xuất h1.
                 h1_match = re.search(
                     r"<h1>(.*?)</h1>", content, re.IGNORECASE | re.DOTALL
                 )
                 if h1_match:
-                    return f"HTML 错误页: {h1_match.group(1).strip()}"
+                    return f"Trang lỗi HTML: {h1_match.group(1).strip()}"
 
-                return f"HTML 响应 (前100字): {content[:100].strip()}..."
+                return f"Phản hồi HTML (100 ký tự đầu): {content[:100].strip()}..."
         except Exception:
             pass
         return None

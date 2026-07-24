@@ -1,6 +1,4 @@
-"""
-分析任务实体 - 聚合根
-"""
+"""Entity tác vụ phân tích - aggregate root."""
 
 import time
 import uuid
@@ -22,7 +20,7 @@ class TaskStatus(Enum):
 
 @dataclass
 class AnalysisTask:
-    """分析任务实体 - 聚合根"""
+    """Entity tác vụ phân tích - aggregate root."""
 
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
     group_id: str = ""
@@ -37,34 +35,34 @@ class AnalysisTask:
     error_message: str | None = None
 
     def start(self, can_analyze: bool) -> bool:
-        """启动任务，验证平台能力"""
+        """Khởi động tác vụ và kiểm tra năng lực nền tảng."""
         if not can_analyze:
             self.status = TaskStatus.UNSUPPORTED_PLATFORM
-            self.error_message = f"平台 {self.platform_name} 不支持分析"
+            self.error_message = f"Nền tảng {self.platform_name} không hỗ trợ phân tích"
             return False
         self.status = TaskStatus.FETCHING_MESSAGES
         self.started_at = time.time()
         return True
 
     def advance_to(self, status: TaskStatus):
-        """推进到下一个状态"""
+        """Chuyển tác vụ sang trạng thái tiếp theo."""
         self.status = status
 
     def complete(self, result_id: str):
-        """标记任务为已完成"""
+        """Đánh dấu tác vụ đã hoàn tất."""
         self.status = TaskStatus.COMPLETED
         self.result_id = result_id
         self.completed_at = time.time()
 
     def fail(self, error: str):
-        """标记任务为失败"""
+        """Đánh dấu tác vụ thất bại."""
         self.status = TaskStatus.FAILED
         self.error_message = error
         self.completed_at = time.time()
 
     @property
     def duration(self) -> float | None:
-        """获取任务持续时间（秒）"""
+        """Lấy thời lượng thực thi tác vụ tính bằng giây."""
         if self.started_at and self.completed_at:
             return self.completed_at - self.started_at
         return None

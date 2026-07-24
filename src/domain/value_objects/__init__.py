@@ -1,10 +1,10 @@
-# 值对象
+# Các value object
 from .platform_capabilities import PLATFORM_CAPABILITIES, PlatformCapabilities
 from .unified_group import UnifiedGroup, UnifiedMember
 from .unified_message import MessageContent, MessageContentType, UnifiedMessage
 
 __all__ = [
-    # 核心平台抽象
+    # Lớp trừu tượng nền tảng cốt lõi
     "UnifiedMessage",
     "MessageContent",
     "MessageContentType",

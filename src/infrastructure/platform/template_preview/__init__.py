@@ -1,4 +1,4 @@
-"""平台模板预览交互能力。"""
+"""Khả năng tương tác xem trước template theo nền tảng."""
 
 from .router import TemplatePreviewRouter
 from .telegram_preview_handler import TelegramTemplatePreviewHandler

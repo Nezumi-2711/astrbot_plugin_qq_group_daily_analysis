@@ -1,6 +1,4 @@
-"""
-平台适配器基类
-"""
+"""Lớp cơ sở cho adapter nền tảng."""
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
@@ -20,14 +18,14 @@ class PlatformAdapter(
     IMessageRepository, IMessageSender, IGroupInfoRepository, IAvatarRepository, ABC
 ):
     """
-    基础设施：平台适配器基类
+    Lớp cơ sở adapter ở tầng infrastructure.
 
-    继承自多个领域接口（仓储、发送器、群组信息、头像），
-    充当领域层与具体聊天平台（如 OneBot, Discord）之间的中转站。
+    Kế thừa các giao diện domain về repository, gửi tin nhắn, thông tin nhóm
+    và avatar; làm cầu nối giữa domain với nền tảng như OneBot hoặc Discord.
 
     Attributes:
-        bot (Any): 平台对应的机器人 SDK 实例，显式标注为 Any 以支持动态属性调用
-        config (dict): 针对该平台的特定配置
+        bot: Instance SDK bot của nền tảng.
+        config: Cấu hình riêng của nền tảng.
     """
 
     bot: Any
@@ -38,11 +36,11 @@ class PlatformAdapter(
         config: Mapping[str, Any] | None = None,
     ):
         """
-        初始化平台适配器。
+        Khởi tạo adapter nền tảng.
 
         Args:
-            bot_instance (Any): 后端机器人实例
-            config (dict, optional): 平台特定配置项
+            bot_instance: Instance bot backend.
+            config: Cấu hình riêng của nền tảng.
         """
         self.bot = bot_instance
         self.config: dict[str, object] = dict(config) if config is not None else {}
@@ -51,22 +49,22 @@ class PlatformAdapter(
 
     def set_context(self, context: Any):
         """
-        设置上下文对象（用于部分需要 ctx 的平台如 Telegram）。
+        Thiết lập context cho nền tảng cần context như Telegram.
 
         Args:
-            context (Any): 上下文对象
+            context: Đối tượng context.
         """
         pass
 
     @property
     def capabilities(self) -> PlatformCapabilities:
         """
-        获取当前平台的能力描述对象。
+        Lấy mô tả năng lực của nền tảng hiện tại.
 
-        采用延迟加载机制，在首次访问时调用 `_init_capabilities`。
+        Dùng lazy loading và gọi ``_init_capabilities`` khi truy cập lần đầu.
 
         Returns:
-            PlatformCapabilities: 平台能力对象
+            Đối tượng năng lực nền tảng.
         """
         if self._capabilities is None:
             self._capabilities = self._init_capabilities()
@@ -75,35 +73,35 @@ class PlatformAdapter(
     @abstractmethod
     def _init_capabilities(self) -> PlatformCapabilities:
         """
-        初始化并返回当前平台的能力定义。
+        Khởi tạo và trả về định nghĩa năng lực nền tảng hiện tại.
 
-        子类必须实现此方法以声明其对历史记录、图片发送等功能的支持情况。
+        Lớp con phải khai báo hỗ trợ lịch sử, gửi ảnh và các tính năng khác.
 
         Returns:
-            PlatformCapabilities: 初始化后的能力对象
+            Đối tượng năng lực đã khởi tạo.
         """
         raise NotImplementedError
 
     def get_capabilities(self) -> PlatformCapabilities:
-        """获取平台能力的便捷入口。"""
+        """Điểm vào tiện lợi để lấy năng lực nền tảng."""
         return self.capabilities
 
     def get_platform_name(self) -> str:
-        """获取当前适配器的平台标识名称。"""
+        """Lấy tên định danh nền tảng của adapter hiện tại."""
         return self.capabilities.platform_name
 
     @abstractmethod
     def convert_to_raw_format(self, messages: list[UnifiedMessage]) -> list[dict]:
         """
-        将平台无关的统一消息列表转换回当前平台的原生字典格式。
+        Chuyển tin nhắn thống nhất độc lập nền tảng về dict gốc của nền tảng.
 
-        此方法主要用于向后兼容，使新的统一接口能与依赖原生数据结构的旧版分析逻辑协同工作。
+        Dùng để tương thích ngược với logic phân tích cũ phụ thuộc cấu trúc gốc.
 
         Args:
-            messages (list[UnifiedMessage]): 待转换的统一消息列表
+            messages: Danh sách tin nhắn thống nhất cần chuyển.
 
         Returns:
-            list[dict]: 转换后的平台原生消息字典列表
+            Danh sách dict tin nhắn gốc của nền tảng.
         """
         raise NotImplementedError
 
@@ -113,13 +111,14 @@ class PlatformAdapter(
         nodes: list[dict],
     ) -> bool:
         """
-        发送合并转发消息（基类默认实现：转换为格式化文本分段发送）。
-        各适配器可覆盖此方法实现原生合并转发。
+        Gửi tin nhắn chuyển tiếp gộp.
+
+        Mặc định chuyển thành văn bản có định dạng và chia đoạn; adapter có thể ghi đè.
         """
         if not nodes:
             return True
 
-        # 万能回退：将节点重新组合成易读的长文本
+        # Fallback chung: ghép node thành văn bản dài dễ đọc.
         lines = []
         for node in nodes:
             data = node.get("data", node)
@@ -130,14 +129,14 @@ class PlatformAdapter(
 
         full_text = "\n\n".join(lines)
 
-        # 处理超长文本分段（取大部分平台的安全阈值 1800 字符）
+        # Chia văn bản dài ở ngưỡng an toàn 1.800 ký tự.
         max_chunk_size = 1800
         if len(full_text) > max_chunk_size:
-            # 尝试在换行处拆分
+            # Thử tách tại ký tự xuống dòng.
             chunks = []
             curr = full_text
             while len(curr) > max_chunk_size:
-                # 寻找最近的换行符
+                # Tìm ký tự xuống dòng gần nhất.
                 split_idx = curr.rfind("\n", 0, max_chunk_size)
                 if split_idx == -1:
                     split_idx = max_chunk_size
@@ -157,32 +156,33 @@ class PlatformAdapter(
         self, group_id: str, message_id: str, emoji: str | int, is_add: bool = True
     ) -> bool:
         """
-        对消息添加/移除表情回应。
+        Thêm hoặc xoá reaction cho tin nhắn.
 
         Args:
-            group_id (str): 群组/频道 ID
-            message_id (str): 消息 ID
-            emoji (str | int): 表情代码或字符
-            is_add (bool): True 为添加，False 为移除
+            group_id: ID nhóm/kênh.
+            message_id: ID tin nhắn.
+            emoji: Mã hoặc ký tự emoji.
+            is_add: True để thêm, False để xoá.
 
         Returns:
-            bool: 平台是否支持并成功执行
+            True nếu nền tảng hỗ trợ và thực thi thành công.
         """
         return False
 
     async def send_text_report(self, group_id: str, content: str) -> bool:
         """
-        以最适合当前平台的方式发送长文本报告。
-        默认逻辑：将长文本切分为多个节点，然后调用 send_forward_msg。
-        各平台适配器通过实现 send_forward_msg 来决定最终呈现形式（合并转发、分段发送等）。
+        Gửi báo cáo văn bản dài theo cách phù hợp nhất với nền tảng.
+
+        Mặc định chia thành node rồi gọi ``send_forward_msg``; adapter quyết định
+        hình thức cuối như chuyển tiếp gộp hoặc gửi theo đoạn.
         """
         import re
 
         try:
-            # 1. 准备节点基础信息
+            # 1. Chuẩn bị thông tin node cơ bản.
             self_id = self.bot_self_ids[0] if self.bot_self_ids else "bot"
-            self_name = "分析报告"
-            # 2. 切分文本为逻辑段落（按标题、空行切分）
+            self_name = "Báo cáo phân tích"
+            # 2. Chia thành đoạn logic theo tiêu đề và dòng trống.
             raw_content = str(content)
             sections = re.split(r"\n+(?=[🎯📊💬🏆])|\n{2,}", raw_content.strip())
             nodes = []
@@ -204,15 +204,16 @@ class PlatformAdapter(
             if not nodes:
                 return await self.send_text(group_id, raw_content)
 
-            # 3. 尝试发送转发消息/长消息链
+            # 3. Thử gửi chuyển tiếp hoặc chuỗi tin nhắn dài.
             return await self.send_forward_msg(group_id, nodes)
         except Exception:
-            # 兜底：直接发送
+            # Fallback: gửi trực tiếp.
             return await self.send_text(group_id, str(content))
 
     async def is_group_muted(self, group_id: str) -> bool:
         """
-        检查群聊是否被禁言（包括全体禁言或对 Bot 自身禁言）。
-        默认返回 False。各平台适配器可以根据需要重写此方法。
+        Kiểm tra nhóm có tắt chat toàn bộ hoặc tắt quyền bot hay không.
+
+        Mặc định trả về False; adapter có thể ghi đè khi cần.
         """
         return False

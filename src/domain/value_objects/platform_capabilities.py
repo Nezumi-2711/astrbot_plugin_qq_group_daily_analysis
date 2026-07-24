@@ -43,23 +43,23 @@ class PlatformCapabilities:
         avatar_sizes (tuple[int, ...]): Các kích thước ảnh đại diện tính bằng pixel mà nền tảng hỗ trợ.
     """
 
-    # 平台标识
+    # Định danh nền tảng
     platform_name: str
     platform_version: str = "unknown"
 
-    # 消息获取能力
+    # Khả năng truy xuất tin nhắn
     supports_message_history: bool = False
     max_message_history_days: int = 0
     max_message_count: int = 0
     supports_message_search: bool = False
 
-    # 群组信息能力
+    # Khả năng truy xuất thông tin nhóm
     supports_group_list: bool = False
     supports_group_info: bool = False
     supports_member_list: bool = False
     supports_member_info: bool = False
 
-    # 消息发送能力
+    # Khả năng gửi tin nhắn
     supports_text_message: bool = True
     supports_image_message: bool = False
     supports_file_message: bool = False
@@ -68,12 +68,12 @@ class PlatformCapabilities:
     max_text_length: int = 4096
     max_image_size_mb: float = 10.0
 
-    # 特殊能力
+    # Các khả năng đặc biệt
     supports_at_all: bool = False
     supports_recall: bool = False
     supports_edit: bool = False
 
-    # 头像能力
+    # Khả năng xử lý ảnh đại diện
     supports_user_avatar: bool = True
     supports_group_avatar: bool = False
     avatar_needs_api_call: bool = False

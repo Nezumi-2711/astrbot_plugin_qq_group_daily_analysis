@@ -1,6 +1,8 @@
 """
-消息清理服务 - 领域层
-负责过滤掉机器人消息、指令、技术性内容（如原始表情代码）及敏感内容。
+Dịch vụ làm sạch tin nhắn thuộc tầng domain.
+
+Phụ trách lọc tin nhắn của bot, lệnh, nội dung kỹ thuật như mã biểu cảm gốc
+và các nội dung nhạy cảm.
 """
 
 import re
@@ -12,14 +14,14 @@ from ..value_objects.unified_message import (
     UnifiedMessage,
 )
 
-# Discord 自定义表情正则 <:name:id> 或 <a:name:id>
+# Regex biểu cảm tuỳ chỉnh Discord: <:name:id> hoặc <a:name:id>
 _DISCORD_CUSTOM_EMOJI_PATTERN = re.compile(r"<a?:.+?:\d+>")
-# 指令匹配正则：匹配以 / 开头，或者以 @某人 / 开头的消息
+# Regex lệnh: khớp tin nhắn bắt đầu bằng / hoặc @thành viên /.
 _COMMAND_PATTERN = re.compile(r"^\s*(?:<@\d+>\s+)?/")
 
 
 class MessageCleanerService:
-    """消息清理服务"""
+    """Dịch vụ làm sạch tin nhắn."""
 
     def clean_messages(
         self,
@@ -28,25 +30,25 @@ class MessageCleanerService:
         filter_commands: bool = True,
     ) -> list[UnifiedMessage]:
         """
-        清理并过滤消息列表。
+        Làm sạch và lọc danh sách tin nhắn.
 
         Args:
-            messages: 原始统一格式消息列表
-            bot_self_ids: 机器人自身的 ID 列表
-            filter_commands: 是否过滤指令消息
+            messages: Danh sách tin nhắn thống nhất ban đầu.
+            bot_self_ids: Danh sách ID của bot.
+            filter_commands: Có lọc tin nhắn lệnh hay không.
 
         Returns:
-            清理后的消息列表
+            Danh sách tin nhắn sau khi làm sạch.
         """
         bot_ids = set(bot_self_ids or [])
         cleaned_list = []
 
         for msg in messages:
-            # 1. 过滤机器人发送的消息
+            # 1. Lọc tin nhắn do bot gửi
             if msg.sender_id in bot_ids:
                 continue
 
-            # 2. 预检指令消息（首个内容块通常是文本）
+            # 2. Kiểm tra trước tin nhắn lệnh (khối nội dung đầu thường là văn bản)
             is_command = False
             first_text = msg.text_content
             if filter_commands and first_text and _COMMAND_PATTERN.match(first_text):
@@ -55,7 +57,7 @@ class MessageCleanerService:
             if is_command:
                 continue
 
-            # 3. 清理消息内容中的技术性噪音
+            # 3. Làm sạch nhiễu kỹ thuật trong nội dung tin nhắn
             cleaned_contents = []
             has_meaningful_content = False
 
@@ -63,13 +65,13 @@ class MessageCleanerService:
                 if content.type == MessageContentType.TEXT:
                     text = content.text or ""
 
-                    # 移除 Discord 原始表情代码
+                    # Xoá mã biểu cảm gốc của Discord
                     text = _DISCORD_CUSTOM_EMOJI_PATTERN.sub("", text)
 
-                    # 移除 @mentions 文本 (e.g. <@123456>)
+                    # Xoá văn bản @mention, ví dụ <@123456>
                     text = re.sub(r"<@\d+>", "", text)
 
-                    # 清理多余空格
+                    # Xoá khoảng trắng thừa
                     text = text.strip()
 
                     if text:
@@ -78,14 +80,14 @@ class MessageCleanerService:
                         )
                         has_meaningful_content = True
                 else:
-                    # 其他类型（图片、回复等）暂时保留，但由后续分析器决定是否使用
+                    # Tạm giữ loại khác như ảnh và reply; analyzer quyết định việc sử dụng
                     cleaned_contents.append(content)
                     if content.type != MessageContentType.REPLY:
                         has_meaningful_content = True
 
-            # 4. 如果清理后仍有内容，则保留消息
+            # 4. Chỉ giữ tin nhắn nếu vẫn còn nội dung sau khi làm sạch
             if has_meaningful_content:
-                # 重新合成 text_content 用于 LLM 分析
+                # Ghép lại text_content để phân tích bằng LLM
                 new_text_content = "".join(
                     [
                         c.text
@@ -94,7 +96,7 @@ class MessageCleanerService:
                     ]
                 ).strip()
 
-                # 使用 replace 创建新实例（Frozen dataclass 必须如此）
+                # Dùng replace để tạo instance mới (dataclass frozen yêu cầu như vậy)
                 new_msg = replace(
                     msg, contents=tuple(cleaned_contents), text_content=new_text_content
                 )

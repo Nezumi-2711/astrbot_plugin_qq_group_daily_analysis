@@ -80,7 +80,7 @@ class QQOfficialAdapter(PlatformAdapter):
         if not cls._is_placeholder_sender_name(normalized, sender_id):
             return normalized
         digest = hashlib.sha256(f"{group_id}\0{sender_id}".encode()).hexdigest()[:8]
-        return f"群友-{digest.upper()}"
+        return f"Thành viên-{digest.upper()}"
 
     def set_context(self, context: Context) -> None:
         self._context = context
@@ -97,7 +97,9 @@ class QQOfficialAdapter(PlatformAdapter):
         since_ts: int | None = None,
     ) -> list[UnifiedMessage]:
         if not self._context:
-            logger.warning("[QQOfficial] 未设置 context，无法读取本地消息历史")
+            logger.warning(
+                "[QQOfficial] Chưa thiết lập context, không thể đọc lịch sử cục bộ"
+            )
             return []
 
         history_mgr = self._context.message_history_manager
@@ -163,13 +165,17 @@ class QQOfficialAdapter(PlatformAdapter):
             if len(messages) > target_count:
                 messages = messages[-target_count:]
             logger.info(
-                "[QQOfficial] 从本地历史获取群 %s 消息 %s 条",
-                group_id,
+                "[QQOfficial] Đã lấy %s tin nhắn nhóm %s từ lịch sử cục bộ",
                 len(messages),
+                group_id,
             )
             return messages
         except Exception as exc:
-            logger.error("[QQOfficial] 读取本地消息历史失败: %s", exc, exc_info=True)
+            logger.error(
+                "[QQOfficial] Đọc lịch sử tin nhắn cục bộ thất bại: %s",
+                exc,
+                exc_info=True,
+            )
             return []
 
     def _convert_history_record(
@@ -258,7 +264,9 @@ class QQOfficialAdapter(PlatformAdapter):
                 platform=self.platform_name,
             )
         except Exception as exc:
-            logger.debug("[QQOfficial] 转换本地历史记录失败: %s", exc)
+            logger.debug(
+                "[QQOfficial] Chuyển đổi bản ghi lịch sử cục bộ thất bại: %s", exc
+            )
             return None
 
     def convert_to_raw_format(self, messages: list[UnifiedMessage]) -> list[dict]:
@@ -290,7 +298,7 @@ class QQOfficialAdapter(PlatformAdapter):
 
     async def _send_chain(self, group_id: str, chain: Any) -> bool:
         if not self._context:
-            logger.error("[QQOfficial] 未设置 context，无法发送消息")
+            logger.error("[QQOfficial] Chưa thiết lập context, không thể gửi tin nhắn")
             return False
         try:
             # AstrBot's QQ Official adapter keeps the group/channel scene only
@@ -303,7 +311,7 @@ class QQOfficialAdapter(PlatformAdapter):
             umo = f"{self.platform_id}:GroupMessage:{group_id}"
             return bool(await self._context.send_message(umo, chain))
         except Exception as exc:
-            logger.error("[QQOfficial] 发送消息失败: %s", exc, exc_info=True)
+            logger.error("[QQOfficial] Gửi tin nhắn thất bại: %s", exc, exc_info=True)
             return False
 
     async def send_text(
@@ -333,11 +341,11 @@ class QQOfficialAdapter(PlatformAdapter):
                         sent_markdown_chunks += 1
                         continue
                     logger.warning(
-                        "[QQOfficial] Markdown 接口未返回成功结果，后续改用普通文本"
+                        "[QQOfficial] API Markdown không trả về thành công, chuyển sang văn bản thường"
                     )
                 except Exception as exc:
                     logger.warning(
-                        "[QQOfficial] Markdown 报告发送失败，后续改用普通文本: %s",
+                        "[QQOfficial] Gửi báo cáo Markdown thất bại, chuyển sang văn bản thường: %s",
                         exc,
                     )
                 markdown_enabled = False
@@ -488,7 +496,9 @@ class QQOfficialAdapter(PlatformAdapter):
             try:
                 return await self._plugin_instance.get_seen_group_ids(self.platform_id)
             except Exception as exc:
-                logger.warning("[QQOfficial] 获取已见群列表失败: %s", exc)
+                logger.warning(
+                    "[QQOfficial] Lấy danh sách nhóm đã thấy thất bại: %s", exc
+                )
         return []
 
     async def get_member_list(self, group_id: str) -> list[UnifiedMember]:
@@ -529,7 +539,7 @@ class QQOfficialAdapter(PlatformAdapter):
             mime = "image/png" if payload.startswith(b"\x89PNG") else "image/jpeg"
             return f"data:{mime};base64,{base64.b64encode(payload).decode('utf-8')}"
         except Exception as exc:
-            logger.debug("[QQOfficial] 下载头像失败: %s", exc)
+            logger.debug("[QQOfficial] Tải avatar thất bại: %s", exc)
             return None
 
     async def get_group_avatar_url(self, group_id: str, size: int = 100) -> str | None:

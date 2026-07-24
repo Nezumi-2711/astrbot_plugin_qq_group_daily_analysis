@@ -1,7 +1,4 @@
-"""
-LLM分析器模块
-负责协调各个分析器进行话题分析、用户称号分析和金句分析
-"""
+"""Điều phối analyzer LLM cho chủ đề, danh hiệu và trích dẫn nổi bật."""
 
 import asyncio
 
@@ -25,9 +22,8 @@ from .utils.llm_utils import call_provider_with_retry
 
 class LLMAnalyzer(IAnalysisProvider):
     """
-    LLM分析器
-    作为统一入口，协调各个专门的分析器进行不同类型的分析
-    保持向后兼容性，提供原有的接口
+    Analyzer LLM làm điểm vào thống nhất cho các loại phân tích chuyên biệt,
+    đồng thời duy trì giao diện tương thích ngược.
     """
 
     topic_analyzer: TopicAnalyzer
@@ -36,16 +32,16 @@ class LLMAnalyzer(IAnalysisProvider):
 
     def __init__(self, context, config_manager):
         """
-        初始化LLM分析器
+        Khởi tạo analyzer LLM.
 
         Args:
-            context: AstrBot上下文对象
-            config_manager: 配置管理器
+            context: Context AstrBot.
+            config_manager: Trình quản lý cấu hình.
         """
         self.context = context
         self.config_manager = config_manager
 
-        # 初始化各个专门的分析器
+        # Khởi tạo các analyzer chuyên biệt.
         self.topic_analyzer = TopicAnalyzer(context, config_manager)
         self.user_title_analyzer = UserTitleAnalyzer(context, config_manager)
         self.golden_quote_analyzer = GoldenQuoteAnalyzer(context, config_manager)
@@ -73,24 +69,23 @@ class LLMAnalyzer(IAnalysisProvider):
         session_id: str | None = None,
     ) -> tuple[list[SummaryTopic], TokenUsage]:
         """
-        使用LLM分析话题
-        保持原有接口，委托给专门的TopicAnalyzer处理
+        Phân tích chủ đề bằng LLM qua TopicAnalyzer chuyên biệt.
 
         Args:
-            messages: 群聊消息列表
-            umo: 模型唯一标识符
-            session_id: 会话ID (用于调试模式)
+            messages: Danh sách tin nhắn nhóm.
+            umo: Định danh duy nhất của model.
+            session_id: ID phiên dùng cho debug mode.
 
         Returns:
-            (话题列表, Token使用统计)
+            Tuple danh sách chủ đề và thống kê token.
         """
         try:
             session_id = self._make_session_id(session_id, umo)
 
-            logger.info(f"开始话题分析, session_id: {session_id}")
+            logger.info(f"Bắt đầu phân tích chủ đề, session_id: {session_id}")
             return await self.topic_analyzer.analyze_topics(messages, umo, session_id)
         except Exception as e:
-            logger.error(f"话题分析失败: {e}")
+            logger.error(f"Phân tích chủ đề thất bại: {e}")
             return [], TokenUsage()
 
     async def analyze_user_titles(
@@ -102,28 +97,27 @@ class LLMAnalyzer(IAnalysisProvider):
         session_id: str | None = None,
     ) -> tuple[list[UserTitle], TokenUsage]:
         """
-        使用LLM分析用户称号
-        保持原有接口，委托给专门的UserTitleAnalyzer处理
+        Phân tích danh hiệu thành viên bằng LLM qua UserTitleAnalyzer.
 
         Args:
-            messages: 群聊消息列表
-            user_activity: 用户分析统计
-            umo: 模型唯一标识符
-            top_users: 活跃用户列表(可选)
-            session_id: 会话ID (用于调试模式)
+            messages: Danh sách tin nhắn nhóm.
+            user_activity: Thống kê hoạt động thành viên.
+            umo: Định danh duy nhất của model.
+            top_users: Danh sách thành viên tích cực, tuỳ chọn.
+            session_id: ID phiên dùng cho debug mode.
 
         Returns:
-            (用户称号列表, Token使用统计)
+            Tuple danh sách danh hiệu và thống kê token.
         """
         try:
             session_id = self._make_session_id(session_id, umo)
 
-            logger.info(f"开始用户称号分析, session_id: {session_id}")
+            logger.info(f"Bắt đầu phân tích danh hiệu, session_id: {session_id}")
             return await self.user_title_analyzer.analyze_user_titles(
                 messages, user_activity, umo, top_users, session_id
             )
         except Exception as e:
-            logger.error(f"用户称号分析失败: {e}")
+            logger.error(f"Phân tích danh hiệu thất bại: {e}")
             return [], TokenUsage()
 
     async def analyze_golden_quotes(
@@ -133,26 +127,25 @@ class LLMAnalyzer(IAnalysisProvider):
         session_id: str | None = None,
     ) -> tuple[list[GoldenQuote], TokenUsage]:
         """
-        使用LLM分析群聊金句
-        保持原有接口，委托给专门的GoldenQuoteAnalyzer处理
+        Phân tích trích dẫn nổi bật bằng LLM qua GoldenQuoteAnalyzer.
 
         Args:
-            messages: 群聊消息列表
-            umo: 模型唯一标识符
-            session_id: 会话ID (用于调试模式)
+            messages: Danh sách tin nhắn nhóm.
+            umo: Định danh duy nhất của model.
+            session_id: ID phiên dùng cho debug mode.
 
         Returns:
-            (金句列表, Token使用统计)
+            Tuple danh sách trích dẫn và thống kê token.
         """
         try:
             session_id = self._make_session_id(session_id, umo)
 
-            logger.info(f"开始金句分析, session_id: {session_id}")
+            logger.info(f"Bắt đầu phân tích trích dẫn, session_id: {session_id}")
             return await self.golden_quote_analyzer.analyze_golden_quotes(
                 messages, umo, session_id
             )
         except Exception as e:
-            logger.error(f"金句分析失败: {e}")
+            logger.error(f"Phân tích trích dẫn thất bại: {e}")
             return [], TokenUsage()
 
     async def summarize_quality_reviews(
@@ -162,7 +155,7 @@ class LLMAnalyzer(IAnalysisProvider):
         session_id: str | None = None,
     ) -> tuple[QualityReview | None, TokenUsage]:
         """
-        汇总多个质量分析报告（增量模式使用）
+        Tổng hợp nhiều báo cáo chất lượng trong chế độ gia tăng.
         """
         return await self.chat_quality_analyzer.summarize_batch_reviews(
             batch_reviews, umo, session_id
@@ -186,32 +179,32 @@ class LLMAnalyzer(IAnalysisProvider):
         QualityReview | None,
     ]:
         """
-        并发执行所有分析任务（话题、用户称号、金句），支持按需启用。
+        Thực thi đồng thời các tác vụ phân tích được bật.
 
         Args:
-            messages: 群聊消息列表
-            user_activity: 用户分析统计
-            umo: 模型唯一标识符
-            top_users: 活跃用户列表(可选)
-            topic_enabled: 是否启用话题分析
-            user_title_enabled: 是否启用用户称号分析
-            golden_quote_enabled: 是否启用金句分析
+            messages: Danh sách tin nhắn nhóm.
+            user_activity: Thống kê hoạt động thành viên.
+            umo: Định danh model.
+            top_users: Danh sách thành viên tích cực.
+            topic_enabled: Có bật phân tích chủ đề hay không.
+            user_title_enabled: Có bật phân tích danh hiệu hay không.
+            golden_quote_enabled: Có bật phân tích trích dẫn hay không.
 
         Returns:
-            (话题列表, 用户称号列表, 金句列表, 总Token使用统计)
+            Danh sách chủ đề, danh hiệu, trích dẫn và tổng token.
         """
         try:
             session_id = self._make_session_id(None, umo)
 
             logger.info(
-                f"开始并发执行分析任务 (话题:{topic_enabled}, 称号:{user_title_enabled}, 金句:{golden_quote_enabled})，会话ID: {session_id}"
+                f"Bắt đầu phân tích đồng thời (chủ đề:{topic_enabled}, danh hiệu:{user_title_enabled}, trích dẫn:{golden_quote_enabled}), session_id: {session_id}"
             )
 
-            # 保存原始消息数据 (Debug Mode)
+            # Lưu dữ liệu tin nhắn gốc trong debug mode.
             if self.config_manager.get_debug_mode():
                 self._save_debug_messages(messages, session_id)
 
-            # 构建并发任务列表
+            # Xây dựng danh sách tác vụ đồng thời.
             tasks = []
             task_names = []
 
@@ -250,7 +243,7 @@ class LLMAnalyzer(IAnalysisProvider):
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # 处理结果
+            # Xử lý kết quả.
             topics, topic_usage = [], TokenUsage()
             user_titles, title_usage = [], TokenUsage()
             golden_quotes, quote_usage = [], TokenUsage()
@@ -260,7 +253,7 @@ class LLMAnalyzer(IAnalysisProvider):
             for i, result in enumerate(results):
                 name = task_names[i]
                 if isinstance(result, Exception):
-                    logger.error(f"分析任务 {name} 失败: {result}")
+                    logger.error(f"Tác vụ phân tích {name} thất bại: {result}")
                     continue
 
                 if name == "topic" and isinstance(result, tuple):
@@ -274,7 +267,7 @@ class LLMAnalyzer(IAnalysisProvider):
                     if not isinstance(quality_usage, TokenUsage):
                         quality_usage = TokenUsage()
 
-            # 合并Token使用统计
+            # Gộp thống kê sử dụng token.
             total_usage = TokenUsage(
                 prompt_tokens=topic_usage.prompt_tokens
                 + title_usage.prompt_tokens
@@ -291,7 +284,7 @@ class LLMAnalyzer(IAnalysisProvider):
             )
 
             logger.info(
-                f"并发分析完成 - 话题: {len(topics)}, 称号: {len(user_titles)}, 金句: {len(golden_quotes)}, 质量锐评: {1 if chat_quality_review else 0}"
+                f"Hoàn tất phân tích đồng thời - chủ đề: {len(topics)}, danh hiệu: {len(user_titles)}, trích dẫn: {len(golden_quotes)}, đánh giá chất lượng: {1 if chat_quality_review else 0}"
             )
             return (
                 topics,
@@ -302,7 +295,7 @@ class LLMAnalyzer(IAnalysisProvider):
             )
 
         except Exception as e:
-            logger.error(f"并发分析失败: {e}")
+            logger.error(f"Phân tích đồng thời thất bại: {e}")
             return [], [], [], TokenUsage(), None
 
     async def analyze_incremental_concurrent(
@@ -316,39 +309,38 @@ class LLMAnalyzer(IAnalysisProvider):
         chat_quality_enabled: bool = False,
     ) -> tuple[list[SummaryTopic], list[GoldenQuote], TokenUsage, QualityReview | None]:
         """
-        增量分析模式的并发执行方法。
-        仅执行话题分析和金句分析（用户称号分析在最终报告时执行），
-        使用较小的批次数量以控制单次分析的输出规模。
+        Thực thi đồng thời trong chế độ gia tăng. Chỉ phân tích chủ đề,
+        trích dẫn và chất lượng; danh hiệu được xử lý khi tạo báo cáo cuối.
 
         Args:
-            messages: 本次增量分析的群聊消息列表
-            umo: 模型唯一标识符
-            topics_per_batch: 本次批次最大话题数量
-            quotes_per_batch: 本次批次最大金句数量
-            topic_enabled: 是否启用话题分析
-            golden_quote_enabled: 是否启用金句分析
+            messages: Tin nhắn nhóm của lần phân tích gia tăng.
+            umo: Định danh model.
+            topics_per_batch: Số chủ đề tối đa trong batch.
+            quotes_per_batch: Số trích dẫn tối đa trong batch.
+            topic_enabled: Có bật phân tích chủ đề hay không.
+            golden_quote_enabled: Có bật phân tích trích dẫn hay không.
 
         Returns:
-            (话题列表, 金句列表, 总Token使用统计)
+            Danh sách chủ đề, trích dẫn và tổng token.
         """
         try:
             session_id = self._make_session_id(None, umo, "incr_")
 
             logger.info(
-                f"开始增量并发分析 (话题:{topic_enabled}/{topics_per_batch}, 金句:{golden_quote_enabled}/{quotes_per_batch}, 质量锐评:{chat_quality_enabled})，"
-                f"消息数量: {len(messages)}，会话ID: {session_id}"
+                f"Bắt đầu phân tích gia tăng đồng thời (chủ đề:{topic_enabled}/{topics_per_batch}, trích dẫn:{golden_quote_enabled}/{quotes_per_batch}, chất lượng:{chat_quality_enabled}), "
+                f"tin nhắn: {len(messages)}, session_id: {session_id}"
             )
 
-            # 保存原始消息数据 (Debug Mode)
+            # Lưu dữ liệu tin nhắn gốc trong debug mode.
             if self.config_manager.get_debug_mode():
                 self._save_debug_messages(messages, session_id)
 
-            # 设置增量模式的最大数量覆盖值
+            # Thiết lập giới hạn ghi đè cho chế độ gia tăng.
             self.topic_analyzer._incremental_max_count = topics_per_batch
             self.golden_quote_analyzer._incremental_max_count = quotes_per_batch
 
             try:
-                # 构建并发任务列表（仅话题和金句，不包含用户称号）
+                # Xây dựng tác vụ đồng thời, không gồm danh hiệu thành viên.
                 tasks = []
                 task_names = []
 
@@ -379,7 +371,7 @@ class LLMAnalyzer(IAnalysisProvider):
 
                 results = await asyncio.gather(*tasks, return_exceptions=True)
 
-                # 处理结果
+                # Xử lý kết quả.
                 topics, topic_usage = [], TokenUsage()
                 golden_quotes, quote_usage = [], TokenUsage()
                 chat_quality_review = None
@@ -388,7 +380,7 @@ class LLMAnalyzer(IAnalysisProvider):
                 for i, result in enumerate(results):
                     name = task_names[i]
                     if isinstance(result, Exception):
-                        logger.error(f"增量{name}分析失败: {result}")
+                        logger.error(f"Phân tích gia tăng {name} thất bại: {result}")
                         continue
 
                     if name == "topic" and isinstance(result, tuple):
@@ -400,7 +392,7 @@ class LLMAnalyzer(IAnalysisProvider):
                         if not isinstance(quality_usage, TokenUsage):
                             quality_usage = TokenUsage()
 
-                # 合并Token使用统计
+                # Gộp thống kê sử dụng token.
                 total_usage = TokenUsage(
                     prompt_tokens=topic_usage.prompt_tokens
                     + quote_usage.prompt_tokens
@@ -414,27 +406,27 @@ class LLMAnalyzer(IAnalysisProvider):
                 )
 
                 logger.info(
-                    f"增量并发分析完成 - 话题: {len(topics)}, 金句: {len(golden_quotes)}, 质量锐评: {1 if chat_quality_review else 0}, "
-                    f"Token消耗: {total_usage.total_tokens}"
+                    f"Hoàn tất phân tích gia tăng đồng thời - chủ đề: {len(topics)}, trích dẫn: {len(golden_quotes)}, đánh giá chất lượng: {1 if chat_quality_review else 0}, "
+                    f"token: {total_usage.total_tokens}"
                 )
                 return topics, golden_quotes, total_usage, chat_quality_review
 
             finally:
-                # 无论成功或失败，都要恢复原始的最大数量设置
+                # Luôn khôi phục giới hạn ban đầu dù thành công hay thất bại.
                 self.topic_analyzer._incremental_max_count = None
                 self.golden_quote_analyzer._incremental_max_count = None
 
         except Exception as e:
-            logger.error(f"增量并发分析失败: {e}", exc_info=True)
+            logger.error(f"Phân tích gia tăng đồng thời thất bại: {e}", exc_info=True)
             return [], [], TokenUsage(), None
 
     def _save_debug_messages(self, messages: list[dict], session_id: str):
         """
-        保存调试消息数据到文件（Debug Mode 专用）
+        Lưu dữ liệu tin nhắn debug vào tệp.
 
         Args:
-            messages: 群聊消息列表
-            session_id: 会话ID
+            messages: Danh sách tin nhắn nhóm.
+            session_id: ID phiên.
         """
         try:
             import json
@@ -450,7 +442,7 @@ class LLMAnalyzer(IAnalysisProvider):
         except Exception:
             pass
 
-    # 向后兼容的方法，保持原有调用方式
+    # Phương thức tương thích ngược, giữ cách gọi cũ.
     async def _call_provider_with_retry(
         self,
         provider,
@@ -459,17 +451,16 @@ class LLMAnalyzer(IAnalysisProvider):
         provider_id_key: str | None = None,
     ):
         """
-        向后兼容的LLM调用方法
-        现在委托给llm_utils模块处理
+        Phương thức gọi LLM tương thích ngược, uỷ quyền cho llm_utils.
 
         Args:
-            provider: LLM服务商实例或None（已弃用，现在使用 provider_id_key）
-            prompt: 输入的提示语
-            umo: 指定使用的模型唯一标识符
-            provider_id_key: 配置中的 provider_id 键名（可选）
+            provider: Provider LLM hoặc None; đã deprecated.
+            prompt: Prompt đầu vào.
+            umo: Định danh model cần dùng.
+            provider_id_key: Tên key provider_id tuỳ chọn trong cấu hình.
 
         Returns:
-            LLM生成的结果
+            Kết quả do LLM tạo.
         """
         return await call_provider_with_retry(
             self.context,
@@ -481,13 +472,12 @@ class LLMAnalyzer(IAnalysisProvider):
 
     def _fix_json(self, text: str) -> str:
         """
-        向后兼容的JSON修复方法
-        现在委托给json_utils模块处理
+        Phương thức sửa JSON tương thích ngược, uỷ quyền cho json_utils.
 
         Args:
-            text: 需要修复的JSON文本
+            text: Văn bản JSON cần sửa.
 
         Returns:
-            修复后的JSON文本
+            Văn bản JSON sau khi sửa.
         """
         return fix_json(text)

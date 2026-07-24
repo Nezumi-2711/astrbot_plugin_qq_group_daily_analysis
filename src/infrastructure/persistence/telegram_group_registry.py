@@ -6,10 +6,10 @@ from astrbot.api.star import Star
 
 class TelegramGroupRegistry:
     """
-    Telegram 群组/话题注册表
+    Registry nhóm và chủ đề Telegram.
 
-    负责管理 Telegram 的已见群组和话题列表，用于在无法通过 API 获取群列表时提供回退支持。
-    数据存储在 AstrBot 的 KV 存储中。
+    Quản lý danh sách nhóm và chủ đề Telegram đã thấy, dùng làm fallback khi
+    API không thể cung cấp danh sách nhóm. Dữ liệu được lưu trong KV của AstrBot.
     """
 
     _KV_KEY = "telegram_seen_groups_v1"
@@ -26,7 +26,7 @@ class TelegramGroupRegistry:
         sender_name: str,
         event_message_id: str,
     ) -> None:
-        """更新 Telegram 已见群/话题注册表（KV）。"""
+        """Cập nhật registry nhóm và chủ đề Telegram đã thấy trong KV."""
         async with self._lock:
             registry = await self.plugin.get_kv_data(self._KV_KEY, {})
             if not isinstance(registry, dict):
@@ -70,7 +70,7 @@ class TelegramGroupRegistry:
             await self.plugin.put_kv_data(self._KV_KEY, registry)
 
     async def get_all_group_ids(self, platform_id: str | None = None) -> list[str]:
-        """读取 Telegram 已见群/话题列表。"""
+        """Đọc danh sách nhóm và chủ đề Telegram đã thấy."""
         async with self._lock:
             registry = await self.plugin.get_kv_data(self._KV_KEY, {})
             if not isinstance(registry, dict):

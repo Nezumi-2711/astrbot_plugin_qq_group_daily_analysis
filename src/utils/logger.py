@@ -5,14 +5,14 @@ from ..shared.trace_context import TraceContext
 
 class PluginLogger:
     """
-    日志代理类：插件级统一日志装饰器
+    Proxy logger thống nhất ở cấp plugin.
 
-    自动向所有通过该实例输出的日志信息前缀添加 `[群分析插件]` 标签，
-    以便用户在 AstrBot 混合日志流中快速定位属于本插件的输出。
-    不直接继承 logging.LoggerAdapter 以符合框架规范。
+    Tự động thêm tiền tố ``[Phân tích nhóm]`` để dễ nhận diện log của plugin
+    trong luồng log hỗn hợp của AstrBot. Không kế thừa trực tiếp
+    ``logging.LoggerAdapter`` để phù hợp quy chuẩn framework.
     """
 
-    def __init__(self, prefix: str = "[群分析插件]"):
+    def __init__(self, prefix: str = "[Phân tích nhóm]"):
         self.prefix = prefix
 
     def _format_msg(self, msg: str) -> str:
@@ -40,5 +40,5 @@ class PluginLogger:
         astrbot_logger.exception(self._format_msg(msg), *args, **kwargs)
 
 
-# 导出带前缀的 logger
+# Export logger có tiền tố.
 logger = PluginLogger()

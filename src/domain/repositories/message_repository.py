@@ -1,6 +1,4 @@
-"""
-消息仓储接口 - 平台无关的抽象
-"""
+"""Giao diện repository tin nhắn độc lập với nền tảng."""
 
 from abc import ABC, abstractmethod
 
@@ -11,10 +9,10 @@ from ..value_objects.unified_message import UnifiedMessage
 
 class IMessageRepository(ABC):
     """
-    消息仓储接口
+    Giao diện repository tin nhắn.
 
-    每个平台适配器必须实现此接口。
-    所有方法返回统一格式，隐藏平台差异。
+    Mỗi adapter nền tảng phải triển khai giao diện này. Tất cả phương thức
+    trả về định dạng thống nhất để che giấu khác biệt giữa các nền tảng.
     """
 
     @abstractmethod
@@ -27,33 +25,33 @@ class IMessageRepository(ABC):
         since_ts: int | None = None,
     ) -> list[UnifiedMessage]:
         """
-        获取群组消息历史
+        Lấy lịch sử tin nhắn của nhóm.
 
-        参数:
-            group_id: 群组 ID
-            days: 获取最近 N 天的消息
-            max_count: 最大消息数量
-            before_id: 获取此 ID 之前的消息（用于分页）
-            since_ts: 从指定时间戳开始拉取消息（Unix timestamp），优先级高于 days。
+        Args:
+            group_id: ID của nhóm.
+            days: Số ngày gần nhất cần lấy tin nhắn.
+            max_count: Số lượng tin nhắn tối đa.
+            before_id: Chỉ lấy tin nhắn trước ID này, dùng để phân trang.
+            since_ts: Lấy tin nhắn từ Unix timestamp này; ưu tiên hơn ``days``.
 
-        返回:
-            统一消息列表，按时间升序排列
+        Returns:
+            Danh sách tin nhắn thống nhất, sắp xếp tăng dần theo thời gian.
         """
         pass
 
     @abstractmethod
     def get_capabilities(self) -> PlatformCapabilities:
-        """获取平台能力"""
+        """Lấy mô tả năng lực của nền tảng."""
         pass
 
     @abstractmethod
     def get_platform_name(self) -> str:
-        """获取平台名称"""
+        """Lấy tên nền tảng."""
         pass
 
 
 class IMessageSender(ABC):
-    """消息发送接口"""
+    """Giao diện gửi tin nhắn."""
 
     @abstractmethod
     async def send_text(
@@ -62,7 +60,7 @@ class IMessageSender(ABC):
         text: str,
         reply_to: str | None = None,
     ) -> bool:
-        """发送文本消息"""
+        """Gửi tin nhắn văn bản."""
         pass
 
     @abstractmethod
@@ -72,7 +70,7 @@ class IMessageSender(ABC):
         image_path: str,
         caption: str = "",
     ) -> bool:
-        """发送图片消息"""
+        """Gửi tin nhắn hình ảnh."""
         pass
 
     @abstractmethod
@@ -82,12 +80,13 @@ class IMessageSender(ABC):
         nodes: list[dict],
     ) -> bool:
         """
-        发送合并转发消息。
+        Gửi tin nhắn chuyển tiếp tổng hợp.
 
         Args:
-            group_id: 目标群组 ID
-            nodes: 转发节点列表。每个节点通常包含 name, uin (或 user_id), content。
-                   目前主要用于 OneBot 兼容性。
+            group_id: ID nhóm đích.
+            nodes: Danh sách nút chuyển tiếp. Mỗi nút thường chứa ``name``,
+                ``uin`` (hoặc ``user_id``) và ``content``. Hiện chủ yếu dùng
+                để tương thích với OneBot.
         """
         pass
 
@@ -98,26 +97,26 @@ class IMessageSender(ABC):
         file_path: str,
         filename: str | None = None,
     ) -> bool:
-        """发送文件"""
+        """Gửi tệp."""
         pass
 
 
 class IGroupInfoRepository(ABC):
-    """群组信息仓储接口"""
+    """Giao diện repository thông tin nhóm."""
 
     @abstractmethod
     async def get_group_info(self, group_id: str) -> UnifiedGroup | None:
-        """获取群组信息"""
+        """Lấy thông tin nhóm."""
         pass
 
     @abstractmethod
     async def get_group_list(self) -> list[str]:
-        """获取机器人所在的所有群组 ID"""
+        """Lấy ID của tất cả nhóm mà bot đang tham gia."""
         pass
 
     @abstractmethod
     async def get_member_list(self, group_id: str) -> list[UnifiedMember]:
-        """获取群组成员列表"""
+        """Lấy danh sách thành viên nhóm."""
         pass
 
     @abstractmethod
@@ -126,5 +125,5 @@ class IGroupInfoRepository(ABC):
         group_id: str,
         user_id: str,
     ) -> UnifiedMember | None:
-        """获取指定成员信息"""
+        """Lấy thông tin của thành viên được chỉ định."""
         pass

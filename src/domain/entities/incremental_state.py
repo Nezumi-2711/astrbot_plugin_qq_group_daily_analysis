@@ -1,14 +1,14 @@
 """
-增量分析实体 — 滑动窗口批次存储架构
+Entity phân tích gia tăng theo kiến trúc lưu batch trong cửa sổ trượt.
 
-核心概念：
-- IncrementalBatch: 单次增量分析产生的独立批次数据，按批次独立存储
-- IncrementalState: 报告生成时由多个批次合并而成的聚合视图（不再持久化）
+Khái niệm cốt lõi:
+- IncrementalBatch: dữ liệu độc lập sinh ra từ một lần phân tích gia tăng
+- IncrementalState: view tổng hợp từ nhiều batch khi tạo báo cáo, không lưu bền vững
 
-滑动窗口设计：
-- 每次增量分析产生一个 IncrementalBatch，独立存储到 KV
-- 最终报告时按 analysis_days × 24h 的时间窗口查询批次并合并
-- 支持同一天多次发送报告，每次都基于当前时间窗口内的所有批次
+Thiết kế cửa sổ trượt:
+- Mỗi lần phân tích gia tăng tạo một IncrementalBatch và lưu riêng vào KV
+- Khi tạo báo cáo cuối, truy vấn và gộp batch theo cửa sổ analysis_days × 24 giờ
+- Có thể gửi nhiều báo cáo trong ngày, mỗi báo cáo dựa trên mọi batch trong cửa sổ hiện tại
 """
 
 import time
@@ -21,50 +21,50 @@ from typing import Any
 @dataclass
 class IncrementalBatch:
     """
-    单次增量分析批次数据
+    Dữ liệu của một batch phân tích gia tăng.
 
-    每次增量分析执行完毕后产生一个 IncrementalBatch，
-    包含该批次的所有统计数据和 LLM 分析结果，独立存储到 KV。
+    Mỗi lần phân tích gia tăng hoàn tất sẽ tạo một ``IncrementalBatch`` chứa
+    toàn bộ số liệu thống kê và kết quả LLM của batch, được lưu riêng vào KV.
 
     Attributes:
-        group_id: 群组 ID
-        batch_id: 批次唯一标识（UUID）
-        timestamp: 批次创建时间戳（epoch）
-        messages_count: 本批次分析的消息数量
-        characters_count: 本批次的总字符数
-        hourly_msg_counts: 按小时的消息计数 {hour_str: count}
-        hourly_char_counts: 按小时的字符计数 {hour_str: count}
-        user_stats: 用户统计 {user_id: {name, message_count, char_count, ...}}
-        emoji_stats: 表情统计 {emoji_type: count}
-        topics: 本批次提取的话题列表
-        golden_quotes: 本批次提取的金句列表
-        token_usage: 本批次 token 消耗 {prompt_tokens, completion_tokens, total_tokens}
-        chat_quality_review: 本批次提取的聊天质量锐评
-        last_message_timestamp: 本批次最后一条消息的时间戳
-        participant_ids: 本批次参与者 ID 列表
+        group_id: ID nhóm.
+        batch_id: UUID duy nhất của batch.
+        timestamp: Epoch timestamp khi tạo batch.
+        messages_count: Số tin nhắn được phân tích trong batch.
+        characters_count: Tổng số ký tự trong batch.
+        hourly_msg_counts: Số tin nhắn theo giờ.
+        hourly_char_counts: Số ký tự theo giờ.
+        user_stats: Thống kê thành viên.
+        emoji_stats: Thống kê biểu cảm.
+        topics: Danh sách chủ đề trích xuất từ batch.
+        golden_quotes: Danh sách trích dẫn nổi bật từ batch.
+        token_usage: Mức sử dụng token của batch.
+        chat_quality_review: Đánh giá chất lượng trò chuyện của batch.
+        last_message_timestamp: Timestamp tin nhắn cuối trong batch.
+        participant_ids: Danh sách ID người tham gia trong batch.
     """
 
     group_id: str = ""
     batch_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: float = field(default_factory=time.time)
 
-    # 统计数据
+    # Dữ liệu thống kê
     messages_count: int = 0
     characters_count: int = 0
     hourly_msg_counts: dict[str, int] = field(default_factory=dict)
     hourly_char_counts: dict[str, int] = field(default_factory=dict)
 
-    # 用户活跃数据
+    # Dữ liệu hoạt động của thành viên
     user_stats: dict[str, dict] = field(default_factory=dict)
 
-    # 表情统计
+    # Thống kê biểu cảm
     emoji_stats: dict[str, Any] = field(default_factory=dict)
 
-    # LLM 分析结果
+    # Kết quả phân tích bằng LLM
     topics: list[dict] = field(default_factory=list)
     golden_quotes: list[dict] = field(default_factory=list)
 
-    # Token 消耗
+    # Mức sử dụng token
     token_usage: dict = field(
         default_factory=lambda: {
             "prompt_tokens": 0,
@@ -73,13 +73,13 @@ class IncrementalBatch:
         }
     )
 
-    # 增量追踪
+    # Theo dõi phân tích gia tăng
     chat_quality_review: dict[str, Any] | None = None
     last_message_timestamp: int = 0
     participant_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
-        """序列化为字典，用于 KV 存储"""
+        """Tuần tự hoá thành dict để lưu trong KV."""
         return {
             "group_id": self.group_id,
             "batch_id": self.batch_id,
@@ -100,7 +100,7 @@ class IncrementalBatch:
 
     @classmethod
     def from_dict(cls, data: dict) -> "IncrementalBatch":
-        """从字典反序列化"""
+        """Khôi phục đối tượng từ dict."""
         return cls(
             group_id=data.get("group_id", ""),
             batch_id=data.get("batch_id", ""),
@@ -127,7 +127,7 @@ class IncrementalBatch:
         )
 
     def get_summary(self) -> dict:
-        """获取批次摘要信息"""
+        """Lấy thông tin tóm tắt của batch."""
         return {
             "batch_id": self.batch_id[:8],
             "timestamp": datetime.fromtimestamp(self.timestamp).strftime(
@@ -143,53 +143,53 @@ class IncrementalBatch:
 @dataclass
 class IncrementalState:
     """
-    增量分析聚合视图（报告时使用）
+    View tổng hợp phân tích gia tăng dùng khi tạo báo cáo.
 
-    由多个 IncrementalBatch 合并而成，不直接持久化。
-    IncrementalMergeService.merge_batches() 负责从批次列表构建此对象。
+    Được gộp từ nhiều ``IncrementalBatch`` và không lưu trực tiếp.
+    ``IncrementalMergeService.merge_batches()`` xây dựng đối tượng từ danh sách batch.
 
     Attributes:
-        group_id: 群组 ID
-        window_start: 滑动窗口起始时间戳
-        window_end: 滑动窗口结束时间戳
-        topics: 合并去重后的话题列表
-        golden_quotes: 合并去重后的金句列表
-        hourly_message_counts: 合并后的每小时消息计数 {hour_str: count}
-        hourly_character_counts: 合并后的每小时字符计数 {hour_str: count}
-        user_activities: 合并后的用户活跃数据
-        emoji_counts: 合并后的表情统计
-        total_message_count: 窗口内总消息数
-        total_character_count: 窗口内总字符数
-        total_analysis_count: 窗口内批次数量
-        total_token_usage: 累计 token 消耗
-        last_analyzed_message_timestamp: 最后分析消息时间戳
-        all_participant_ids: 所有参与者 ID 集合
+        group_id: ID nhóm.
+        window_start: Timestamp bắt đầu cửa sổ trượt.
+        window_end: Timestamp kết thúc cửa sổ trượt.
+        topics: Danh sách chủ đề đã gộp và loại trùng.
+        golden_quotes: Danh sách trích dẫn đã gộp và loại trùng.
+        hourly_message_counts: Số tin nhắn theo giờ sau khi gộp.
+        hourly_character_counts: Số ký tự theo giờ sau khi gộp.
+        user_activities: Dữ liệu hoạt động thành viên sau khi gộp.
+        emoji_counts: Thống kê biểu cảm sau khi gộp.
+        total_message_count: Tổng số tin nhắn trong cửa sổ.
+        total_character_count: Tổng số ký tự trong cửa sổ.
+        total_analysis_count: Số batch trong cửa sổ.
+        total_token_usage: Tổng mức sử dụng token.
+        last_analyzed_message_timestamp: Timestamp tin nhắn được phân tích cuối cùng.
+        all_participant_ids: Tập hợp ID của tất cả người tham gia.
     """
 
-    # 标识信息
+    # Thông tin định danh
     group_id: str = ""
     window_start: float = 0.0
     window_end: float = 0.0
 
-    # 合并后的 LLM 分析结果
+    # Kết quả phân tích LLM sau khi gộp
     topics: list[dict] = field(default_factory=list)
     golden_quotes: list[dict] = field(default_factory=list)
     chat_quality_review: dict[str, Any] | None = None
     all_quality_reviews: list[dict] = field(
         default_factory=list
-    )  # 存储所有批次的质量锐评，用于最终报告时的汇总分析
+    )  # Lưu đánh giá của mọi batch để tổng hợp khi tạo báo cáo cuối
 
-    # 合并后的统计数据（按小时）
+    # Dữ liệu thống kê theo giờ sau khi gộp
     hourly_message_counts: dict[str, int] = field(default_factory=dict)
     hourly_character_counts: dict[str, int] = field(default_factory=dict)
 
-    # 用户活跃数据
+    # Dữ liệu hoạt động của thành viên
     user_activities: dict[str, dict] = field(default_factory=dict)
 
-    # 表情统计
+    # Thống kê biểu cảm
     emoji_counts: dict[str, Any] = field(default_factory=dict)
 
-    # 汇总统计
+    # Thống kê tổng hợp
     total_message_count: int = 0
     total_character_count: int = 0
     total_analysis_count: int = 0
@@ -201,23 +201,23 @@ class IncrementalState:
         }
     )
 
-    # 增量跟踪
+    # Theo dõi phân tích gia tăng
     last_analyzed_message_timestamp: int = 0
     all_participant_ids: set[str] = field(default_factory=set)
 
-    # 元数据
+    # Metadata
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
 
     def get_peak_hours(self, top_n: int = 3) -> list[int]:
         """
-        获取消息最活跃的时段。
+        Lấy các giờ có nhiều tin nhắn nhất.
 
         Args:
-            top_n: 返回前 N 个最活跃的小时
+            top_n: Số giờ hoạt động tích cực nhất cần trả về.
 
         Returns:
-            list[int]: 活跃小时列表，按消息量降序
+            Danh sách giờ, sắp xếp giảm dần theo số tin nhắn.
         """
         if not self.hourly_message_counts:
             return []
@@ -230,26 +230,26 @@ class IncrementalState:
 
     def get_most_active_period(self) -> str:
         """
-        获取最活跃时段的描述字符串。
+        Lấy chuỗi mô tả khung giờ hoạt động tích cực nhất.
 
         Returns:
-            str: 如 "20:00-21:00"
+            Chuỗi dạng ``20:00-21:00``.
         """
         peak = self.get_peak_hours(1)
         if not peak:
-            return "未知"
+            return "Không xác định"
         hour = peak[0]
         return f"{hour:02d}:00-{hour + 1:02d}:00"
 
     def get_user_activity_ranking(self, top_n: int = 10) -> list[dict]:
         """
-        获取用户活跃度排名。
+        Lấy bảng xếp hạng mức độ hoạt động của thành viên.
 
         Args:
-            top_n: 返回前 N 名
+            top_n: Số thành viên đứng đầu cần trả về.
 
         Returns:
-            list[dict]: 按消息数降序排列的用户列表
+            Danh sách thành viên sắp xếp giảm dần theo số tin nhắn.
         """
         users = []
         for user_id, data in self.user_activities.items():
@@ -266,10 +266,10 @@ class IncrementalState:
 
     def get_window_date_str(self) -> str:
         """
-        获取窗口的日期范围字符串，用于报告显示。
+        Lấy chuỗi phạm vi ngày của cửa sổ để hiển thị trong báo cáo.
 
         Returns:
-            str: 如 "2024-01-15" 或 "2024-01-14 ~ 2024-01-15"
+            Chuỗi như ``2024-01-15`` hoặc ``2024-01-14 ~ 2024-01-15``.
         """
         if self.window_start <= 0 or self.window_end <= 0:
             return datetime.now().strftime("%Y-%m-%d")
@@ -283,10 +283,10 @@ class IncrementalState:
 
     def get_summary(self) -> dict:
         """
-        获取当前增量状态的摘要信息，用于状态查询命令。
+        Lấy tóm tắt trạng thái gia tăng cho lệnh truy vấn trạng thái.
 
         Returns:
-            dict: 包含关键统计信息的摘要
+            Bản tóm tắt chứa các số liệu thống kê chính.
         """
         return {
             "group_id": self.group_id,
@@ -301,7 +301,7 @@ class IncrementalState:
             "last_analysis_time": (
                 datetime.fromtimestamp(self.updated_at).strftime("%H:%M:%S")
                 if self.updated_at
-                else "无"
+                else "Không có"
             ),
             "peak_hours": self.get_peak_hours(3),
         }
@@ -311,18 +311,18 @@ class IncrementalState:
         new_topic: dict, existing_topics: list[dict], threshold: float = 0.6
     ) -> bool:
         """
-        检测话题是否与已有话题重复。
+        Kiểm tra chủ đề có trùng với chủ đề hiện có hay không.
 
-        使用简单的字符重叠相似度判断。
-        当新话题的名称与已有话题名称相似度超过阈值时，认为是重复话题。
+        Dùng độ tương đồng giao nhau ký tự đơn giản. Nếu độ tương đồng giữa
+        tên chủ đề mới và tên hiện có vượt ngưỡng thì coi là trùng lặp.
 
         Args:
-            new_topic: 待检测的新话题
-            existing_topics: 已有话题列表
-            threshold: 相似度阈值（0-1），默认 0.6
+            new_topic: Chủ đề mới cần kiểm tra.
+            existing_topics: Danh sách chủ đề hiện có.
+            threshold: Ngưỡng tương đồng từ 0 đến 1, mặc định là 0.6.
 
         Returns:
-            bool: 是否重复
+            Có trùng lặp hay không.
         """
         new_name = new_topic.get("topic", "")
         if not new_name:
@@ -344,15 +344,15 @@ class IncrementalState:
         new_quote: dict, existing_quotes: list[dict], threshold: float = 0.7
     ) -> bool:
         """
-        检测金句是否与已有金句重复。
+        Kiểm tra trích dẫn có trùng với trích dẫn hiện có hay không.
 
         Args:
-            new_quote: 待检测的新金句
-            existing_quotes: 已有金句列表
-            threshold: 相似度阈值（0-1），默认 0.7
+            new_quote: Trích dẫn mới cần kiểm tra.
+            existing_quotes: Danh sách trích dẫn hiện có.
+            threshold: Ngưỡng tương đồng từ 0 đến 1, mặc định là 0.7.
 
         Returns:
-            bool: 是否重复
+            Có trùng lặp hay không.
         """
         new_content = new_quote.get("content", "")
         if not new_content:
@@ -372,14 +372,14 @@ class IncrementalState:
     @staticmethod
     def char_overlap_similarity(s1: str, s2: str) -> float:
         """
-        计算两个字符串的字符重叠相似度（Jaccard 相似系数）。
+        Tính độ tương đồng giao nhau ký tự của hai chuỗi theo hệ số Jaccard.
 
         Args:
-            s1: 第一个字符串
-            s2: 第二个字符串
+            s1: Chuỗi thứ nhất.
+            s2: Chuỗi thứ hai.
 
         Returns:
-            float: 相似度值（0-1）
+            Độ tương đồng từ 0 đến 1.
         """
         if not s1 or not s2:
             return 0.0

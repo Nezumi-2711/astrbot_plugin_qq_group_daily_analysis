@@ -505,7 +505,7 @@ def test_qq_official_avatar_mentions_hide_placeholder_openid():
 
     rendered_text = str(rendered)
     assert "A_OPENID" not in rendered_text
-    assert "群友" in rendered_text
+    assert "Thành viên nhóm" in rendered_text
 
 
 def test_mentions_support_alphanumeric_openid_and_hide_text():

@@ -1,7 +1,4 @@
-"""
-聊天质量分析模块
-专门处理群聊质量锐评分析
-"""
+"""Module phân tích và đánh giá đa chiều chất lượng trò chuyện nhóm."""
 
 from datetime import datetime
 
@@ -22,24 +19,22 @@ from .base_analyzer import BaseAnalyzer
 
 class ChatQualityAnalyzer(BaseAnalyzer[QualityReview, list[dict]]):
     """
-    聊天质量分析器
-    专门处理群聊质量的锐评和多维度分析
+    Analyzer chất lượng trò chuyện và đánh giá đa chiều.
 
-    注意：由于聊天质量分析返回的是 JSON 对象而非数组，
-    此分析器重写了 analyze() 方法，使用 parse_json_object_response 解析，
-    并以 extract_quality_with_regex 作为正则降级方案。
+    Vì kết quả là object JSON thay vì mảng, analyzer ghi đè ``analyze()``, dùng
+    ``parse_json_object_response`` và fallback bằng ``extract_quality_with_regex``.
     """
 
     def get_provider_id_key(self) -> str:
-        """获取 Provider ID 配置键名"""
+        """Lấy tên key cấu hình Provider ID."""
         return "quality_provider_id"
 
     def get_data_type(self) -> str:
-        """获取数据类型标识"""
-        return "聊天质量"
+        """Lấy định danh loại dữ liệu."""
+        return "Chất lượng trò chuyện"
 
     def get_max_count(self) -> int:
-        """获取最大维度数量"""
+        """Lấy số chiều tối đa."""
         return 8
 
     def get_response_schema_name(self) -> str:
@@ -50,12 +45,12 @@ class ChatQualityAnalyzer(BaseAnalyzer[QualityReview, list[dict]]):
 
     def build_prompt(self, data: list[dict]) -> str:
         """
-        构建聊天质量分析提示词
+        Xây dựng prompt phân tích chất lượng trò chuyện.
         """
         if not data:
             return ""
 
-        # 提取文本消息
+        # Trích xuất tin nhắn văn bản.
         text_messages = []
         for msg in data:
             if not isinstance(msg, dict):
@@ -89,39 +84,39 @@ class ChatQualityAnalyzer(BaseAnalyzer[QualityReview, list[dict]]):
         if prompt_template:
             return render_template(prompt_template, messages_text=messages_text)
 
-        prompt_template = """请分析以下群聊记录，输出一份"聊天质量锐评"。
+        prompt_template = """Hãy phân tích lịch sử trò chuyện nhóm sau và đưa ra một bản "đánh giá chất lượng trò chuyện".
 
-## 任务目标：
-1. **维度划分**：将聊天内容划分为 3-6 个【高层级、抽象、泛化】的维度（例如：就业焦虑、生涯规划、技术方案研究、情感树洞、无意义水群等）。
-2. **严禁在维度名称（name）中出现任何具体的群聊人物名、项目名、具体的报错内容或细碎的事件点。标题必须保持高度抽象且字数简练（2-6个字）。**
-3. 为每个维度计算一个大致的百分比占位（总和小于等于 100%）。
-4. **点评内容**：为每个维度写一句犀利、幽默、毒舌或温情的点评。具体的吐槽内容、具体的细节事件描述请放在这里。
-5. **全群表现**：给出一句总结性的评价，作为总结标题对应的“金句”。
-6. **主题设定**：设定一个本次报告的主题标题和副标题。
+    ## Mục tiêu:
+    1. **Phân chia chiều**: chia nội dung thành 3-6 chiều 【cấp cao, trừu tượng, khái quát】, ví dụ: lo âu nghề nghiệp, hoạch định tương lai, nghiên cứu giải pháp kỹ thuật, chia sẻ cảm xúc hoặc trò chuyện lan man.
+    2. **Tên chiều (name) tuyệt đối không chứa tên thành viên, dự án, lỗi cụ thể hay sự kiện vụn vặt. Tiêu đề phải trừu tượng và ngắn gọn (2-6 từ).**
+    3. Ước tính tỷ lệ phần trăm cho từng chiều, tổng không vượt quá 100%.
+    4. **Nội dung nhận xét**: viết một câu sắc sảo, hài hước, châm biếm hoặc ấm áp cho từng chiều; đặt chi tiết cụ thể ở đây.
+    5. **Biểu hiện toàn nhóm**: đưa ra một câu tổng kết nổi bật.
+    6. **Thiết lập chủ đề**: đặt tiêu đề và phụ đề cho báo cáo.
 
-## 点评风格指南：
-- 语言要接地气，多用互联网黑话。吐槽要精准，避重就轻。
-- **只有维度名称（name）需要抽象，点评（comment）和总结（summary）可以非常具体和生动。**
+    ## Hướng dẫn phong cách:
+    - Ngôn ngữ gần gũi, tự nhiên, có thể dùng tiếng lóng Internet; nhận xét phải chính xác.
+    - **Chỉ tên chiều (name) cần trừu tượng; comment và summary có thể cụ thể, sinh động.**
 
-## 返回格式要求：
-必须以纯 JSON 格式返回，不得包含任何 Markdown 格式。
+    ## Yêu cầu định dạng:
+    Chỉ trả về JSON thuần, không chứa Markdown.
 
 ```json
 {{
-  "title": "今日群聊主题",
-  "subtitle": "副标题",
+    "title": "Chủ đề trò chuyện hôm nay",
+    "subtitle": "Phụ đề",
   "dimensions": [
     {{
-      "name": "抽象维度名",
-      "percentage": 比例,
-      "comment": "维度的毒舌点评"
+    "name": "Tên chiều trừu tượng",
+    "percentage": 25,
+    "comment": "Nhận xét sắc sảo về chiều này"
     }}
   ],
-  "summary": "一句总结性的金句"
+    "summary": "Một câu tổng kết nổi bật"
 }}
 ```
 
-群聊记录：
+Lịch sử trò chuyện nhóm:
 ${messages_text}
 """
 
@@ -129,32 +124,30 @@ ${messages_text}
 
     def extract_with_regex(self, result_text: str, max_count: int) -> list[dict]:
         """
-        使用正则表达式提取质量分析数据（BaseAnalyzer 要求的接口）
+        Trích xuất dữ liệu chất lượng bằng regex theo giao diện BaseAnalyzer.
 
-        注意: 此方法供 BaseAnalyzer.analyze() 的降级流程使用，
-        但由于聊天质量分析重写了 analyze()，实际由 analyze_quality() 中调用
-        extract_quality_with_regex 实现。
+        Analyzer này ghi đè ``analyze()`` nên thực tế fallback được gọi từ
+        ``analyze_quality()`` qua ``extract_quality_with_regex``.
         """
         return []
 
     def create_data_objects(self, data_list: list[dict]) -> list[QualityReview]:
         """
-        满足 BaseAnalyzer 抽象要求。
-        聊天质量分析的数据对象创建在 analyze_quality 中完成。
+        Đáp ứng giao diện trừu tượng BaseAnalyzer; object được tạo trong analyze_quality.
         """
         return []
 
     def _build_review_from_dict(self, data: dict) -> QualityReview:
         """
-        从解析后的字典构建 QualityReview 对象
+        Xây dựng object QualityReview từ dict đã parse.
 
         Args:
-            data: 解析后的 JSON 对象字典
+            data: Dict object JSON đã parse.
 
         Returns:
-            QualityReview 数据对象
+            Object QualityReview.
         """
-        # 控制维度占比总和不超过100%
+        # Đảm bảo tổng tỷ lệ các chiều không vượt 100%.
         total_percentage = sum(
             max(0.0, min(100.0, float(d.get("percentage", 0))))
             for d in data.get("dimensions", [])
@@ -172,13 +165,13 @@ ${messages_text}
 
             dimensions.append(
                 QualityDimension(
-                    name=d.get("name", "未知"),
+                    name=d.get("name", "Không xác định"),
                     percentage=final_p,
                     comment=d.get("comment", ""),
                 )
             )
 
-        # 自动分配颜色
+        # Tự phân bổ màu.
         colors = [
             "#607d8b",
             "#2196f3",
@@ -193,10 +186,10 @@ ${messages_text}
             d.color = colors[i % len(colors)]
 
         return QualityReview(
-            title=data.get("title", "聊天质量锐评"),
-            subtitle=data.get("subtitle", "今天的群里发生了什么？"),
+            title=data.get("title", "Đánh giá chất lượng trò chuyện"),
+            subtitle=data.get("subtitle", "Hôm nay nhóm đã có chuyện gì?"),
             dimensions=dimensions,
-            summary=data.get("summary", "今天也是充满活力的一天。"),
+            summary=data.get("summary", "Hôm nay cũng là một ngày đầy năng lượng."),
         )
 
     def _validate_review_payload(
@@ -228,7 +221,7 @@ ${messages_text}
                 attempt_index=idx,
             )
             logger.warning(
-                f"聊天质量结构化解析失败，触发 schema 修复重试 "
+                f"Parse có cấu trúc chất lượng trò chuyện thất bại, retry sửa schema "
                 f"(attempt={idx}, temperature={temperature:.1f})"
             )
             retry_response = await call_provider_with_retry(
@@ -271,7 +264,7 @@ ${messages_text}
         session_id: str | None = None,
     ) -> tuple[QualityReview | None, TokenUsage]:
         """
-        汇总多个增量批次的质量报告，生成最终的每日全天总评。
+        Tổng hợp báo cáo chất lượng từ nhiều batch gia tăng thành đánh giá cả ngày.
         """
         if not batch_reviews:
             return None, TokenUsage()
@@ -280,10 +273,10 @@ ${messages_text}
             return self._build_review_from_dict(batch_reviews[0]), TokenUsage()
 
         try:
-            # 构建汇总用的提示词
+            # Xây dựng prompt tổng hợp.
             reviews_text = ""
             for i, rev in enumerate(batch_reviews):
-                title = rev.get("title", "未命名")
+                title = rev.get("title", "Chưa đặt tên")
                 summary = rev.get("summary", "")
                 dims = ", ".join(
                     [
@@ -291,53 +284,53 @@ ${messages_text}
                         for d in rev.get("dimensions", [])
                     ]
                 )
-                reviews_text += f"\n批次 {i + 1} [{title}]:\n- 维度表现: {dims}\n- 核心摘要: {summary}\n"
+                reviews_text += f"\nBatch {i + 1} [{title}]:\n- Biểu hiện theo chiều: {dims}\n- Tóm tắt cốt lõi: {summary}\n"
 
-            # 获取配置中的汇总提示词模板，如果没有则使用默认模板
+            # Dùng prompt tổng hợp trong cấu hình hoặc template mặc định.
             prompt_template = (
                 self.config_manager.get_quality_summary_prompt()
-                or """你现在有一份今天全天分散时间段的多个“增量批次点评笔记”。
-你的任务是将这些分散的笔记汇总成一份最终的“全天聊天质量终极锐评”。
+                or """Bạn có nhiều ghi chú đánh giá theo batch gia tăng ở các khoảng thời gian trong ngày.
+Nhiệm vụ là tổng hợp chúng thành một bản đánh giá chất lượng trò chuyện cuối cùng cho cả ngày.
 
-## 任务目标：
-1. **全局抽象维度**：根据各批次的维度表现，平衡权重，提取出 3-6 个覆盖全天的【核心、上层抽象】课题维度（如：职场/行业风向、技术架构演进、社畜心理博弈等）。
-2. **严禁在维度名称（name）中出现具体的批次细节。标题必须代表全天的某种趋势。**
-3. **百分比融合**：根据全天笔记的频率和强度，给出一个代表全天整体分布的比例（总和不超过100%）。
-4. **终极点评**：为每个汇总维度写出一句升华后的全天总结性点评。可以融合具体批次中的有趣槽点。
-5. **终极总结**：拟定全天的大型主题标题、副标题，并给出一句霸气的全天表现总结。
+## Mục tiêu:
+1. **Chiều trừu tượng toàn cục**: cân bằng trọng số giữa các batch và rút ra 3-6 chiều cốt lõi cấp cao bao phủ cả ngày, như xu hướng nghề nghiệp/ngành, phát triển kiến trúc kỹ thuật hoặc tâm lý nơi làm việc.
+2. **Tên chiều (name) không được chứa chi tiết batch; tiêu đề phải đại diện cho xu hướng cả ngày.**
+3. **Hợp nhất phần trăm**: dựa trên tần suất và cường độ để đưa ra phân bố cả ngày, tổng không vượt 100%.
+4. **Nhận xét cuối**: viết nhận xét tổng kết nâng cao cho từng chiều, có thể kết hợp chi tiết thú vị từ các batch.
+5. **Tổng kết cuối**: đặt tiêu đề, phụ đề và một câu kết mạnh mẽ cho cả ngày.
 
-## 风格要求：
-- 只有维度名称（name）需要高度概括抽象。
-- 点评（comment）和总结（summary）请尽量生动、具体，要把一整天的梗串联起来。
+## Yêu cầu phong cách:
+- Chỉ tên chiều (name) cần khái quát và trừu tượng cao.
+- Comment và summary phải sinh động, cụ thể và kết nối các điểm đáng nhớ trong ngày.
 
-## 返回格式要求：
-必须以纯 JSON 格式返回，不得包含任何 Markdown 格式。
+## Yêu cầu định dạng:
+Chỉ trả về JSON thuần, không chứa Markdown.
 
 ```json
 {{
-  "title": "今日群聊主题",
-  "subtitle": "副标题",
+    "title": "Chủ đề trò chuyện hôm nay",
+    "subtitle": "Phụ đề",
   "dimensions": [
     {{
-      "name": "抽象大类标题",
-      "percentage": 比例,
-      "comment": "维度的全天锐评"
+    "name": "Tên chiều khái quát",
+    "percentage": 25,
+    "comment": "Nhận xét cả ngày cho chiều này"
     }}
   ],
-  "summary": "全天总结金句"
+    "summary": "Câu tổng kết nổi bật cho cả ngày"
 }}
 ```
 """
             )
             prompt = render_template(prompt_template, reviews_text=reviews_text)
 
-            # 调用 LLM 进行汇总
+            # Gọi LLM để tổng hợp.
             system_prompt = await self._build_system_prompt(umo)
             base_temperature = await self._resolve_provider_temperature(
                 self.get_provider_id_key(), umo
             )
 
-            # 应用人设强化注入
+            # Inject tăng cường persona.
             prompt = self._apply_persona_reinforcement(prompt, system_prompt)
 
             response = await call_provider_with_retry(
@@ -365,7 +358,7 @@ ${messages_text}
                 return None, usage
 
             success, parsed_data, error_msg = parse_json_object_response(
-                result_text, "汇总质量分析"
+                result_text, "tổng hợp chất lượng"
             )
 
             if success and parsed_data:
@@ -375,7 +368,7 @@ ${messages_text}
                 if valid and normalized:
                     review = self._build_review_from_dict(normalized)
                     logger.info(
-                        f"聊天质量汇总分析成功，解析到 {len(review.dimensions)} 个汇总维度"
+                        f"Tổng hợp chất lượng trò chuyện thành công, parse được {len(review.dimensions)} chiều"
                     )
                     return review, usage
                 error_msg = validation_error or error_msg
@@ -391,16 +384,18 @@ ${messages_text}
             if repaired_data:
                 review = self._build_review_from_dict(repaired_data)
                 logger.info(
-                    f"聊天质量汇总 schema 修复重试成功，解析到 {len(review.dimensions)} 个汇总维度"
+                    f"Retry sửa schema tổng hợp chất lượng thành công, parse được {len(review.dimensions)} chiều"
                 )
                 return review, usage
 
-            # 降级：如果汇总失败，返回最新的一个
-            logger.warning(f"聊天质量汇总分析失败，降级使用最新批次: {error_msg}")
+            # Fallback về batch mới nhất nếu tổng hợp thất bại.
+            logger.warning(
+                f"Tổng hợp chất lượng thất bại, dùng batch mới nhất: {error_msg}"
+            )
             return self._build_review_from_dict(batch_reviews[-1]), usage
 
         except Exception as e:
-            logger.error(f"聊天质量汇总分析异常: {e}", exc_info=True)
+            logger.error(f"Lỗi tổng hợp chất lượng trò chuyện: {e}", exc_info=True)
             return self._build_review_from_dict(batch_reviews[-1]), TokenUsage()
 
     async def analyze_quality(
@@ -410,31 +405,26 @@ ${messages_text}
         session_id: str | None = None,
     ) -> tuple[QualityReview | None, TokenUsage]:
         """
-        分析聊天质量
+        Phân tích chất lượng trò chuyện.
 
-        流程遵循 BaseAnalyzer 的设计模式：
-        1. 构建 prompt
-        2. 调用 LLM
-        3. 提取 token 使用统计
-        4. JSON 解析（使用 parse_json_object_response）
-        5. 正则降级（使用 extract_quality_with_regex）
+        Theo mẫu BaseAnalyzer: xây prompt, gọi LLM, lấy token, parse JSON và fallback regex.
         """
         try:
-            # 1. 获取人格设定
+            # 1. Lấy persona.
             system_prompt = await self._build_system_prompt(umo)
             base_temperature = await self._resolve_provider_temperature(
                 self.get_provider_id_key(), umo
             )
 
-            # 2. 构建 prompt
+            # 2. Xây dựng prompt.
             prompt = self.build_prompt(messages)
             if not prompt:
                 return None, TokenUsage()
 
-            # 应用人设强化注入
+            # Inject tăng cường persona.
             prompt = self._apply_persona_reinforcement(prompt, system_prompt)
 
-            # 3. 调用 LLM
+            # 3. Gọi LLM.
             response = await call_provider_with_retry(
                 self.context,
                 self.config_manager,
@@ -448,7 +438,7 @@ ${messages_text}
             if response is None:
                 return None, TokenUsage()
 
-            # 4. 提取 token 使用统计
+            # 4. Trích xuất thống kê token.
             token_usage_dict = extract_token_usage(response)
             usage = TokenUsage(
                 prompt_tokens=token_usage_dict["prompt_tokens"],
@@ -456,12 +446,12 @@ ${messages_text}
                 total_tokens=token_usage_dict["total_tokens"],
             )
 
-            # 5. 提取响应文本
+            # 5. Trích xuất văn bản phản hồi.
             result_text = extract_response_text(response)
             if not result_text:
                 return None, usage
 
-            # 6. JSON 解析（使用 parse_json_object_response）
+            # 6. Parse JSON bằng parse_json_object_response.
             success, parsed_data, error_msg = parse_json_object_response(
                 result_text, self.get_data_type()
             )
@@ -473,7 +463,7 @@ ${messages_text}
                 if valid and normalized:
                     review = self._build_review_from_dict(normalized)
                     logger.debug(
-                        f"聊天质量分析成功，解析到 {len(review.dimensions)} 个维度"
+                        f"Phân tích chất lượng thành công, parse được {len(review.dimensions)} chiều"
                     )
                     return review, usage
                 error_msg = validation_error or error_msg
@@ -486,7 +476,7 @@ ${messages_text}
                 if valid and normalized:
                     review = self._build_review_from_dict(normalized)
                     logger.debug(
-                        f"聊天质量首轮结构化失败后，正则提取成功，获得 {len(review.dimensions)} 个维度"
+                        f"Lần parse có cấu trúc đầu thất bại; regex lấy được {len(review.dimensions)} chiều"
                     )
                     return review, usage
                 error_msg = validation_error or error_msg
@@ -502,16 +492,18 @@ ${messages_text}
             if repaired_data:
                 review = self._build_review_from_dict(repaired_data)
                 logger.debug(
-                    f"聊天质量 schema 修复重试成功，解析到 {len(review.dimensions)} 个维度"
+                    f"Retry sửa schema chất lượng thành công, parse được {len(review.dimensions)} chiều"
                 )
                 return review, usage
 
-            # 7. 全部失败
-            logger.error(f"聊天质量分析失败: JSON解析和正则提取均未成功: {error_msg}")
+            # 7. Mọi cách đều thất bại.
+            logger.error(
+                f"Phân tích chất lượng thất bại: cả parse JSON và regex đều lỗi: {error_msg}"
+            )
             return None, usage
 
         except Exception as e:
-            logger.error(f"聊天质量分析失败: {e}", exc_info=True)
+            logger.error(f"Phân tích chất lượng thất bại: {e}", exc_info=True)
             return None, TokenUsage()
 
     # Override analyze to bridge the base class interface

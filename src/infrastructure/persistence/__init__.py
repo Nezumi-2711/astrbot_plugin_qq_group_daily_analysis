@@ -1,7 +1,7 @@
 """
-持久化模块 - 数据存储实现
+Module persistence triển khai lưu trữ dữ liệu.
 
-包含历史记录仓储和增量分析状态仓储。
+Chứa repository lịch sử và trạng thái phân tích gia tăng.
 """
 
 from .history_repository import HistoryRepository

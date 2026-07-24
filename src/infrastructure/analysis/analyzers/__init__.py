@@ -1,7 +1,4 @@
-"""
-分析器模块
-包含各种LLM分析功能的实现
-"""
+"""Module analyzer chứa các triển khai phân tích bằng LLM."""
 
 from .base_analyzer import BaseAnalyzer
 from .golden_quote_analyzer import GoldenQuoteAnalyzer

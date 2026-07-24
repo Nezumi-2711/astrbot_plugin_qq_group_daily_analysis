@@ -1,7 +1,4 @@
-"""
-基础分析器抽象类
-定义通用分析流程和接口
-"""
+"""Lớp analyzer cơ sở định nghĩa quy trình và giao diện chung."""
 
 from abc import ABC, abstractmethod
 from collections.abc import Sized
@@ -24,91 +21,89 @@ TInputData = TypeVar("TInputData")
 
 
 class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
-    """
-    基础分析器抽象类
-    定义所有分析器的通用接口 and 流程
-    """
+    """Lớp analyzer trừu tượng với giao diện và quy trình dùng chung."""
 
     def __init__(self, context, config_manager):
         """
-        初始化基础分析器
+        Khởi tạo analyzer cơ sở.
 
         Args:
-            context: AstrBot上下文对象
-            config_manager: 配置管理器
+            context: Context AstrBot.
+            config_manager: Trình quản lý cấu hình.
         """
         self.context = context
         self.config_manager = config_manager
-        # 增量分析模式下的最大数量覆盖值，为 None 时使用配置默认值
+        # Giới hạn ghi đè cho phân tích gia tăng; None dùng cấu hình mặc định.
         self._incremental_max_count: int | None = None
 
     def get_provider_id_key(self) -> str | None:
         """
-        获取 Provider ID 配置键名
-        子类可重写以指定特定的 provider，默认返回 None（使用主 LLM Provider）
+        Lấy tên key cấu hình Provider ID.
+
+        Lớp con có thể ghi đè để chỉ định provider riêng; mặc định dùng provider LLM chính.
 
         Returns:
-            Provider ID 配置键名，如 'topic_provider_id'
+            Tên key cấu hình như ``topic_provider_id``.
         """
         return None
 
     @abstractmethod
     def get_data_type(self) -> str:
         """
-        获取数据类型标识
+        Lấy định danh loại dữ liệu.
 
         Returns:
-            数据类型字符串
+            Chuỗi loại dữ liệu.
         """
         pass
 
     @abstractmethod
     def get_max_count(self) -> int:
         """
-        获取最大提取数量
+        Lấy số lượng trích xuất tối đa.
 
         Returns:
-            最大数量
+            Số lượng tối đa.
         """
         pass
 
     @abstractmethod
     def build_prompt(self, data: TInputData) -> str:
         """
-        构建LLM提示词
+        Xây dựng prompt LLM.
 
         Args:
-            data: 输入数据
+            data: Dữ liệu đầu vào.
 
         Returns:
-            提示词字符串
+            Chuỗi prompt.
         """
         pass
 
     @abstractmethod
     def extract_with_regex(self, result_text: str, max_count: int) -> list[dict]:
         """
-        使用正则表达式提取数据
+        Trích xuất dữ liệu bằng regex.
 
         Args:
-            result_text: LLM响应文本
-            max_count: 最大提取数量
+            result_text: Văn bản phản hồi LLM.
+            max_count: Số lượng trích xuất tối đa.
 
         Returns:
-            提取到的数据列表
+            Danh sách dữ liệu đã trích xuất.
         """
         pass
 
     @abstractmethod
     def create_data_objects(self, data_list: list[dict]) -> list[TDataObject]:
         """
-        创建数据对象列表
+        Tạo danh sách đối tượng dữ liệu.
 
         Args:
-            data_list: 原始数据列表
+            data_list: Danh sách dữ liệu gốc.
 
         Returns:
-            数据对象列表
+            Danh sách đối tượng dữ liệu.
         """
         pass
 
@@ -126,7 +121,7 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
 
     def get_schema_retry_max_attempts(self) -> int:
         """
-        schema 解析失败后的最大重试次数（不含首轮请求）。
+        Số lần retry tối đa sau khi parse schema thất bại, không gồm lần đầu.
         """
         return 2
 
@@ -134,8 +129,9 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
         self, base_temperature: float | None
     ) -> tuple[float, ...]:
         """
-        schema 解析失败后的温度重试序列（不含首轮请求）。
-        采用动态降温，提高结构化稳定性。
+        Chuỗi temperature retry sau khi parse schema thất bại.
+
+        Giảm temperature động để tăng tính ổn định của output có cấu trúc.
         """
         attempts = max(0, self.get_schema_retry_max_attempts())
         if attempts == 0:
@@ -161,7 +157,7 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
         provider_id: str | None = None,
     ) -> float | None:
         """
-        尝试从当前将要调用的 Provider 配置中解析基础 temperature。
+        Thử lấy temperature cơ sở từ cấu hình provider sắp gọi.
         """
         pid = provider_id
         if not pid:
@@ -209,8 +205,9 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
         self, result_text: str
     ) -> tuple[bool, list[dict] | None, str | None]:
         """
-        解析结构化响应（默认 JSON 数组解析）。
-        子类可重写此方法定制对象解析逻辑。
+        Parse phản hồi có cấu trúc, mặc định là mảng JSON.
+
+        Lớp con có thể ghi đè để tuỳ chỉnh logic parse object.
         """
         return parse_json_response(result_text, self.get_data_type())
 
@@ -222,7 +219,7 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
         attempt_index: int,
     ) -> str:
         """
-        构建结构化失败后的修复重试提示词。
+        Xây dựng prompt retry sửa output có cấu trúc.
         """
         err_text = parse_error or "unknown_parse_error"
         return (
@@ -241,7 +238,7 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
         self, result_text: str
     ) -> tuple[bool, list[dict] | None, str | None]:
         """
-        先尝试结构化 JSON 解析（含修复逻辑），失败后立即尝试正则降级。
+        Thử parse JSON có cấu trúc trước, sau đó fallback regex nếu thất bại.
         """
         success, parsed_data, error_msg = self.parse_structured_response(result_text)
         if success and parsed_data:
@@ -259,7 +256,7 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
             )
             if validated_success and validated_data:
                 logger.info(
-                    f"{self.get_data_type()}结构化解析失败后，正则降级提取成功，获得 {len(validated_data)} 条数据"
+                    f"Parse có cấu trúc {self.get_data_type()} thất bại; fallback regex lấy được {len(validated_data)} mục"
                 )
                 return True, validated_data, None
             error_msg = validated_error or error_msg
@@ -270,18 +267,19 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
         self, data_list: list[dict]
     ) -> tuple[bool, list[dict] | None, str | None]:
         """
-        解析结果的本地二次校验（默认直接通过）。
-        子类可重写为 Pydantic 校验。
+        Kiểm tra cục bộ lần hai cho kết quả parse, mặc định luôn hợp lệ.
+
+        Lớp con có thể ghi đè bằng kiểm tra Pydantic.
         """
         return True, data_list, None
 
     def _save_debug_data(self, prompt: str, session_id: str):
         """
-        保存调试数据到文件
+        Lưu dữ liệu debug vào tệp.
 
         Args:
-            prompt: 提示词内容
-            session_id: 会话ID
+            prompt: Nội dung prompt.
+            session_id: ID phiên.
         """
         try:
             from astrbot.api.star import StarTools
@@ -293,95 +291,102 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
             file_name = f"{session_id}_{self.get_data_type()}.txt"
             file_path = data_path / file_name
 
-            logger.info(f"正在保存调试数据到: {file_path}")
+            logger.info(f"Đang lưu dữ liệu debug vào: {file_path}")
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(prompt)
 
-            logger.info(f"已保存 {self.get_data_type()} 分析 Prompt 到 {file_path}")
+            logger.info(
+                f"Đã lưu prompt phân tích {self.get_data_type()} vào {file_path}"
+            )
 
         except Exception as e:
-            logger.error(f"保存调试数据失败: {e}", exc_info=True)
+            logger.error(f"Lưu dữ liệu debug thất bại: {e}", exc_info=True)
 
     def _apply_persona_reinforcement(
         self, prompt: str, system_prompt: str | None
     ) -> str:
         """
-        核心的人格强化注入逻辑。采用首尾深度注入与指令交织策略。
-        不仅强化输出口吻，更强调使用人格的逻辑视角进行分析过程。
+        Inject tăng cường persona ở đầu và cuối prompt.
+
+        Không chỉ củng cố giọng điệu mà còn yêu cầu phân tích theo góc nhìn persona.
         """
         if not system_prompt or not system_prompt.strip():
             return prompt
 
-        logger.info(f"[{self.get_data_type()}分析] 已启用人格设定（深度强化模式）")
+        logger.info(
+            f"[Phân tích {self.get_data_type()}] Đã bật persona ở chế độ tăng cường sâu"
+        )
 
-        # 构造更具强制性的标识符
+        # Xây dựng marker có tính bắt buộc cao hơn.
         persona_content = system_prompt.strip()
 
         return (
             "【SYSTEM_CORE_IDENTITY_FIXED】\n"
-            f"你现在的身份已由系统初始化为：\n{persona_content}\n\n"
+            f"Danh tính hiện tại của bạn đã được hệ thống khởi tạo là:\n{persona_content}\n\n"
             "--- MISSION_DIRECTIVE_START ---\n"
-            "⚠️ 核心任务警告：你接下来的所有分析行为必须基于上述【身份设定】进行。\n"
-            "这包括但不限于：你的思维切入点、对数据的敏感度、点评的犀利/温情程度、以及你对群聊氛围的感知逻辑。\n"
-            f"请以该人格的思维方式去处理以下‘{self.get_data_type()}’分析任务：\n\n"
+            "⚠️ Yêu cầu cốt lõi: mọi phân tích tiếp theo phải dựa trên 【persona】 ở trên.\n"
+            "Điều này bao gồm góc tiếp cận, độ nhạy với dữ liệu, mức sắc sảo/ấm áp khi nhận xét và cách cảm nhận không khí nhóm.\n"
+            f"Hãy xử lý tác vụ phân tích ‘{self.get_data_type()}’ sau theo tư duy của persona này:\n\n"
             f"{prompt}\n"
             "--- MISSION_DIRECTIVE_END ---\n\n"
             "【FINAL_IDENTITY_REINFORCEMENT】\n"
-            f"1. 你不再是通用的 AI 助手，你是上述设定中的角色，我将在此处再次提醒你的身份：\n{persona_content}\n 正在观察并点评这些群聊数据。\n"
-            f"2. 请务必使用该角色的第一人称视角 or 其独有的观察视角进行‘{self.get_data_type()}’输出。\n"
-            "3. 你的分析成果必须体现该角色的性格色彩，禁止输出中立、客套、公式化的 AI 话术。\n"
-            "4. ⚠️ 格式铁律：无论人格多么狂放，最终输出的内容必须严格遵守‘ MISSION_DIRECTIVE ’中所要求的纯 JSON 格式。除了 JSON 数据外，严禁输出任何 Markdown 标记或角色扮演的额外闲聊。"
+            f"1. Bạn không còn là trợ lý AI chung chung mà là nhân vật đã thiết lập ở trên. Đây là lời nhắc lại persona:\n{persona_content}\n Persona này đang quan sát và nhận xét dữ liệu trò chuyện nhóm.\n"
+            f"2. Hãy xuất ‘{self.get_data_type()}’ theo ngôi thứ nhất hoặc góc quan sát riêng của nhân vật.\n"
+            "3. Kết quả phải thể hiện cá tính của nhân vật; không dùng lời lẽ AI trung lập, khách sáo hoặc rập khuôn.\n"
+            "4. ⚠️ Quy tắc định dạng: dù persona có phóng khoáng đến đâu, output cuối phải tuân thủ nghiêm ngặt JSON thuần được yêu cầu trong MISSION_DIRECTIVE. Ngoài JSON, không xuất Markdown hoặc trò chuyện nhập vai bổ sung."
         )
 
     async def analyze(
         self, data: TInputData, umo: str | None = None, session_id: str | None = None
     ) -> tuple[list[TDataObject], TokenUsage]:
         """
-        统一的分析流程
+        Quy trình phân tích thống nhất.
 
         Args:
-            data: 输入数据
-            umo: 模型唯一标识符
-            session_id: 会话ID (用于调试模式)
+            data: Dữ liệu đầu vào.
+            umo: Định danh model duy nhất.
+            session_id: ID phiên dùng cho debug mode.
 
         Returns:
-            (分析结果列表, Token使用统计)
+            Tuple danh sách kết quả và thống kê token.
         """
         try:
-            # 1. 构建提示词
+            # 1. Xây dựng prompt.
             logger.debug(
-                f"{self.get_data_type()}分析开始构建prompt，输入数据类型: {type(data)}"
+                f"Bắt đầu xây dựng prompt {self.get_data_type()}, kiểu dữ liệu đầu vào: {type(data)}"
             )
             data_length = len(data) if isinstance(data, Sized) else "N/A"
-            logger.debug(f"{self.get_data_type()}分析输入数据长度: {data_length}")
+            logger.debug(
+                f"Độ dài dữ liệu đầu vào {self.get_data_type()}: {data_length}"
+            )
 
             prompt = self.build_prompt(data)
-            logger.info(f"开始{self.get_data_type()}分析，构建提示词完成")
+            logger.info(f"Bắt đầu phân tích {self.get_data_type()}, đã xây dựng prompt")
             logger.debug(
-                f"{self.get_data_type()}分析prompt长度: {len(prompt) if prompt else 0}"
+                f"Độ dài prompt {self.get_data_type()}: {len(prompt) if prompt else 0}"
             )
             logger.debug(
-                f"{self.get_data_type()}分析prompt前100字符: {prompt[:100] if prompt else 'None'}..."
+                f"100 ký tự đầu prompt {self.get_data_type()}: {prompt[:100] if prompt else 'None'}..."
             )
 
-            # 保存调试数据
+            # Lưu dữ liệu debug.
             debug_mode = self.config_manager.get_debug_mode()
             if debug_mode and session_id and prompt:
                 self._save_debug_data(prompt, session_id)
             elif debug_mode and not session_id:
                 logger.warning("[Debug] Debug mode enabled but no session_id provided")
 
-            # 检查 prompt 是否为空
+            # Kiểm tra prompt rỗng.
             if not prompt or not prompt.strip():
                 logger.warning(
-                    f"{self.get_data_type()}分析: prompt 为空或只包含空白字符，跳过LLM调用"
+                    f"Phân tích {self.get_data_type()}: prompt rỗng hoặc chỉ có khoảng trắng, bỏ qua lời gọi LLM"
                 )
                 return [], TokenUsage()
 
-            # 2. 调用LLM（使用配置的 provider）
+            # 2. Gọi LLM bằng provider đã cấu hình.
             provider_id_key = self.get_provider_id_key()
 
-            # 只 resolve 一次 provider ID，同时传递给温度解析和 LLM 调用，避免重复日志
+            # Chỉ resolve provider ID một lần để tránh log lặp.
             resolved_provider_id = None
             if provider_id_key:
                 resolved_provider_id = await get_provider_id_with_fallback(
@@ -392,15 +397,17 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
                 provider_id_key, umo, provider_id=resolved_provider_id
             )
 
-            # 获取人格设定
+            # Lấy cấu hình persona.
             system_prompt = await self._build_system_prompt(umo)
 
-            # 应用人格强化注入
+            # Inject tăng cường persona.
             prompt = self._apply_persona_reinforcement(prompt, system_prompt)
 
-            logger.info(f"[{self.get_data_type()}分析] 开始发起 LLM 请求, umo: {umo}")
+            logger.info(
+                f"[Phân tích {self.get_data_type()}] Bắt đầu yêu cầu LLM, umo: {umo}"
+            )
 
-            # [Debug] 记录调试信息
+            # Ghi thông tin debug.
             if debug_mode:
                 logger.debug(
                     f"[Debug] debug_mode={debug_mode}, umo={umo}, session_id={session_id}, prompt_len={len(prompt) if prompt else 0}"
@@ -419,11 +426,11 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
 
             if response is None:
                 logger.error(
-                    f"{self.get_data_type()}分析调用LLM失败: provider返回None（重试失败）"
+                    f"Phân tích {self.get_data_type()} gọi LLM thất bại: provider trả về None sau retry"
                 )
                 return [], TokenUsage()
 
-            # 3. 提取token使用统计
+            # 3. Trích xuất thống kê token.
             token_usage_dict = extract_token_usage(response)
             token_usage = TokenUsage(
                 prompt_tokens=token_usage_dict["prompt_tokens"],
@@ -431,14 +438,14 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
                 total_tokens=token_usage_dict["total_tokens"],
             )
 
-            # 4. 提取响应文本
+            # 4. Trích xuất văn bản phản hồi.
             result_text = extract_response_text(response)
-            logger.debug(f"{self.get_data_type()}分析原始响应: {result_text[:500]}...")
+            logger.debug(f"Phản hồi gốc {self.get_data_type()}: {result_text[:500]}...")
 
-            # 5. 尝试结构化解析 + 正则降级解析
+            # 5. Thử parse có cấu trúc rồi fallback regex.
             success, parsed_data, error_msg = self._try_parse_with_fallback(result_text)
 
-            # 5.1 仅在两种解析方式都失败时，进入 schema 修复重试（温度递减）
+            # 5.1 Chỉ retry sửa schema với temperature giảm khi cả hai cách thất bại.
             if not success and self.get_response_format() is not None:
                 temperatures = self.get_schema_retry_temperatures(base_temperature)
                 for idx, temperature in enumerate(temperatures, start=1):
@@ -449,7 +456,7 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
                         attempt_index=idx,
                     )
                     logger.warning(
-                        f"{self.get_data_type()}结构化解析失败，触发 schema 修复重试 "
+                        f"Parse có cấu trúc {self.get_data_type()} thất bại, retry sửa schema "
                         f"(attempt={idx}, temperature={temperature:.1f})"
                     )
                     retry_response = await call_provider_with_retry(
@@ -481,50 +488,49 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
                     error_msg = retry_error_msg
 
             if success and parsed_data:
-                # JSON解析成功，创建数据对象
+                # Parse JSON thành công, tạo object dữ liệu.
                 data_objects = self.create_data_objects(parsed_data)
                 logger.info(
-                    f"{self.get_data_type()}分析成功，解析到 {len(data_objects)} 条数据"
+                    f"Phân tích {self.get_data_type()} thành công, parse được {len(data_objects)} mục"
                 )
                 return data_objects, token_usage
 
-            # 6. 全部尝试失败
+            # 6. Mọi lần thử đều thất bại.
             logger.error(
-                f"{self.get_data_type()}分析失败: JSON解析与正则降级均未成功: {error_msg}"
+                f"Phân tích {self.get_data_type()} thất bại: cả parse JSON và fallback regex đều lỗi: {error_msg}"
             )
             return [], token_usage
 
         except Exception as e:
-            logger.error(f"{self.get_data_type()}分析失败: {e}", exc_info=True)
+            logger.error(
+                f"Phân tích {self.get_data_type()} thất bại: {e}", exc_info=True
+            )
             return [], TokenUsage()
 
     async def _build_system_prompt(self, umo: str | None) -> str | None:
         """
-        构建带有会话人格的系统提示词，优先级如下：
-        1. 插件指定的全局人格 (若核心开关开启)
-        2. 会话/对话选定的人格 (若开启了继承开关)
-        3. 当前 UMO 的默认人格 (若开启了继承开关)
+        Xây dựng system prompt kèm persona của phiên theo thứ tự ưu tiên:
+        persona toàn cục của plugin, persona phiên/hội thoại, rồi persona mặc định UMO.
 
         Args:
-            umo: 用户模型对象标识，用于定位会话上下文
+            umo: Định danh dùng để xác định context phiên.
 
         Returns:
-            最终生成的 System Prompt 字符串，若无则返回 None
+            System prompt cuối hoặc None nếu không có.
         """
-        # 获取配置
+        # Lấy cấu hình.
         use_specific = self.config_manager.get_use_plugin_specific_persona()
         specific_id = self.config_manager.get_plugin_specific_persona_id()
         keep_original = self.config_manager.get_keep_original_persona()
 
-        # 获取 AstrBot 核心的人格管理器
+        # Lấy persona manager cốt lõi của AstrBot.
         persona_mgr = getattr(self.context, "persona_manager", None)
         if persona_mgr is None:
             return None
 
         persona_prompt = None
 
-        # --- 优先级 1: 插件指定的全局固定人格 ---
-        # 适用于希望所有分析报告都呈现同一种风格的情况
+        # Ưu tiên 1: persona toàn cục cố định do plugin chỉ định.
         if use_specific and specific_id:
             try:
                 persona_obj = await persona_mgr.get_persona(specific_id)
@@ -534,15 +540,18 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
                     else None
                 )
                 if persona_prompt:
-                    logger.debug(f"已应用插件指定的全局强制人格设定: {specific_id}")
+                    logger.debug(
+                        f"Đã áp dụng persona toàn cục bắt buộc của plugin: {specific_id}"
+                    )
             except Exception as e:
-                logger.warning(f"获取插件指定人格失败 (ID: {specific_id}): {e}")
+                logger.warning(
+                    f"Lấy persona do plugin chỉ định thất bại (ID: {specific_id}): {e}"
+                )
 
-        # --- 优先级 2: 继承当前会话/群聊的原始人格 ---
-        # 只有在未开启“强制人格”且开启了“继承设定”时生效
+        # Ưu tiên 2: kế thừa persona gốc của phiên/nhóm hiện tại.
         if not persona_prompt and keep_original and umo:
             try:
-                # 2.1 尝试获取 SharedPreferences 中会话绑定的 Persona ID (通常是 /persona 命令设置的)
+                # 2.1 Thử lấy Persona ID gắn với phiên trong SharedPreferences.
                 from astrbot.api import sp
 
                 session_service_config = await sp.get_async(
@@ -565,9 +574,11 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
                         else None
                     )
                     if persona_prompt:
-                        logger.debug(f"继承到会话选定人格: {persona_id}")
+                        logger.debug(
+                            f"Đã kế thừa persona được chọn cho phiên: {persona_id}"
+                        )
 
-                # 2.2 若无会话绑定，尝试获取当前对话(Dialogue)级别的人格
+                # 2.2 Nếu phiên chưa gắn persona, thử persona cấp hội thoại.
                 if not persona_prompt:
                     conv_mgr = getattr(self.context, "conversation_manager", None)
                     if conv_mgr:
@@ -591,10 +602,10 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
                                 )
                                 if persona_prompt:
                                     logger.debug(
-                                        f"继承到对话(Dialogue)设定人格: {conv_obj.persona_id}"
+                                        f"Đã kế thừa persona của hội thoại: {conv_obj.persona_id}"
                                     )
 
-                # 2.3 若仍无结果，尝试获取 UMO 设定的默认人格
+                # 2.3 Nếu vẫn chưa có, thử persona mặc định của UMO.
                 if not persona_prompt:
                     personality = await persona_mgr.get_default_persona_v3(umo)
                     if isinstance(personality, dict):
@@ -602,12 +613,14 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
                     else:
                         persona_prompt = getattr(personality, "prompt", None)
                     if persona_prompt:
-                        logger.debug("继承到 UMO 默认人格设定")
+                        logger.debug("Đã kế thừa persona mặc định của UMO")
 
             except Exception as e:
-                logger.warning(f"分析人格回溯识别失败 (umo: {umo}): {e}")
+                logger.warning(
+                    f"Truy ngược persona phân tích thất bại (umo: {umo}): {e}"
+                )
 
-        # 检查生成结果
+        # Kiểm tra kết quả.
         if not isinstance(persona_prompt, str) or not persona_prompt.strip():
             return None
 

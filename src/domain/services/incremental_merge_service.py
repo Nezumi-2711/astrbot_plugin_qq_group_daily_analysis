@@ -1,15 +1,15 @@
 """
-增量合并领域服务
+Dịch vụ domain gộp dữ liệu phân tích gia tăng.
 
-负责将 IncrementalBatch 列表合并为 IncrementalState，
-以及将 IncrementalState 累积数据转换为现有实体类型，
-以便复用现有的报告生成器和分发器。
+Phụ trách gộp danh sách ``IncrementalBatch`` thành ``IncrementalState``
+và chuyển dữ liệu tích luỹ thành các entity hiện có để tái sử dụng trình
+tạo và phân phối báo cáo.
 
-核心职责：
-- merge_batches: 将多个 IncrementalBatch 合并为一个 IncrementalState（滑动窗口聚合）
-- IncrementalState → GroupStatistics（含 ActivityVisualization、EmojiStatistics）
-- IncrementalState → list[SummaryTopic]
-- IncrementalState → list[GoldenQuote]
+Trách nhiệm chính:
+- ``merge_batches``: gộp nhiều batch thành một trạng thái trong cửa sổ trượt
+- ``IncrementalState`` → ``GroupStatistics``
+- ``IncrementalState`` → ``list[SummaryTopic]``
+- ``IncrementalState`` → ``list[GoldenQuote]``
 """
 
 import time
@@ -30,10 +30,11 @@ from ...utils.logger import logger
 
 class IncrementalMergeService:
     """
-    增量合并服务
+    Dịch vụ gộp dữ liệu gia tăng.
 
-    将滑动窗口内的多个批次数据合并为报告所需的数据结构，
-    确保增量模式下生成的最终报告与传统单次分析报告格式完全一致。
+    Gộp dữ liệu của nhiều batch trong cửa sổ trượt thành cấu trúc cần cho
+    báo cáo, đảm bảo báo cáo cuối ở chế độ gia tăng có cùng định dạng với
+    báo cáo phân tích một lần truyền thống.
     """
 
     def merge_batches(
@@ -43,18 +44,18 @@ class IncrementalMergeService:
         window_end: float,
     ) -> IncrementalState:
         """
-        从批次列表合并构建 IncrementalState。
+        Gộp danh sách batch để xây dựng ``IncrementalState``.
 
-        遍历所有批次，累加统计数据并对话题和金句执行去重，
-        生成可用于报告的聚合视图。
+        Duyệt toàn bộ batch, cộng dồn số liệu và loại trùng chủ đề cùng
+        trích dẫn để tạo view tổng hợp dùng cho báo cáo.
 
         Args:
-            batches: 时间窗口内的批次列表（按时间升序）
-            window_start: 窗口起始时间戳（epoch）
-            window_end: 窗口结束时间戳（epoch）
+            batches: Danh sách batch trong cửa sổ, tăng dần theo thời gian.
+            window_start: Epoch timestamp bắt đầu cửa sổ.
+            window_end: Epoch timestamp kết thúc cửa sổ.
 
         Returns:
-            IncrementalState: 合并后的聚合视图
+            IncrementalState: View tổng hợp sau khi gộp.
         """
         state = IncrementalState(
             group_id=batches[0].group_id if batches else "",
@@ -66,25 +67,25 @@ class IncrementalMergeService:
         )
 
         for batch in batches:
-            # 累加消息和字符计数
+            # Cộng dồn số tin nhắn và ký tự
             state.total_message_count += batch.messages_count
             state.total_character_count += batch.characters_count
 
-            # 合并每小时消息分布（按键累加）
+            # Gộp phân bố tin nhắn theo giờ bằng cách cộng theo key
             for hour_key, count in batch.hourly_msg_counts.items():
                 hour_str = str(hour_key)
                 state.hourly_message_counts[hour_str] = (
                     state.hourly_message_counts.get(hour_str, 0) + count
                 )
 
-            # 合并每小时字符分布
+            # Gộp phân bố ký tự theo giờ
             for hour_key, count in batch.hourly_char_counts.items():
                 hour_str = str(hour_key)
                 state.hourly_character_counts[hour_str] = (
                     state.hourly_character_counts.get(hour_str, 0) + count
                 )
 
-            # 合并用户统计（按用户累加消息数、字符数等）
+            # Gộp thống kê thành viên bằng cách cộng dồn theo người dùng
             for raw_user_id, stats in batch.user_stats.items():
                 user_id = str(raw_user_id)
                 if user_id not in state.user_activities:
@@ -103,43 +104,43 @@ class IncrementalMergeService:
                 existing["emoji_count"] += stats.get("emoji_count", 0)
                 existing["reply_count"] += stats.get("reply_count", 0)
 
-                # 合并每小时统计
-                # 兼容旧版本 (active_hours 是 list) 和新版本 (hours 是 dict)
+                # Gộp thống kê theo giờ.
+                # Tương thích phiên bản cũ (active_hours là list) và mới (hours là dict).
                 batch_hours = stats.get("hours", {})
                 if isinstance(batch_hours, dict):
-                    # 现代 schema: hours 是 dict {hour: count}
+                    # Schema mới: hours là dict {hour: count}
                     for h_str, h_count in batch_hours.items():
                         h_int = int(h_str)
                         existing["hours"][h_int] = (
                             existing["hours"].get(h_int, 0) + h_count
                         )
                 else:
-                    # 兼容旧 schema: 只有 active_hours (list)
+                    # Schema cũ: chỉ có active_hours (list)
                     active_hours = stats.get("active_hours", [])
                     for h in active_hours:
                         h_int = int(h)
                         existing["hours"][h_int] = existing["hours"].get(h_int, 0) + 1
 
-                # 取最后消息时间的较大值
+                # Lấy thời điểm của tin nhắn cuối lớn hơn
                 batch_last = stats.get("last_message_time", 0)
                 if batch_last > existing.get("last_message_time", 0):
                     existing["last_message_time"] = batch_last
 
-                # 更新昵称（使用最新批次的有效昵称）
+                # Cập nhật biệt danh bằng giá trị hợp lệ mới nhất
                 nickname = stats.get("nickname", stats.get("name", ""))
                 if nickname and str(nickname).strip():
                     existing["nickname"] = nickname
 
-            # 合并表情统计（按键累加）
+            # Gộp thống kê biểu cảm bằng cách cộng theo key
             for emoji_key, count in batch.emoji_stats.items():
                 current_val = state.emoji_counts.get(emoji_key, 0)
                 if isinstance(count, dict):
-                    # 如果是嵌套字典（如 face_details），则合并内部计数
+                    # Gộp bộ đếm bên trong nếu là dict lồng nhau như face_details
                     if not isinstance(current_val, dict):
                         current_val = {}
 
                     for sub_key, sub_count in count.items():
-                        # 确保 current_val 是字典且 sub_count 是数字
+                        # Đảm bảo current_val là dict và sub_count là số
                         if isinstance(current_val, dict):
                             current_val[sub_key] = (
                                 current_val.get(sub_key, 0) + sub_count
@@ -147,80 +148,81 @@ class IncrementalMergeService:
 
                     state.emoji_counts[emoji_key] = current_val
                 else:
-                    # 如果是数值，直接累加
+                    # Nếu là số thì cộng trực tiếp
                     if isinstance(current_val, dict):
-                        # 异常情况：现有值是字典但新值是数字，通常不应发生，除非 schema 变更
-                        # 此时保留字典，忽略数字或记录错误，这里选择保留字典
+                        # Trường hợp bất thường: giá trị cũ là dict nhưng giá trị mới là số.
+                        # Giữ dict và bỏ qua giá trị số để tương thích khi schema thay đổi.
                         continue
 
                     state.emoji_counts[emoji_key] = current_val + count
 
-            # 合并话题（去重）
+            # Gộp chủ đề và loại trùng
             for topic in batch.topics:
                 if not IncrementalState.is_duplicate_topic(topic, state.topics):
                     state.topics.append(topic)
 
-            # 合并金句（去重）
+            # Gộp trích dẫn và loại trùng
             for quote in batch.golden_quotes:
                 if not IncrementalState.is_duplicate_quote(quote, state.golden_quotes):
                     state.golden_quotes.append(quote)
 
-            # 累加 token 消耗
+            # Cộng dồn mức sử dụng token
             for token_key in ("prompt_tokens", "completion_tokens", "total_tokens"):
                 state.total_token_usage[token_key] = state.total_token_usage.get(
                     token_key, 0
                 ) + batch.token_usage.get(token_key, 0)
 
-            # 合并参与者 ID（取并集）
+            # Gộp ID người tham gia bằng phép hợp
             state.all_participant_ids.update(batch.participant_ids)
 
-            # 收集所有批次的质量锐评（用于最终汇总）
+            # Thu thập đánh giá chất lượng của mọi batch để tổng hợp cuối
             if batch.chat_quality_review:
                 state.all_quality_reviews.append(batch.chat_quality_review)
 
-            # 记录最后分析消息时间戳（取最大值）
+            # Lưu timestamp tin nhắn phân tích cuối cùng bằng giá trị lớn nhất
             if batch.last_message_timestamp > state.last_analyzed_message_timestamp:
                 state.last_analyzed_message_timestamp = batch.last_message_timestamp
-                # 更新锐评为最新批次的 (如果没有汇总分析，则作为兜底)
+                # Dùng đánh giá của batch mới nhất làm fallback nếu chưa có tổng hợp
                 if batch.chat_quality_review:
                     state.chat_quality_review = batch.chat_quality_review
 
         logger.info(
-            f"合并批次完成: 群={state.group_id}, "
-            f"窗口={state.get_window_date_str()}, "
-            f"批次数={len(batches)}, "
-            f"总消息={state.total_message_count}, "
-            f"话题={len(state.topics)}, 金句={len(state.golden_quotes)}"
+            f"Đã gộp batch: nhóm={state.group_id}, "
+            f"cửa sổ={state.get_window_date_str()}, "
+            f"số batch={len(batches)}, "
+            f"tổng tin nhắn={state.total_message_count}, "
+            f"chủ đề={len(state.topics)}, trích dẫn={len(state.golden_quotes)}"
         )
 
         return state
 
     def build_final_statistics(self, state: IncrementalState) -> GroupStatistics:
         """
-        从增量状态构建最终的群组统计数据。
+        Xây dựng số liệu thống kê nhóm cuối từ trạng thái gia tăng.
 
-        将 IncrementalState 中的累积数据映射到 GroupStatistics，
-        包含完整的 24 小时活跃度分布、表情统计和 token 消耗。
+        Ánh xạ dữ liệu tích luỹ trong ``IncrementalState`` sang
+        ``GroupStatistics``, gồm phân bố hoạt động 24 giờ, thống kê biểu cảm
+        và mức sử dụng token.
 
         Args:
-            state: 由 merge_batches 合并生成的增量分析状态
+            state: Trạng thái phân tích gia tăng do ``merge_batches`` tạo ra.
 
         Returns:
-            GroupStatistics: 与传统分析格式一致的统计数据
+            GroupStatistics: Số liệu có cùng định dạng với phân tích truyền thống.
         """
-        # 构建 24 小时活跃度分布
+        # Xây dựng phân bố hoạt động trong 24 giờ
         hourly_activity = {}
         for hour in range(24):
             hour_key = str(hour)
             hourly_activity[hour] = state.hourly_message_counts.get(hour_key, 0)
 
-        # 获取高峰时段
+        # Lấy các khung giờ cao điểm
         peak_hours = state.get_peak_hours(3)
 
-        # 构建用户活跃排名
+        # Xây dựng bảng xếp hạng hoạt động của thành viên
         user_ranking = state.get_user_activity_ranking(10)
 
-        # 构建活跃度可视化数据
+        # Xây dựng dữ liệu trực quan hoá hoạt động
         activity_visualization = ActivityVisualization(
             hourly_activity=hourly_activity,
             daily_activity={state.get_window_date_str(): state.total_message_count},
@@ -229,27 +231,27 @@ class IncrementalMergeService:
             activity_heatmap_data={},
         )
 
-        # 构建表情统计
+        # Xây dựng thống kê biểu cảm
         emoji_statistics = self._build_emoji_statistics(state)
 
-        # 构建 token 消耗
+        # Xây dựng thống kê sử dụng token
         token_usage = TokenUsage(
             prompt_tokens=state.total_token_usage.get("prompt_tokens", 0),
             completion_tokens=state.total_token_usage.get("completion_tokens", 0),
             total_tokens=state.total_token_usage.get("total_tokens", 0),
         )
 
-        # 获取最活跃时段描述
+        # Lấy mô tả khung giờ hoạt động tích cực nhất
         most_active_period = state.get_most_active_period()
 
-        # 转换聊天质量锐评 (如果有)
+        # Chuyển đổi đánh giá chất lượng trò chuyện nếu có
         chat_quality_review = None
         if state.chat_quality_review:
             review_dict = state.chat_quality_review
             dimensions_dict = review_dict.get("dimensions", [])
             dimensions = [
                 QualityDimension(
-                    name=d.get("name", "未知"),
+                    name=d.get("name", "Không xác định"),
                     percentage=float(d.get("percentage", 0)),
                     comment=d.get("comment", ""),
                     color=d.get("color", "#607d8b"),
@@ -257,10 +259,12 @@ class IncrementalMergeService:
                 for d in dimensions_dict
             ]
             chat_quality_review = QualityReview(
-                title=review_dict.get("title", "聊天质量锐评"),
-                subtitle=review_dict.get("subtitle", "今天的群里发生了什么？"),
+                title=review_dict.get("title", "Đánh giá chất lượng trò chuyện"),
+                subtitle=review_dict.get("subtitle", "Hôm nay nhóm đã có chuyện gì?"),
                 dimensions=dimensions,
-                summary=review_dict.get("summary", "今天也是充满活力的一天。"),
+                summary=review_dict.get(
+                    "summary", "Hôm nay cũng là một ngày đầy năng lượng."
+                ),
             )
 
         statistics = GroupStatistics(
@@ -268,7 +272,7 @@ class IncrementalMergeService:
             total_characters=state.total_character_count,
             participant_count=len(state.all_participant_ids),
             most_active_period=most_active_period,
-            golden_quotes=[],  # 金句通过 build_quotes_for_report 单独构建
+            golden_quotes=[],  # Trích dẫn được xây dựng riêng bởi build_quotes_for_report
             emoji_count=emoji_statistics.total_emoji_count,
             emoji_statistics=emoji_statistics,
             activity_visualization=activity_visualization,
@@ -277,51 +281,52 @@ class IncrementalMergeService:
         )
 
         logger.debug(
-            f"从增量状态构建统计: "
-            f"消息数={state.total_message_count}, "
-            f"参与人数={len(state.all_participant_ids)}, "
-            f"话题数={len(state.topics)}, "
-            f"金句数={len(state.golden_quotes)}"
+            f"Đã xây dựng thống kê từ trạng thái gia tăng: "
+            f"tin nhắn={state.total_message_count}, "
+            f"người tham gia={len(state.all_participant_ids)}, "
+            f"chủ đề={len(state.topics)}, "
+            f"trích dẫn={len(state.golden_quotes)}"
         )
 
         return statistics
 
     def build_topics_for_report(self, state: IncrementalState) -> list[SummaryTopic]:
         """
-        从增量状态构建报告用的话题列表。
+        Xây dựng danh sách chủ đề dùng cho báo cáo từ trạng thái gia tăng.
 
-        将 IncrementalState 中累积的话题字典转换为 SummaryTopic 实例列表。
+        Chuyển các dict chủ đề tích luỹ trong ``IncrementalState`` thành
+        danh sách instance ``SummaryTopic``.
 
         Args:
-            state: 由 merge_batches 合并生成的增量分析状态
+            state: Trạng thái phân tích gia tăng do ``merge_batches`` tạo ra.
 
         Returns:
-            list[SummaryTopic]: 话题列表，格式与传统分析结果一致
+            list[SummaryTopic]: Danh sách chủ đề cùng định dạng với kết quả truyền thống.
         """
         topics = []
         for topic_dict in state.topics:
             topic = SummaryTopic(
-                topic=topic_dict.get("topic", "未知话题"),
+                topic=topic_dict.get("topic", "Chủ đề không xác định"),
                 contributors=topic_dict.get("contributors", []),
                 detail=topic_dict.get("detail", ""),
                 contributor_ids=topic_dict.get("contributor_ids", []),
             )
             topics.append(topic)
 
-        logger.debug(f"从增量状态构建了 {len(topics)} 个话题")
+        logger.debug(f"Đã xây dựng {len(topics)} chủ đề từ trạng thái gia tăng")
         return topics
 
     def build_quotes_for_report(self, state: IncrementalState) -> list[GoldenQuote]:
         """
-        从增量状态构建报告用的金句列表。
+        Xây dựng danh sách trích dẫn dùng cho báo cáo từ trạng thái gia tăng.
 
-        将 IncrementalState 中累积的金句字典转换为 GoldenQuote 实例列表。
+        Chuyển các dict trích dẫn tích luỹ thành danh sách instance ``GoldenQuote``.
 
         Args:
-            state: 由 merge_batches 合并生成的增量分析状态
+            state: Trạng thái phân tích gia tăng do ``merge_batches`` tạo ra.
 
         Returns:
-            list[GoldenQuote]: 金句列表，格式与传统分析结果一致
+            list[GoldenQuote]: Danh sách trích dẫn cùng định dạng với kết quả truyền thống.
         """
         quotes = []
         for quote_dict in state.golden_quotes:
@@ -333,7 +338,7 @@ class IncrementalMergeService:
             )
             quotes.append(quote)
 
-        logger.debug(f"从增量状态构建了 {len(quotes)} 条金句")
+        logger.debug(f"Đã xây dựng {len(quotes)} trích dẫn từ trạng thái gia tăng")
         return quotes
 
     def build_analysis_result(
@@ -342,23 +347,24 @@ class IncrementalMergeService:
         user_titles: list | None = None,
     ) -> dict:
         """
-        从增量状态构建完整的 analysis_result 字典。
+        Xây dựng dict ``analysis_result`` hoàn chỉnh từ trạng thái gia tăng.
 
-        该字典格式与 AnalysisApplicationService.execute_daily_analysis()
-        返回的 analysis_result 完全一致，可直接传入 ReportDispatcher。
+        Định dạng dict giống hoàn toàn với ``analysis_result`` do
+        ``AnalysisApplicationService.execute_daily_analysis()`` trả về và có
+        thể truyền trực tiếp cho ``ReportDispatcher``.
 
         Args:
-            state: 由 merge_batches 合并生成的增量分析状态
-            user_titles: 用户称号列表（由最终报告时 LLM 分析生成）
+            state: Trạng thái phân tích gia tăng do ``merge_batches`` tạo ra.
+            user_titles: Danh sách danh hiệu do LLM tạo khi lập báo cáo cuối.
 
         Returns:
-            dict: 包含 statistics、topics、user_titles、user_analysis 的结果字典
+            Dict kết quả gồm statistics, topics, user_titles và user_analysis.
         """
         statistics = self.build_final_statistics(state)
         topics = self.build_topics_for_report(state)
         golden_quotes = self.build_quotes_for_report(state)
 
-        # 将金句回填到 statistics 中（与传统流程一致）
+        # Gắn trích dẫn trở lại statistics để khớp quy trình truyền thống
         statistics.golden_quotes = golden_quotes
 
         analysis_result = {
@@ -370,31 +376,32 @@ class IncrementalMergeService:
         }
 
         logger.info(
-            f"从增量状态构建完整分析结果: "
-            f"群={state.group_id}, 窗口={state.get_window_date_str()}, "
-            f"消息={state.total_message_count}, "
-            f"话题={len(topics)}, "
-            f"金句={len(golden_quotes)}, "
-            f"批次={state.total_analysis_count}"
+            f"Đã xây dựng kết quả phân tích hoàn chỉnh từ trạng thái gia tăng: "
+            f"nhóm={state.group_id}, cửa sổ={state.get_window_date_str()}, "
+            f"tin nhắn={state.total_message_count}, "
+            f"chủ đề={len(topics)}, "
+            f"trích dẫn={len(golden_quotes)}, "
+            f"batch={state.total_analysis_count}"
         )
 
         return analysis_result
 
     def _build_emoji_statistics(self, state: IncrementalState) -> EmojiStatistics:
         """
-        从增量状态构建表情统计。
+        Xây dựng thống kê biểu cảm từ trạng thái gia tăng.
 
-        将 IncrementalState 中的 emoji_counts 字典映射到 EmojiStatistics 字段。
+        Ánh xạ dict ``emoji_counts`` trong ``IncrementalState`` vào các
+        trường của ``EmojiStatistics``.
 
         Args:
-            state: 增量分析状态
+            state: Trạng thái phân tích gia tăng.
 
         Returns:
-            EmojiStatistics: 表情统计实例
+            EmojiStatistics: Instance thống kê biểu cảm.
         """
         emoji_counts = state.emoji_counts
 
-        # 显式提取并检查类型，辅助 Pylance 类型推断
+        # Trích xuất và kiểm tra kiểu rõ ràng để hỗ trợ Pylance suy luận kiểu
         face_details = emoji_counts.get("face_details")
         if not isinstance(face_details, dict):
             face_details = {}

@@ -1,4 +1,4 @@
-"""Telegram 模板预览交互处理。"""
+"""Xử lý tương tác preview template trên Telegram."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ class _PreviewSession:
 
 
 class TelegramTemplatePreviewHandler:
-    """Telegram 按钮预览处理器（←/确定/→）。"""
+    """Trình xử lý nút preview Telegram (←/Xác nhận/→)."""
 
     _SESSION_TTL_SECONDS = 2 * 60 * 60
     _MAX_SESSIONS = 200
@@ -82,17 +82,17 @@ class TelegramTemplatePreviewHandler:
 
     @staticmethod
     def supports(event: AstrMessageEvent) -> bool:
-        """判断是否 Telegram 事件。"""
+        """Kiểm tra có phải sự kiện Telegram hay không."""
         try:
             return (event.get_platform_name() or "").lower() == "telegram"
         except Exception:
             return False
 
-    # 向后兼容旧调用名
+    # Tương thích ngược với tên gọi cũ.
     is_telegram_event = supports
 
     async def ensure_callback_handlers_registered(self, context: Any) -> None:
-        """为所有 Telegram 平台注册按钮回调处理器。"""
+        """Đăng ký callback nút cho mọi nền tảng Telegram."""
         if not TELEGRAM_RUNTIME_AVAILABLE:
             return
         if not context or not hasattr(context, "platform_manager"):
@@ -123,15 +123,15 @@ class TelegramTemplatePreviewHandler:
                     self._registered_platform_ids.add(platform_id)
                     continue
 
-                # 平台对象热替换：解绑旧 application 上的 handler 后重绑
+                # Hot-swap nền tảng: gỡ handler application cũ rồi gắn lại.
                 try:
                     old_application.remove_handler(old_handler)
                     logger.info(
-                        f"[TemplatePreview][Telegram] 检测到 application 变更，已解绑旧回调: platform_id={platform_id}"
+                        f"[TemplatePreview][Telegram] Phát hiện application thay đổi, đã gỡ callback cũ: platform_id={platform_id}"
                     )
                 except Exception as e:
                     logger.debug(
-                        f"[TemplatePreview][Telegram] 解绑旧回调失败: platform_id={platform_id}, err={e}"
+                        f"[TemplatePreview][Telegram] Gỡ callback cũ thất bại: platform_id={platform_id}, err={e}"
                     )
                 self._handlers.pop(platform_id, None)
                 self._registered_platform_ids.discard(platform_id)
@@ -145,14 +145,14 @@ class TelegramTemplatePreviewHandler:
                 self._registered_platform_ids.add(platform_id)
                 self._handlers[platform_id] = (application, handler)
                 logger.info(
-                    f"[TemplatePreview][Telegram] 已注册回调处理器: platform_id={platform_id}"
+                    f"[TemplatePreview][Telegram] Đã đăng ký callback: platform_id={platform_id}"
                 )
             except Exception as e:
                 logger.warning(
-                    f"[TemplatePreview][Telegram] 注册回调处理器失败: platform_id={platform_id}, err={e}"
+                    f"[TemplatePreview][Telegram] Đăng ký callback thất bại: platform_id={platform_id}, err={e}"
                 )
 
-        # 兜底清理：平台下线后移除残留 handler，避免资源泄漏
+        # Dọn handler sót lại khi nền tảng offline để tránh rò rỉ tài nguyên.
         stale_ids = [
             platform_id
             for platform_id in list(self._handlers.keys())
@@ -163,17 +163,17 @@ class TelegramTemplatePreviewHandler:
             try:
                 old_application.remove_handler(old_handler)
                 logger.info(
-                    f"[TemplatePreview][Telegram] 已清理离线平台回调: platform_id={stale_platform_id}"
+                    f"[TemplatePreview][Telegram] Đã dọn callback nền tảng offline: platform_id={stale_platform_id}"
                 )
             except Exception as e:
                 logger.debug(
-                    f"[TemplatePreview][Telegram] 清理离线平台回调失败: platform_id={stale_platform_id}, err={e}"
+                    f"[TemplatePreview][Telegram] Dọn callback nền tảng offline thất bại: platform_id={stale_platform_id}, err={e}"
                 )
             self._registered_platform_ids.discard(stale_platform_id)
             self._platform_clients.pop(stale_platform_id, None)
 
     async def unregister_callback_handlers(self) -> None:
-        """卸载已注册的回调处理器（插件终止时调用）。"""
+        """Gỡ callback đã đăng ký khi plugin kết thúc."""
         if not TELEGRAM_RUNTIME_AVAILABLE:
             return
 
@@ -181,11 +181,11 @@ class TelegramTemplatePreviewHandler:
             try:
                 application.remove_handler(handler)
                 logger.info(
-                    f"[TemplatePreview][Telegram] 已移除回调处理器: platform_id={platform_id}"
+                    f"[TemplatePreview][Telegram] Đã gỡ callback: platform_id={platform_id}"
                 )
             except Exception as e:
                 logger.debug(
-                    f"[TemplatePreview][Telegram] 移除回调处理器失败: platform_id={platform_id}, err={e}"
+                    f"[TemplatePreview][Telegram] Gỡ callback thất bại: platform_id={platform_id}, err={e}"
                 )
         self._handlers.clear()
         self._registered_platform_ids.clear()
@@ -198,11 +198,9 @@ class TelegramTemplatePreviewHandler:
         available_templates: list[str],
     ) -> bool:
         """
-        在 Telegram 中发送可交互模板预览消息。
+        Gửi tin nhắn preview template tương tác trên Telegram.
 
-        返回：
-        - True: 已由本处理器发送消息（调用方不应再走默认回复）
-        - False: 无法处理，调用方应走原有降级路径
+        Trả về True nếu handler đã gửi; False để caller dùng fallback mặc định.
         """
         if not TELEGRAM_RUNTIME_AVAILABLE:
             return False
@@ -211,7 +209,7 @@ class TelegramTemplatePreviewHandler:
 
         client = self._get_event_client(event, platform_id)
         if client is None:
-            logger.warning("[TemplatePreview][Telegram] 无法获取 Telegram client")
+            logger.warning("[TemplatePreview][Telegram] Không thể lấy Telegram client")
             return False
 
         target = self._resolve_chat_target(event)
@@ -223,7 +221,7 @@ class TelegramTemplatePreviewHandler:
             requester_id = int(str(event.get_sender_id()))
         except Exception:
             logger.warning(
-                "[TemplatePreview][Telegram] sender_id 非法，无法创建交互会话"
+                "[TemplatePreview][Telegram] sender_id không hợp lệ, không thể tạo phiên tương tác"
             )
             return False
 
@@ -289,7 +287,7 @@ class TelegramTemplatePreviewHandler:
         )
         self._cleanup_expired_sessions()
         logger.info(
-            "[TemplatePreview][Telegram] 已发送交互预览: "
+            "[TemplatePreview][Telegram] Đã gửi preview tương tác: "
             f"platform_id={platform_id} chat_id={chat_id} token={token} templates={len(available_templates)}"
         )
         return True
@@ -300,7 +298,7 @@ class TelegramTemplatePreviewHandler:
         platform_id: str,
         template_name: str,
     ) -> bool:
-        """TG 回退路径：直接发送单张预览图（不经过 event.image_result）。"""
+        """Fallback Telegram: gửi trực tiếp một ảnh preview."""
         if not TELEGRAM_RUNTIME_AVAILABLE:
             return False
 
@@ -310,7 +308,9 @@ class TelegramTemplatePreviewHandler:
 
         client = self._get_event_client(event, platform_id)
         if client is None:
-            logger.warning("[TemplatePreview][Telegram] 回退发图失败：无法获取 client")
+            logger.warning(
+                "[TemplatePreview][Telegram] Gửi ảnh fallback thất bại: không thể lấy client"
+            )
             return False
 
         target = self._resolve_chat_target(event)
@@ -320,7 +320,7 @@ class TelegramTemplatePreviewHandler:
 
         payload: dict[str, Any] = {
             "chat_id": chat_id,
-            "caption": f"🖼 当前模板预览: {template_name}",
+            "caption": f"🖼 Preview template hiện tại: {template_name}",
             "connect_timeout": self._CONNECT_TIMEOUT,
             "read_timeout": self._READ_TIMEOUT,
             "write_timeout": self._WRITE_TIMEOUT,
@@ -345,7 +345,7 @@ class TelegramTemplatePreviewHandler:
         platform_id: str,
         available_templates: list[str],
     ) -> tuple[bool, list[Any]]:
-        """统一处理 Telegram 的 /查看模板 流程。"""
+        """Xử lý thống nhất quy trình /xemmau trên Telegram."""
         if not self.supports(event):
             return False, []
 
@@ -358,12 +358,12 @@ class TelegramTemplatePreviewHandler:
             )
             results.append(
                 event.plain_result(
-                    f"""🎨 可用报告模板列表
-📌 当前使用: {current_template}
+                    f"""🎨 Danh sách template báo cáo khả dụng
+📌 Đang dùng: {current_template}
 
 {template_list_str}
 
-💡 使用 /设置模板 [序号] 切换"""
+💡 Dùng /maubc [số thứ tự] để chuyển"""
                 )
             )
 
@@ -374,10 +374,18 @@ class TelegramTemplatePreviewHandler:
                     template_name=current_template,
                 )
                 if not sent_preview:
-                    results.append(event.plain_result("⚠️ 当前模板预览图发送失败"))
+                    results.append(
+                        event.plain_result(
+                            "⚠️ Gửi ảnh preview template hiện tại thất bại"
+                        )
+                    )
             except Exception as image_err:
-                logger.warning(f"[TemplatePreview][Telegram] 回退发图失败: {image_err}")
-                results.append(event.plain_result("⚠️ 当前模板预览图发送失败"))
+                logger.warning(
+                    f"[TemplatePreview][Telegram] Gửi ảnh fallback thất bại: {image_err}"
+                )
+                results.append(
+                    event.plain_result("⚠️ Gửi ảnh preview template hiện tại thất bại")
+                )
 
         try:
             sent = await self.send_preview_message(
@@ -391,7 +399,7 @@ class TelegramTemplatePreviewHandler:
             return True, results
         except Exception as e:
             logger.warning(
-                f"[TemplatePreview][Telegram] 交互预览发送失败，回退普通模式: {e}"
+                f"[TemplatePreview][Telegram] Gửi preview tương tác thất bại, chuyển sang chế độ thường: {e}"
             )
             await _append_fallback_results()
             return True, results
@@ -410,34 +418,42 @@ class TelegramTemplatePreviewHandler:
         data = query.data
         parts = data.split(":")
         if len(parts) != 3:
-            await query.answer("无效操作", show_alert=False)
+            await query.answer("Thao tác không hợp lệ", show_alert=False)
             return
 
         _, token, action = parts
         session = self._sessions.get(token)
         if not session:
-            await query.answer("预览会话已过期，请重新发送 /查看模板", show_alert=True)
+            await query.answer(
+                "Phiên preview đã hết hạn, hãy gửi lại /xemmau", show_alert=True
+            )
             return
         if time.time() - session.created_at > self._SESSION_TTL_SECONDS:
             self._sessions.pop(token, None)
-            await query.answer("预览会话已过期，请重新发送 /查看模板", show_alert=True)
+            await query.answer(
+                "Phiên preview đã hết hạn, hãy gửi lại /xemmau", show_alert=True
+            )
             return
 
         if not query.from_user:
-            await query.answer("无法识别操作者", show_alert=False)
+            await query.answer("Không thể nhận diện người thao tác", show_alert=False)
             return
         if int(query.from_user.id) != session.requester_id:
-            await query.answer("仅命令发起人可操作该预览", show_alert=True)
+            await query.answer(
+                "Chỉ người gọi lệnh mới có thể thao tác preview này", show_alert=True
+            )
             return
 
         if not query.message:
-            await query.answer("消息已失效", show_alert=False)
+            await query.answer("Tin nhắn không còn hiệu lực", show_alert=False)
             return
 
         if query.message.message_id != session.message_id or str(
             query.message.chat_id
         ) != str(session.chat_id):
-            await query.answer("预览状态不一致，请重新发送 /查看模板", show_alert=True)
+            await query.answer(
+                "Trạng thái preview không khớp, hãy gửi lại /xemmau", show_alert=True
+            )
             return
 
         if action == "prev":
@@ -456,14 +472,14 @@ class TelegramTemplatePreviewHandler:
             template_name = session.current_template
             self.config_manager.set_report_template(template_name)
             await self._edit_preview_message(query, session, applied=True)
-            await query.answer(f"已设置模板: {template_name}", show_alert=False)
+            await query.answer(f"Đã đặt template: {template_name}", show_alert=False)
             logger.info(
-                "[TemplatePreview][Telegram] 已应用模板: "
+                "[TemplatePreview][Telegram] Đã áp dụng template: "
                 f"platform_id={session.platform_id} template={template_name} requester={session.requester_id}"
             )
             return
 
-        await query.answer("未知操作", show_alert=False)
+        await query.answer("Thao tác không xác định", show_alert=False)
 
     async def _edit_preview_message(
         self, query: Any, session: _PreviewSession, applied: bool = False
@@ -526,7 +542,7 @@ class TelegramTemplatePreviewHandler:
                         callback_data=f"{self._callback_prefix}:{token}:prev",
                     ),
                     InlineKeyboardButton(
-                        text="确定",
+                        text="Xác nhận",
                         callback_data=f"{self._callback_prefix}:{token}:apply",
                     ),
                     InlineKeyboardButton(
@@ -545,13 +561,15 @@ class TelegramTemplatePreviewHandler:
         applied: bool = False,
     ) -> str:
         current_active = self.config_manager.get_report_template()
-        active_mark = "✅ 当前生效" if template_name == current_active else "未生效"
-        apply_mark = "\n\n✅ 已应用该模板" if applied else ""
+        active_mark = (
+            "✅ Đang áp dụng" if template_name == current_active else "Chưa áp dụng"
+        )
+        apply_mark = "\n\n✅ Đã áp dụng template này" if applied else ""
         return (
-            f"🎨 模板预览 ({index + 1}/{total})\n"
-            f"当前项: {template_name}\n"
-            f"状态: {active_mark}\n\n"
-            "操作: ← 上一个 / 确定应用 / → 下一个"
+            f"🎨 Preview template ({index + 1}/{total})\n"
+            f"Mục hiện tại: {template_name}\n"
+            f"Trạng thái: {active_mark}\n\n"
+            "Thao tác: ← Trước / Xác nhận áp dụng / → Sau"
             f"{apply_mark}"
         )
 

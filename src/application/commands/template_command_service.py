@@ -1,4 +1,4 @@
-"""模板管理相关命令服务。"""
+"""Dịch vụ command quản lý template."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from astrbot.api.message_components import Image, Node, Nodes, Plain
 
 
 class TemplateCommandService:
-    """封装模板命令的文件系统与消息构建逻辑。"""
+    """Đóng gói logic filesystem và tạo tin nhắn cho command template."""
 
     _CIRCLE_NUMBERS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
 
@@ -17,7 +17,7 @@ class TemplateCommandService:
         self.plugin_root = plugin_root
 
     def resolve_template_base_dir(self) -> str:
-        """解析报告模板目录（兼容新旧目录结构）。"""
+        """Xác định thư mục template báo cáo, tương thích cấu trúc cũ và mới."""
         candidate_dirs = [
             os.path.join(
                 self.plugin_root, "src", "infrastructure", "reporting", "templates"
@@ -30,7 +30,7 @@ class TemplateCommandService:
         return candidate_dirs[0]
 
     def resolve_template_preview_path(self, template_name: str) -> str | None:
-        """解析模板预览图路径。"""
+        """Xác định đường dẫn ảnh xem trước template."""
         candidate_paths = [
             os.path.join(self.plugin_root, "assets", f"{template_name}-demo.jpg"),
         ]
@@ -40,7 +40,7 @@ class TemplateCommandService:
         return None
 
     async def list_available_templates(self) -> list[str]:
-        """列出所有可用模板。"""
+        """Liệt kê mọi template khả dụng."""
         template_base_dir = self.resolve_template_base_dir()
 
         def _list_templates_sync() -> list[str]:
@@ -58,14 +58,14 @@ class TemplateCommandService:
         return await asyncio.to_thread(_list_templates_sync)
 
     async def template_exists(self, template_name: str) -> bool:
-        """检查模板目录是否存在。"""
+        """Kiểm tra thư mục template có tồn tại hay không."""
         template_dir = os.path.join(self.resolve_template_base_dir(), template_name)
         return await asyncio.to_thread(os.path.exists, template_dir)
 
     def parse_template_input(
         self, template_input: str, available_templates: list[str]
     ) -> tuple[str | None, str | None]:
-        """解析模板输入（支持模板名或序号）。"""
+        """Phân tích đầu vào theo tên hoặc số thứ tự template."""
         if not template_input:
             return None, "❌ Tham số mẫu không được để trống"
 
@@ -87,7 +87,7 @@ class TemplateCommandService:
         current_template: str,
         bot_id: str,
     ) -> Nodes:
-        """构建模板预览的合并消息节点。"""
+        """Tạo các node tin nhắn tổng hợp để xem trước template."""
         node_list = []
 
         header_content = [

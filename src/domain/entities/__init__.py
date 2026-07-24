@@ -1,10 +1,10 @@
 """
-领域实体
+Các entity thuộc tầng domain.
 
-该模块导出所有领域实体类，包括:
-- AnalysisTask: 分析任务聚合根
-- IncrementalBatch: 增量分析独立批次实体
-- IncrementalState: 增量分析聚合视图（报告时使用）
+Module này export các entity domain, gồm:
+- AnalysisTask: aggregate root của tác vụ phân tích
+- IncrementalBatch: entity đại diện cho một batch phân tích gia tăng
+- IncrementalState: view tổng hợp phân tích gia tăng dùng khi tạo báo cáo
 """
 
 from .analysis_task import AnalysisTask, TaskStatus

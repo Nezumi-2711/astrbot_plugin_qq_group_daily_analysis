@@ -51,7 +51,7 @@
             color: var(--text-main);
             background-color: var(--bg-page-base);
 
-            /* 背景图：多层叠加，保证通透和细节 */
+            /* Ảnh nền nhiều lớp để giữ độ trong và chi tiết */
             background-image:
                 linear-gradient(rgba(240, 250, 250, 0.95), rgba(240, 250, 250, 0.95)),
                 linear-gradient(rgba(57, 197, 187, 0.04) 1px, transparent 1px),
@@ -77,12 +77,12 @@
             overflow: hidden;
             border: 1px solid var(--border-miku-light);
             z-index: 1;
-            /* 极淡的葱绿波点，消除白底空洞 */
+            /* Chấm xanh nhạt để nền trắng bớt trống */
             background-image: radial-gradient(rgba(57, 197, 187, 0.08) 1.5px, transparent 1.5px);
             background-size: 24px 24px;
         }
 
-        /* --- 丰富的背景隐含文字装饰 (极低透明度，不影响阅读) --- */
+        /* Chữ trang trí ẩn trên nền với độ mờ rất thấp */
         .deco-01 {
             position: absolute;
             top: 40px;
@@ -142,7 +142,7 @@
             pointer-events: none;
         }
 
-        /* 头部设计 */
+        /* Thiết kế header */
         .header {
             position: relative;
             z-index: 1;
@@ -182,7 +182,7 @@
             font-size: 1.1rem;
         }
 
-        /* 统计卡片层 */
+        /* Lớp thẻ thống kê */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -227,21 +227,21 @@
             margin-bottom: 2px;
         }
 
-        /* --- 活跃峰值时段块 (核心修改区) --- */
+        /* Khối khung giờ hoạt động cao điểm */
         .active-peak-block {
             grid-column: span 12;
             background: linear-gradient(135deg, var(--miku-base) 0%, var(--miku-light) 100%);
             color: #fff;
 
-            /* 修改 1: 设定固定高度，防止被图片拉大 */
+            /* Đặt chiều cao cố định để ảnh không kéo giãn */
             height: 120px;
-            /* 修改 2: 移除垂直 padding，让内容占满高度 */
+            /* Bỏ padding dọc để nội dung phủ hết chiều cao */
             padding: 0 35px;
 
             border-radius: var(--radius);
             margin-bottom: 30px;
 
-            /* 修改 3: 使用水平 Flex 布局，文字居左，图片居右 */
+            /* Flex ngang: chữ bên trái, ảnh bên phải */
             display: flex;
             flex-direction: row;
             align-items: center;
@@ -252,7 +252,7 @@
             box-shadow: 0 6px 15px rgba(57, 197, 187, 0.15);
         }
 
-        /* 底部 MIKU 字母水印，降低层级 */
+        /* Watermark MIKU ở đáy với z-index thấp */
         .active-peak-block::after {
             content: "MIKU";
             position: absolute;
@@ -272,7 +272,7 @@
             letter-spacing: -3px;
         }
 
-        /* 文本区域样式 */
+        /* Kiểu vùng văn bản */
         .peak-label {
             font-size: 1rem;
             font-weight: bold;
@@ -303,32 +303,32 @@
             overflow-wrap: normal;
         }
 
-        /* 图片容器样式：顶天立地，完全不拉伸 */
+        /* Container ảnh phủ chiều cao nhưng không kéo giãn */
         .peak-image-container {
             height: 100%;
-            /* 核心：容器高度占满 */
+            /* Container phủ hết chiều cao */
             width: auto;
             max-width: 45%;
-            /* 防止图片太宽挤扁文字 */
+            /* Tránh ảnh quá rộng ép vùng chữ */
             flex: 0 1 150px;
             display: flex;
             align-items: center;
             justify-content: flex-end;
             position: relative;
             z-index: 1;
-            /* 在水印上方，但在文字下方 */
+            /* Trên watermark nhưng dưới chữ */
         }
 
         .miku-peak-activity-image {
             height: 100%;
-            /* 核心：图片高度占满容器 */
+            /* Ảnh phủ hết chiều cao container */
             width: 150px;
             max-width: 100%;
-            /* 核心：保持原比例，不拉伸，完整显示在框内 */
+            /* Giữ tỷ lệ gốc, không kéo giãn và hiển thị trọn trong khung */
             background: var(--miku-peak-activity-image) center / auto 100% no-repeat;
         }
 
-        /* 模块标头公共样式 */
+        /* Kiểu chung cho tiêu đề module */
         .section-header {
             display: flex;
             align-items: center;
@@ -358,7 +358,7 @@
             gap: 10px;
         }
 
-        /* 全局通用卡片 */
+        /* Thẻ dùng chung toàn cục */
         .card-common {
             background: rgba(255, 255, 255, 0.98);
             border-radius: var(--radius);
@@ -376,13 +376,13 @@
             transform: translateY(-2px);
         }
 
-        /* --- 完美对齐的透明马卡龙底部栏 --- */
+        /* Thanh đáy macaron trong suốt được căn chỉnh */
         .footer {
             margin-top: 50px;
-            /* 使用半透明的马卡龙蓝/葱绿作为底色，告别黑色沉闷 */
+            /* Nền xanh macaron bán trong suốt thay cho màu đen */
             background: rgba(224, 242, 241, 0.65);
             backdrop-filter: blur(10px);
-            /* 毛玻璃效果 */
+            /* Hiệu ứng kính mờ */
             -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(57, 197, 187, 0.3);
             border-radius: var(--radius);
@@ -407,7 +407,7 @@
             align-items: center;
         }
 
-        /* 字体颜色适配浅色背景 */
+        /* Màu chữ phù hợp nền sáng */
         .footer-repo {
             display: inline-flex;
             align-items: center;

@@ -113,7 +113,7 @@ def test_new_qq_official_message_replaces_mentions_before_storage():
 
     stored_parts = history_manager.calls[0]["content"]["message"]
     assert stored_parts == [
-        {"type": "plain", "text": "请问 @随风潜入夜 和 @群友 怎么看"}
+        {"type": "plain", "text": "请问 @随风潜入夜 和 @Thành viên 怎么看"}
     ]
     assert "KNOWN_OPENID" not in stored_parts[0]["text"]
     assert "UNKNOWN_OPENID" not in stored_parts[0]["text"]

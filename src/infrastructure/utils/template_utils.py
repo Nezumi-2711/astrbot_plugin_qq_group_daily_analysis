@@ -1,19 +1,19 @@
-"""安全模板渲染工具（String Template 兼容）"""
+"""Công cụ render template an toàn, tương thích String Template."""
 
 import re
 from string import Template
 
 from ...utils.logger import logger
 
-# 统一默认 placeholder
+# Placeholder mặc định dùng chung
 PLACEHOLDERS = {
-    # 分析类核心变量
+    # Biến cốt lõi của phân tích
     "messages_text": "${messages_text}",
     "reviews_text": "${reviews_text}",
     "max_topics": "${max_topics}",
     "users_text": "${users_text}",
     "max_golden_quotes": "${max_golden_quotes}",
-    # 文件名渲染类变量
+    # Biến dùng khi render tên tệp
     "group_id": "${group_id}",
     "date": "${date}",
     "ulid": "${ulid}",
@@ -21,32 +21,30 @@ PLACEHOLDERS = {
 
 
 def is_str_format_template(template: str) -> bool:
-    """判断模板是否为 str.format 风格。
+    """Kiểm tra template có dùng cú pháp str.format hay không.
 
-    只认为满足：
-    1) 不包含 String Template `${var}` 或 `$var`
-    2) 包含 str.format `{var}`（非 `{{...}}`）
+    Chỉ coi là str.format khi không chứa placeholder String Template
+    `${var}` hoặc `$var`, đồng thời có `{var}` nhưng không phải `{{...}}`.
     """
     if not template:
         return False
 
-    # 1. 預先建立排除模式 (匹配 ${var} 或 $var)
-    # 使用 set 去重並組合
+    # 1. Tạo pattern loại trừ cho ${var} hoặc $var.
     dollar_patterns = [re.escape(v) for v in PLACEHOLDERS.values()] + [
         rf"\${re.escape(k)}" for k in PLACEHOLDERS.keys()
     ]
     exclude_regex = "|".join(dollar_patterns)
 
-    # 如果包含任何 $ 相關的佔位符，則不視為 str.format 模板
+    # Có placeholder liên quan đến $ thì không coi là template str.format.
     if re.search(exclude_regex, template):
         return False
 
-    # 2. 檢查是否包含標準的 {key}，確保匹配單個花括號包裹的 Key
+    # 2. Kiểm tra {key} chuẩn trong một cặp ngoặc đơn.
     for key in PLACEHOLDERS.keys():
-        # (?<!\{)  前面不能有 {
-        # \{{key}\} 匹配 {key}
-        # (?!\})   後面不能有 }
-        # (?<!\$)  前面不能有 $
+        # (?<!\{): phía trước không được là {
+        # \{{key}\}: khớp {key}
+        # (?!\}): phía sau không được là }
+        # (?<!\$): phía trước không được là $
         pattern = rf"(?<![\{{\$])\{{{key}\}}(?!\}})"
         if re.search(pattern, template):
             return True
@@ -54,9 +52,9 @@ def is_str_format_template(template: str) -> bool:
 
 
 def upgrade_str_format_template(template: str) -> tuple[str, bool]:
-    """如果模板是 str.format 风格，则自动升级为 string.Template。
+    """Tự nâng cấp template str.format sang string.Template.
 
-    返回 (升级后的模板, 是否升级)
+    Trả về tuple gồm template sau nâng cấp và trạng thái đã nâng cấp.
     """
     if template is None:
         return "", False
@@ -64,31 +62,32 @@ def upgrade_str_format_template(template: str) -> tuple[str, bool]:
     if not is_str_format_template(template):
         return template, False
 
-    # 先转义原文中的 $，避免被 Template 误解释为占位符
+    # Escape $ trong văn bản gốc để Template không hiểu nhầm là placeholder.
     safe_template = template.replace("$", "$$")
 
-    # 将 {var} 转为 ${var}
+    # Chuyển {var} thành ${var}.
     safe_template = re.sub(
         r"(?<![\{\$])\{([_a-zA-Z][_a-zA-Z0-9]*)\}(?!\})",
         lambda m: f"${{{m.group(1)}}}",
         safe_template,
     )
 
-    # 将双括号回退为单括号（str.format 里表示字面量大括号）
+    # Chuyển ngoặc kép về ngoặc đơn (ngoặc literal trong str.format).
     safe_template = safe_template.replace("{{", "{").replace("}}", "}")
 
     return safe_template, True
 
 
 def render_template(template: str, strict: bool = False, **kwargs) -> str:
-    """渲染模板（String Template）。
+    """Render template bằng String Template.
 
     Args:
-        template: 模板字符串
-        strict: 是否使用严格模式（变量缺失则抛出异常）
-        **kwargs: 渲染变量
+        template: Chuỗi template.
+        strict: Có dùng strict mode hay không; thiếu biến sẽ phát sinh lỗi.
+        **kwargs: Biến dùng để render.
 
-    由于插件启动时已完成 str.format 兼容升级，运行时直接按 string.Template 渲染。
+    Plugin nâng cấp tương thích str.format khi khởi động nên runtime render
+    trực tiếp bằng string.Template.
     """
     if template is None:
         return ""
@@ -100,7 +99,7 @@ def render_template(template: str, strict: bool = False, **kwargs) -> str:
         if strict:
             raise
         logger.warning(
-            f"[template_utils] 模板渲染失败，返回原始文本，错误: {e}",
+            f"[template_utils] Render template thất bại, trả văn bản gốc; lỗi: {e}",
             exc_info=True,
         )
         return template

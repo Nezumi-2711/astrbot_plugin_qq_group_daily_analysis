@@ -1,8 +1,8 @@
 """
-领域服务 - 分析业务逻辑服务
+Dịch vụ domain - các dịch vụ xử lý logic phân tích nghiệp vụ.
 
-该模块导出所有封装核心业务逻辑的领域服务，
-用于分析群聊数据。这些服务是平台无关的。
+Module này export các dịch vụ domain đóng gói logic nghiệp vụ cốt lõi
+để phân tích dữ liệu trò chuyện nhóm. Các dịch vụ độc lập với nền tảng.
 """
 
 from .incremental_merge_service import IncrementalMergeService

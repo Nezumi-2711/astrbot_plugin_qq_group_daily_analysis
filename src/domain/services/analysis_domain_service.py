@@ -1,6 +1,8 @@
 """
-分析领域服务 - 领域层
-负责用户维度的活跃度分析、发言习惯及活动模式识别。
+Dịch vụ phân tích thuộc tầng domain.
+
+Phụ trách phân tích mức độ hoạt động, thói quen trò chuyện và nhận diện
+mẫu hoạt động của từng thành viên.
 """
 
 from datetime import datetime
@@ -19,7 +21,7 @@ class UserActivityStats(TypedDict):
 
 
 class AnalysisDomainService:
-    """分析领域服务 - 处理用户画像及行为分析"""
+    """Xử lý phân tích chân dung và hành vi thành viên."""
 
     def analyze_user_activity(
         self,
@@ -27,9 +29,10 @@ class AnalysisDomainService:
         bot_self_ids: list[str] | None = None,
     ) -> dict[str, UserActivityStats]:
         """
-        分析用户活跃度。
+        Phân tích mức độ hoạt động của thành viên.
 
-        基于 UnifiedMessage 计算每个用户的发言数、字数、表情数等。
+        Dựa trên ``UnifiedMessage`` để tính số tin nhắn, số ký tự,
+        số biểu cảm và các chỉ số khác của từng thành viên.
         """
         user_stats: dict[str, UserActivityStats] = {}
 
@@ -38,7 +41,7 @@ class AnalysisDomainService:
         for msg in messages:
             user_id = msg.sender_id
 
-            # 跳过机器人自己的消息
+            # Bỏ qua tin nhắn của chính bot
             if user_id in bot_ids:
                 continue
 
@@ -56,12 +59,12 @@ class AnalysisDomainService:
             stats["message_count"] += 1
             stats["nickname"] = msg.sender_card or msg.sender_name
 
-            # 统计时间分布
+            # Thống kê phân bố theo thời gian
             msg_time = datetime.fromtimestamp(msg.timestamp)
             hour = msg_time.hour
             stats["hours"][hour] = stats["hours"].get(hour, 0) + 1
 
-            # 统计内容
+            # Thống kê nội dung
             for content in msg.contents:
                 if content.type == MessageContentType.TEXT:
                     stats["char_count"] += len(content.text or "")
@@ -70,7 +73,7 @@ class AnalysisDomainService:
                     stats["emoji_count"] += 1
 
                 elif content.type == MessageContentType.IMAGE:
-                    # 与 GroupStatistics 口径保持一致
+                    # Giữ cách tính nhất quán với GroupStatistics
                     if self._is_emoji_like_image(content.raw_data):
                         stats["emoji_count"] += 1
 
@@ -81,7 +84,7 @@ class AnalysisDomainService:
 
     @staticmethod
     def _is_emoji_like_image(raw_data: object) -> bool:
-        """判断 IMAGE 段是否应按表情计数。"""
+        """Kiểm tra phân đoạn IMAGE có được tính là biểu cảm hay không."""
         if isinstance(raw_data, dict):
             sub_type = raw_data.get("sub_type")
             if sub_type is not None:
@@ -98,7 +101,7 @@ class AnalysisDomainService:
     def get_top_users(
         self, user_activity: dict[str, UserActivityStats], limit: int = 10
     ) -> list[dict]:
-        """获取最活跃的用户列表"""
+        """Lấy danh sách thành viên hoạt động tích cực nhất."""
         users = []
         for user_id, stats in user_activity.items():
             users.append(
@@ -112,24 +115,24 @@ class AnalysisDomainService:
                 }
             )
 
-        # 按消息数量排序
+        # Sắp xếp theo số lượng tin nhắn
         users.sort(key=lambda x: x["message_count"], reverse=True)
         return users[:limit]
 
     def get_user_activity_pattern(
         self, user_activity: dict[str, UserActivityStats], user_id: str
     ) -> dict:
-        """获取并识别指定用户的活动模式"""
+        """Lấy và nhận diện mẫu hoạt động của thành viên được chỉ định."""
         if user_id not in user_activity:
             return {}
 
         stats = user_activity[user_id]
         hours = stats["hours"]
 
-        # 找出最活跃的时间段
+        # Xác định khung giờ hoạt động tích cực nhất
         most_active_hour = max(hours.items(), key=lambda x: x[1])[0] if hours else 0
 
-        # 计算夜间活跃度 (0-6点)
+        # Tính mức độ hoạt động ban đêm (0-6 giờ)
         night_messages = sum(hours[h] for h in range(0, 6))
         night_ratio = (
             night_messages / stats["message_count"] if stats["message_count"] > 0 else 0

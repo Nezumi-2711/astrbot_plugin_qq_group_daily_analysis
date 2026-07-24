@@ -1,7 +1,4 @@
-"""
-自动调度器模块
-负责定时任务和自动分析功能，支持传统单次分析与增量多次分析两种调度模式。
-"""
+"""Lập lịch phân tích tự động ở chế độ truyền thống và tăng dần."""
 
 import asyncio
 import time as time_mod
@@ -18,7 +15,7 @@ from ..reporting.dispatcher import ReportDispatcher
 
 
 class AutoScheduler:
-    """自动调度器，支持传统模式和增量模式"""
+    """Bộ lập lịch tự động hỗ trợ chế độ truyền thống và tăng dần."""
 
     def __init__(
         self,
@@ -36,7 +33,7 @@ class AutoScheduler:
         self.html_render_func = html_render_func
         self.plugin_instance = plugin_instance
 
-        # 初始化核心组件
+        # Khởi tạo các thành phần cốt lõi.
         self.message_sender = MessageSender(bot_manager, config_manager)
         self.report_dispatcher = ReportDispatcher(
             config_manager, report_generator, self.message_sender
@@ -44,82 +41,89 @@ class AutoScheduler:
         if html_render_func:
             self.report_dispatcher.set_html_render(html_render_func)
 
-        self.scheduler_job_ids = []  # 存储已注册的定时任务 ID
-        self.last_executed_target = None  # 记录上次执行的具体时间点，防止重复执行
+        self.scheduler_job_ids = []  # Lưu ID của các tác vụ đã đăng ký.
+        self.last_executed_target = None  # Ngăn chạy lặp cùng một mốc thời gian.
 
         # Cache: group_id -> group_name (populated lazily)
         self._group_name_cache: dict[str, str] = {}
-        self._terminating = False  # 终止标志位
+        self._terminating = False  # Cờ đang dừng plugin.
 
     def set_bot_instance(self, bot_instance):
-        """设置bot实例（保持向后兼容）"""
+        """Đặt bot instance để giữ tương thích ngược."""
         self.bot_manager.set_bot_instance(bot_instance)
 
     def set_bot_self_ids(self, bot_self_ids):
-        """设置bot ID（支持单个ID或ID列表）"""
-        # 确保传入的是列表，保持统一处理
+        """Đặt một hoặc nhiều ID bot."""
+        # Chuẩn hoá đầu vào thành danh sách.
         if isinstance(bot_self_ids, list):
             self.bot_manager.set_bot_self_ids(bot_self_ids)
         elif bot_self_ids:
             self.bot_manager.set_bot_self_ids([bot_self_ids])
 
     def set_bot_qq_ids(self, bot_qq_ids):
-        """设置bot QQ号（已弃用，使用 set_bot_self_ids）"""
+        """Đặt ID QQ bot; đã lỗi thời, dùng set_bot_self_ids."""
         self.set_bot_self_ids(bot_qq_ids)
 
     async def get_platform_id_for_group(self, group_id):
-        """根据群ID获取对应的平台ID"""
+        """Lấy ID nền tảng tương ứng với ID nhóm."""
         try:
-            # 首先检查已注册的bot实例
+            # Kiểm tra các bot instance đã đăng ký trước.
             if (
                 hasattr(self.bot_manager, "_bot_instances")
                 and self.bot_manager._bot_instances
             ):
-                # 如果只有一个实例，直接返回
+                # Trả ngay khi chỉ có một instance.
                 if self.bot_manager.get_platform_count() == 1:
                     platform_id = self.bot_manager.get_platform_ids()[0]
-                    logger.debug(f"只有一个适配器，使用平台: {platform_id}")
+                    logger.debug(f"Chỉ có một adapter, dùng nền tảng: {platform_id}")
                     return platform_id
 
-                # 如果有多个实例，尝试通过适配器检查群属于哪个平台
-                logger.info(f"检测到多个适配器，正在验证群 {group_id} 属于哪个平台...")
+                # Khi có nhiều instance, kiểm tra nhóm qua từng adapter.
+                logger.info(
+                    f"Phát hiện nhiều adapter, đang xác định nền tảng của nhóm {group_id}..."
+                )
                 for platform_id in self.bot_manager.get_platform_ids():
                     try:
                         adapter = self.bot_manager.get_adapter(platform_id)
                         if adapter:
-                            # 通过统一接口尝试获取群信息，如果能获取到则说明属于该平台
+                            # Nhóm thuộc nền tảng nếu adapter lấy được thông tin nhóm.
                             info = await adapter.get_group_info(str(group_id))
                             if info:
-                                logger.info(f"✅ 群 {group_id} 属于平台 {platform_id}")
+                                logger.info(
+                                    f"✅ Nhóm {group_id} thuộc nền tảng {platform_id}"
+                                )
                                 return platform_id
                             else:
                                 logger.debug(
-                                    f"平台 {platform_id} 无法获取群 {group_id} 信息"
+                                    f"Nền tảng {platform_id} không lấy được thông tin nhóm {group_id}"
                                 )
                     except Exception as e:
-                        logger.debug(f"平台 {platform_id} 验证群 {group_id} 失败: {e}")
+                        logger.debug(
+                            f"Xác minh nhóm {group_id} trên nền tảng {platform_id} thất bại: {e}"
+                        )
                         continue
 
-                # 如果所有适配器都尝试失败，记录错误并返回 None
+                # Không adapter nào xác định được nền tảng.
                 logger.error(
-                    f"❌ 无法确定群 {group_id} 属于哪个平台 (已尝试: {list(self.bot_manager._bot_instances.keys())})"
+                    f"❌ Không thể xác định nền tảng của nhóm {group_id} "
+                    f"(đã thử: {list(self.bot_manager._bot_instances.keys())})"
                 )
                 return None
 
-            # 没有任何bot实例，返回None
-            logger.error("❌ 没有注册的bot实例")
+            # Chưa có bot instance nào được đăng ký.
+            logger.error("❌ Chưa đăng ký bot instance nào")
             return None
         except Exception as e:
-            logger.error(f"❌ 获取平台ID失败: {e}")
+            logger.error(f"❌ Lấy ID nền tảng thất bại: {e}")
             return None
 
     async def _get_group_name_safe(
         self, group_id: str, platform_id: str | None = None
     ) -> str:
         """
-        为 TraceID 生成解析可读的群名。
-        使用内存缓存以避免重复的 API 调用。
-        若名称不可用，则回退到 group_id。
+        Lấy tên nhóm dễ đọc để tạo TraceID.
+
+        Dùng cache bộ nhớ để tránh gọi API lặp lại và fallback về group_id.
         """
         if group_id in self._group_name_cache:
             return self._group_name_cache[group_id]
@@ -139,40 +143,46 @@ class AutoScheduler:
         return group_id
 
     # ================================================================
-    # 任务注册与取消
+    # Đăng ký và huỷ tác vụ
     # ================================================================
 
     def schedule_jobs(self, context):
-        """根据分层名单配置注册定时任务。"""
-        # 首先清理之前的任务
+        """Đăng ký tác vụ theo cấu hình danh sách phân tầng."""
+        # Dọn các tác vụ cũ trước.
         self.unschedule_jobs(context)
 
-        # unschedule_jobs 会将 _terminating 设为 True (用于关闭场景),
-        # 但 schedule_jobs 意味着插件仍在运行；因此需要重置此标志位
+        # unschedule_jobs đặt _terminating=True cho luồng shutdown;
+        # schedule_jobs nghĩa là plugin vẫn chạy nên cần đặt lại cờ.
         self._terminating = False
 
         if not self.config_manager.is_auto_analysis_enabled():
-            logger.info("定时分析名单为空且为白名单模式，不注册定时任务。")
+            logger.info(
+                "Danh sách phân tích định kỳ trống ở chế độ danh sách trắng; không đăng ký tác vụ."
+            )
             return
 
         scheduler = context.cron_manager.scheduler
 
-        # 1. 注册核心报告生成任务（涵盖全量分析与增量总结报告）
-        # 每个配置的时间点都会触发一次解析
-        logger.info("注册定时分析报告任务...")
+        # 1. Đăng ký tác vụ báo cáo cho cả phân tích đầy đủ và tăng dần.
+        # Mỗi mốc thời gian cấu hình sẽ kích hoạt một lần phân giải.
+        logger.info("Đang đăng ký tác vụ báo cáo phân tích định kỳ...")
         self._schedule_report_time_jobs(scheduler)
 
-        # 2. 只有在增量功能总开关开启时，才注册全天候的增量提取任务
+        # 2. Chỉ đăng ký tác vụ trích xuất tăng dần khi tính năng được bật.
         if self.config_manager.get_incremental_enabled():
-            logger.info("增量分析功能已开启，正在注册全天增量提取任务...")
+            logger.info(
+                "Phân tích tăng dần đã bật; đang đăng ký tác vụ trích xuất trong ngày..."
+            )
             self._schedule_incremental_cron_jobs(scheduler)
         else:
-            logger.info("增量分析总开关未启用，仅执行传统定时全量分析。")
+            logger.info(
+                "Phân tích tăng dần chưa bật; chỉ chạy phân tích đầy đủ định kỳ."
+            )
 
     def _schedule_report_time_jobs(self, scheduler):
-        """在配置的时间点注册报告生成任务。
+        """Đăng ký tác vụ tạo báo cáo tại các mốc đã cấu hình.
 
-        这些任务根据运行时解析出的生效模式，决定执行传统的全量分析还是增量汇报。
+        Chế độ hiệu lực lúc chạy quyết định phân tích đầy đủ hay báo cáo tăng dần.
         """
         time_config = self.config_manager.get_auto_analysis_time()
         if isinstance(time_config, str):
@@ -194,23 +204,25 @@ class AutoScheduler:
                     misfire_grace_time=60,
                 )
                 self.scheduler_job_ids.append(job_id)
-                logger.info(f"已注册定时报告任务: {t_str} (Job ID: {job_id})")
+                logger.info(
+                    f"Đã đăng ký tác vụ báo cáo định kỳ: {t_str} (Job ID: {job_id})"
+                )
 
             except Exception as e:
-                logger.error(f"注册定时任务失败 ({t_str}): {e}")
+                logger.error(f"Đăng ký tác vụ định kỳ thất bại ({t_str}): {e}")
 
     def _schedule_incremental_cron_jobs(self, scheduler):
         """
-        在活跃时段注册增量分析定时任务。
+        Đăng ký tác vụ phân tích tăng dần trong khung giờ hoạt động.
 
-        这类任务仅执行增量数据的提取；而报告生成阶段在配置的每日分析时间点进行。
+        Tác vụ này chỉ trích xuất dữ liệu; báo cáo được tạo tại giờ phân tích hằng ngày.
         """
         active_start_hour = self.config_manager.get_incremental_active_start_hour()
         active_end_hour = self.config_manager.get_incremental_active_end_hour()
         interval_minutes = self.config_manager.get_incremental_interval_minutes()
         max_daily = self.config_manager.get_incremental_max_daily_analyses()
 
-        # 计算活跃时段内的触发时间点
+        # Tính các mốc kích hoạt trong khung giờ hoạt động.
         trigger_times = []
         current_minutes = active_start_hour * 60
         end_minutes = active_end_hour * 60
@@ -221,7 +233,7 @@ class AutoScheduler:
             trigger_times.append((hour, minute))
             current_minutes += interval_minutes
 
-        # 注册增量分析任务
+        # Đăng ký tác vụ phân tích tăng dần.
         for hour, minute in trigger_times:
             try:
                 trigger = CronTrigger(hour=hour, minute=minute)
@@ -236,15 +248,18 @@ class AutoScheduler:
                 )
                 self.scheduler_job_ids.append(job_id)
                 logger.info(
-                    f"已注册增量分析任务: {hour:02d}:{minute:02d} (Job ID: {job_id})"
+                    f"Đã đăng ký tác vụ phân tích tăng dần: "
+                    f"{hour:02d}:{minute:02d} (Job ID: {job_id})"
                 )
             except Exception as e:
-                logger.error(f"注册增量分析任务失败 ({hour:02d}:{minute:02d}): {e}")
+                logger.error(
+                    f"Đăng ký tác vụ phân tích tăng dần thất bại ({hour:02d}:{minute:02d}): {e}"
+                )
 
-        logger.info(f"增量调度注册完成: {len(trigger_times)} 个增量分析任务")
+        logger.info(f"Đăng ký lịch tăng dần hoàn tất: {len(trigger_times)} tác vụ")
 
     def unschedule_jobs(self, context):
-        """取消定时任务"""
+        """Huỷ các tác vụ định kỳ."""
         self._terminating = True
         if (
             not context
@@ -261,33 +276,33 @@ class AutoScheduler:
             try:
                 if scheduler.get_job(job_id):
                     scheduler.remove_job(job_id)
-                    logger.debug(f"已移除定时任务: {job_id}")
+                    logger.debug(f"Đã xoá tác vụ định kỳ: {job_id}")
             except Exception as e:
-                logger.warning(f"移除定时任务失败 ({job_id}): {e}")
+                logger.warning(f"Xoá tác vụ định kỳ thất bại ({job_id}): {e}")
         self.scheduler_job_ids.clear()
 
     # ================================================================
-    # 共享辅助方法：解析定时分析目标
+    # Hàm dùng chung để phân giải mục tiêu phân tích định kỳ
     # ================================================================
 
     async def _get_scheduled_targets(
         self, mode_filter: str | None = None
     ) -> list[tuple[str, str, str]]:
         """
-        根据分层过滤逻辑判定所有应参与计划分析的目标群组及其分析策略。
+        Xác định nhóm mục tiêu và chiến lược theo bộ lọc phân tầng.
 
-        判定过程：
-        1. 准入层：群组必须在基础设置的允许名单内。
-        2. 定时层：群组需通过定时分析名单的过滤。
-        3. 模式层：如果群组在增量名单内，则使用增量模式，否则使用默认策略。
+        Quy trình:
+        1. Nhóm phải nằm trong danh sách được phép ở cấu hình cơ sở.
+        2. Nhóm phải vượt qua bộ lọc danh sách phân tích định kỳ.
+        3. Nhóm trong danh sách tăng dần dùng chế độ tăng dần, còn lại dùng mặc định.
 
-        参数：
-            mode_filter: 如果提供，则只返回匹配指定模式的目标 (traditional 或 incremental)。
+        Args:
+            mode_filter: Chỉ trả mục tiêu khớp traditional hoặc incremental.
         """
-        # 获取基础信息
+        # Lấy thông tin cơ sở.
         all_groups = await self._get_all_groups()
 
-        # 预加载所有配置名单和模式
+        # Tải trước các danh sách và chế độ.
         sched_list = self.config_manager.get_scheduled_group_list()
         sched_list_mode = self.config_manager.get_scheduled_group_list_mode()
 
@@ -296,70 +311,70 @@ class AutoScheduler:
 
         result = []
 
-        # 遍历所有平台上的群组
+        # Duyệt nhóm trên mọi nền tảng.
         for platform_id, group_id_orig in all_groups:
             group_id = str(group_id_orig)
             umo = f"{platform_id}:GroupMessage:{group_id}"
 
-            # 1. 准入层判定 (基础黑白名单)
+            # 1. Lớp truy cập: danh sách đen/trắng cơ sở.
             if not self.config_manager.is_group_allowed(umo):
                 continue
 
-            # 2. 定时层判定 (定时分析黑白名单)
+            # 2. Lớp định kỳ: danh sách đen/trắng phân tích định kỳ.
             if not self.config_manager.is_group_in_filtered_list(
                 umo, sched_list_mode, sched_list
             ):
                 continue
 
-            # 3. 模式层判定 (增量黑白名单)
-            # 3. 模式层判定 (增量黑白名单)
+            # 3. Lớp chế độ: danh sách đen/trắng tăng dần.
             if self.config_manager.is_group_in_filtered_list(
                 umo, incr_list_mode, incr_list
             ):
-                # 如果在增量名单内，则执行增量模式
+                # Trong danh sách tăng dần.
                 effective_mode = "incremental"
             else:
-                # 不在增量名单内，则执行普通模式
+                # Không trong danh sách tăng dần.
                 effective_mode = "traditional"
 
-            # 4. 模式过滤 (如果函数调用者要求过滤)
+            # 4. Lọc chế độ nếu caller yêu cầu.
             if mode_filter and effective_mode != mode_filter:
                 continue
 
             result.append((group_id, platform_id, effective_mode))
 
         logger.info(
-            f"分层调度解析完成：符合条件的群组共 {len(result)} 个"
-            + (f" (模式过滤: {mode_filter})" if mode_filter else "")
+            f"Phân giải lịch phân tầng hoàn tất: {len(result)} nhóm hợp lệ"
+            + (f" (bộ lọc chế độ: {mode_filter})" if mode_filter else "")
         )
         return result
 
     # ================================================================
-    # 统一报告调度入口
+    # Điểm vào thống nhất cho lịch báo cáo
     # ================================================================
 
     async def _run_scheduled_report(self):
-        """统一的定时分析入口。
+        """Điểm vào thống nhất cho phân tích định kỳ.
 
-        在配置的时间点触发，解析所有目标群并根据其分析模式分发任务：
-        - traditional: 执行全量拉取分析并发送报告
-        - incremental: 执行增量最终报告阶段（合并并汇报）
+        Kích hoạt tại giờ cấu hình và phân phối theo chế độ:
+        - traditional: lấy toàn bộ dữ liệu, phân tích và gửi báo cáo;
+        - incremental: hợp nhất dữ liệu tăng dần và gửi báo cáo cuối.
         """
         if self._terminating:
             return
         try:
-            logger.info("定时报告触发 — 开始解析调度目标")
+            logger.info("Đã kích hoạt báo cáo định kỳ — bắt đầu phân giải mục tiêu")
 
             all_targets = await self._get_scheduled_targets()
 
             if not all_targets:
-                logger.info("没有配置的群聊需要定时分析")
+                logger.info("Không có nhóm nào cần phân tích định kỳ")
                 return
 
             max_concurrent = self.config_manager.get_max_concurrent_tasks()
             sem = asyncio.Semaphore(max_concurrent)
             logger.info(
-                f"定时报告: {len(all_targets)} 个目标 (并发限制: {max_concurrent})"
+                f"Báo cáo định kỳ: {len(all_targets)} mục tiêu "
+                f"(giới hạn đồng thời: {max_concurrent})"
             )
 
             async def dispatch_group(gid, pid, mode):
@@ -375,13 +390,13 @@ class AutoScheduler:
 
             tasks = []
             stagger = self.config_manager.get_stagger_seconds() or 2
-            # 针对定时大任务加入交错等待，减少瞬间峰值延迟
+            # Giãn cách tác vụ lớn để giảm tải đỉnh tức thời.
             for idx, (gid, pid, mode) in enumerate(all_targets):
                 if self._terminating:
-                    logger.info("检测到插件正在停止，取消后续任务创建")
+                    logger.info("Plugin đang dừng; huỷ tạo các tác vụ tiếp theo")
                     break
 
-                # 为前几个任务添加微小的启动间隔，均匀分散 API 压力
+                # Giãn thời điểm khởi động để phân tán tải API.
                 if idx > 0 and stagger > 0:
                     await asyncio.sleep(stagger)
 
@@ -393,7 +408,7 @@ class AutoScheduler:
 
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # 统计结果
+            # Thống kê kết quả.
             success_count = 0
             skip_count = 0
             error_count = 0
@@ -403,7 +418,9 @@ class AutoScheduler:
                 if isinstance(result, DuplicateGroupTaskError):
                     skip_count += 1
                 elif isinstance(result, Exception):
-                    logger.error(f"群 {gid} 定时报告任务异常: {result}")
+                    logger.error(
+                        f"Tác vụ báo cáo định kỳ của nhóm {gid} gặp lỗi: {result}"
+                    )
                     error_count += 1
                 elif isinstance(result, dict) and not result.get("success", True):
                     skip_count += 1
@@ -411,34 +428,35 @@ class AutoScheduler:
                     success_count += 1
 
             logger.info(
-                f"定时报告完成 — 成功: {success_count}, 跳过: {skip_count}, "
-                f"失败: {error_count}, 总计: {len(all_targets)}"
+                f"Báo cáo định kỳ hoàn tất — thành công: {success_count}, "
+                f"bỏ qua: {skip_count}, thất bại: {error_count}, "
+                f"tổng: {len(all_targets)}"
             )
 
         except Exception as e:
-            logger.error(f"定时报告执行失败: {e}", exc_info=True)
+            logger.error(f"Chạy báo cáo định kỳ thất bại: {e}", exc_info=True)
 
     async def _perform_auto_analysis_for_group_with_timeout(
         self, group_id: str, target_platform_id: str | None = None
     ):
-        """为指定群执行自动分析（带超时控制）"""
+        """Phân tích tự động một nhóm với giới hạn thời gian."""
         try:
-            # 为每个群聊设置独立的超时时间，适当放宽到 30 分钟以支持大型批次
+            # Mỗi nhóm có timeout 30 phút để hỗ trợ batch lớn.
             await asyncio.wait_for(
                 self._perform_auto_analysis_for_group(group_id, target_platform_id),
                 timeout=1800,
             )
         except asyncio.TimeoutError:
-            logger.error(f"群 {group_id} 分析超时（30分钟），跳过该群分析")
+            logger.error(f"Phân tích nhóm {group_id} quá hạn 30 phút; bỏ qua nhóm")
         except Exception as e:
-            logger.error(f"群 {group_id} 分析任务执行失败: {e}")
+            logger.error(f"Tác vụ phân tích nhóm {group_id} thất bại: {e}")
 
     async def _perform_auto_analysis_for_group(
         self, group_id: str, target_platform_id: str | None = None
     ):
-        """为指定群执行自动分析（业务逻辑委派给 AnalysisApplicationService）"""
+        """Phân tích tự động một nhóm qua AnalysisApplicationService."""
         try:
-            # 解析可读群名以生成语义化的 TraceID
+            # Dùng tên nhóm dễ đọc để tạo TraceID có nghĩa.
             group_name = await self._get_group_name_safe(group_id, target_platform_id)
             trace_id = TraceContext.generate(prefix="group", group_name=group_name)
             TraceContext.set(trace_id)
@@ -447,30 +465,32 @@ class AutoScheduler:
                 return
 
             logger.info(
-                f"开始为群 {group_id} 执行自动分析 (Platform: {target_platform_id or 'Auto'})"
+                f"Bắt đầu phân tích tự động nhóm {group_id} "
+                f"(nền tảng: {target_platform_id or 'Tự động'})"
             )
 
-            # 检查平台状态 (BotManager 为基础设施层，用于获取平台就绪状态)
+            # Kiểm tra trạng thái nền tảng qua BotManager.
             if not self.bot_manager.is_ready_for_auto_analysis():
-                logger.warning(f"群 {group_id} 自动分析跳过：bot管理器未就绪")
+                logger.warning(
+                    f"Bỏ qua phân tích nhóm {group_id}: trình quản lý bot chưa sẵn sàng"
+                )
                 return
 
-            # 委派给应用层服务执行核心用例
-            # AnalysisApplicationService 内部已处理群锁 (group_lock)
+            # AnalysisApplicationService xử lý use case và khoá nhóm.
             result = await self.analysis_service.execute_daily_analysis(
                 group_id=group_id, platform_id=target_platform_id, manual=False
             )
 
             if not result.get("success"):
                 reason = result.get("reason")
-                logger.info(f"群 {group_id} 自动分析跳过: {reason}")
+                logger.info(f"Bỏ qua phân tích tự động nhóm {group_id}: {reason}")
                 return
 
-            # 获取分析结果及适配器
+            # Lấy kết quả phân tích và adapter.
             analysis_result = result["analysis_result"]
             adapter = result["adapter"]
 
-            # 调度导出并发送报告
+            # Xuất và gửi báo cáo.
             await self.report_dispatcher.dispatch(
                 group_id,
                 analysis_result,
@@ -479,33 +499,35 @@ class AutoScheduler:
                 else target_platform_id,
             )
 
-            logger.info(f"群 {group_id} 自动分析任务执行成功")
+            logger.info(f"Phân tích tự động nhóm {group_id} thành công")
 
         except DuplicateGroupTaskError:
-            # group_lock 抛出的 DuplicateGroupTaskError 表示任务正在运行，优雅跳过
-            logger.debug(f"群 {group_id} 任务因并发锁冲突而跳过（已在运行）")
-            raise  # 重新抛出，让上层知道任务并没真正执行而是跳过了
+            # DuplicateGroupTaskError nghĩa là tác vụ đang chạy; bỏ qua an toàn.
+            logger.debug(f"Bỏ qua nhóm {group_id} do xung đột khoá đồng thời")
+            raise  # Ném lại để caller biết tác vụ chưa thực sự chạy.
         except Exception as e:
-            logger.error(f"群 {group_id} 自动分析执行失败: {e}", exc_info=True)
+            logger.error(
+                f"Phân tích tự động nhóm {group_id} thất bại: {e}", exc_info=True
+            )
         finally:
-            logger.debug(f"群 {group_id} 自动分析流程结束")
+            logger.debug(f"Kết thúc quy trình phân tích tự động nhóm {group_id}")
 
     # ================================================================
-    # 增量模式：增量分析
+    # Chế độ phân tích tăng dần
     # ================================================================
 
     async def _run_incremental_analysis(self):
-        """为所有目标模式设定为 incremental 的群执行增量分析任务。"""
+        """Phân tích các nhóm có chế độ mục tiêu là incremental."""
         if self._terminating:
             return
         try:
-            logger.info("开始执行自动增量分析（并发模式）")
+            logger.info("Bắt đầu phân tích tăng dần tự động ở chế độ đồng thời")
 
-            # 仅选取模式为 incremental 的目标群
+            # Chỉ chọn nhóm có chế độ incremental.
             incr_targets = await self._get_scheduled_targets(mode_filter="incremental")
 
             if not incr_targets:
-                logger.info("没有配置为增量模式的群聊需要增量分析")
+                logger.info("Không có nhóm nào được cấu hình cho phân tích tăng dần")
                 return
 
             target_list = incr_targets
@@ -513,8 +535,8 @@ class AutoScheduler:
             max_concurrent = self.config_manager.get_max_concurrent_tasks()
 
             logger.info(
-                f"将为 {len(target_list)} 个群聊执行增量分析 "
-                f"(并发限制: {max_concurrent}, 交错间隔: {stagger}秒)"
+                f"Sẽ phân tích tăng dần {len(target_list)} nhóm "
+                f"(giới hạn đồng thời: {max_concurrent}, giãn cách: {stagger} giây)"
             )
 
             sem = asyncio.Semaphore(max_concurrent)
@@ -530,11 +552,11 @@ class AutoScheduler:
                         )
                     )
 
-                    # 为调试提供的立即上报选项
+                    # Tuỳ chọn báo cáo ngay phục vụ debug.
                     if self.config_manager.get_incremental_report_immediately():
                         if isinstance(result, dict) and result.get("success"):
                             logger.info(
-                                f"增量分析立即报告模式生效，正在为群 {gid} 生成报告..."
+                                f"Chế độ báo cáo ngay đang bật; đang tạo báo cáo cho nhóm {gid}..."
                             )
                             await self._perform_incremental_final_report_for_group_with_timeout(
                                 gid, pid
@@ -545,7 +567,9 @@ class AutoScheduler:
             analysis_tasks = []
             for idx, (gid, pid, _mode) in enumerate(target_list):
                 if self._terminating:
-                    logger.info("检测到插件正在停止，取消后续增量分析任务创建")
+                    logger.info(
+                        "Plugin đang dừng; huỷ tạo các tác vụ tăng dần tiếp theo"
+                    )
                     break
                 task = asyncio.create_task(
                     staggered_incremental(idx, gid, pid),
@@ -564,7 +588,9 @@ class AutoScheduler:
                 if isinstance(result, DuplicateGroupTaskError):
                     skip_count += 1
                 elif isinstance(result, Exception):
-                    logger.error(f"群 {gid} 增量分析任务异常: {result}")
+                    logger.error(
+                        f"Tác vụ phân tích tăng dần nhóm {gid} gặp lỗi: {result}"
+                    )
                     error_count += 1
                 elif isinstance(result, dict) and not result.get("success", True):
                     skip_count += 1
@@ -572,17 +598,18 @@ class AutoScheduler:
                     success_count += 1
 
             logger.info(
-                f"增量分析完成 - 成功: {success_count}, 跳过: {skip_count}, "
-                f"失败: {error_count}, 总计: {len(target_list)}"
+                f"Phân tích tăng dần hoàn tất — thành công: {success_count}, "
+                f"bỏ qua: {skip_count}, thất bại: {error_count}, "
+                f"tổng: {len(target_list)}"
             )
 
         except Exception as e:
-            logger.error(f"增量分析执行失败: {e}", exc_info=True)
+            logger.error(f"Chạy phân tích tăng dần thất bại: {e}", exc_info=True)
 
     async def _perform_incremental_analysis_for_group_with_timeout(
         self, group_id: str, target_platform_id: str | None = None
     ):
-        """为指定群执行增量分析（带超时控制，10分钟）"""
+        """Phân tích tăng dần một nhóm với timeout 10 phút."""
         try:
             result = await asyncio.wait_for(
                 self._perform_incremental_analysis_for_group(
@@ -592,18 +619,18 @@ class AutoScheduler:
             )
             return result
         except asyncio.TimeoutError:
-            logger.error(f"群 {group_id} 增量分析超时（10分钟），跳过")
+            logger.error(f"Phân tích tăng dần nhóm {group_id} quá hạn 10 phút; bỏ qua")
             return {"success": False, "reason": "timeout"}
         except Exception as e:
-            logger.error(f"群 {group_id} 增量分析任务执行失败: {e}")
+            logger.error(f"Tác vụ phân tích tăng dần nhóm {group_id} thất bại: {e}")
             return {"success": False, "reason": str(e)}
 
     async def _perform_incremental_analysis_for_group(
         self, group_id: str, target_platform_id: str | None = None
     ):
-        """为指定群执行增量分析（业务逻辑委派给 AnalysisApplicationService）"""
+        """Phân tích tăng dần một nhóm qua AnalysisApplicationService."""
         try:
-            # 解析可读群名以生成语义化的 TraceID
+            # Dùng tên nhóm dễ đọc để tạo TraceID có nghĩa.
             group_name = await self._get_group_name_safe(group_id, target_platform_id)
             trace_id = TraceContext.generate(prefix="incr", group_name=group_name)
             TraceContext.set(trace_id)
@@ -612,57 +639,60 @@ class AutoScheduler:
                 return
 
             logger.info(
-                f"开始为群 {group_id} 执行增量分析 "
-                f"(Platform: {target_platform_id or 'Auto'})"
+                f"Bắt đầu phân tích tăng dần nhóm {group_id} "
+                f"(nền tảng: {target_platform_id or 'Tự động'})"
             )
 
-            # 检查平台状态
+            # Kiểm tra trạng thái nền tảng.
             if not self.bot_manager.is_ready_for_auto_analysis():
-                logger.warning(f"群 {group_id} 增量分析跳过：bot管理器未就绪")
+                logger.warning(
+                    f"Bỏ qua phân tích tăng dần nhóm {group_id}: trình quản lý bot chưa sẵn sàng"
+                )
                 return {"success": False, "reason": "bot_not_ready"}
 
-            # 委派给应用层服务执行增量分析用例
-            # AnalysisApplicationService 内部已处理群锁 (group_lock)
+            # AnalysisApplicationService xử lý use case và khoá nhóm.
             result = await self.analysis_service.execute_incremental_analysis(
                 group_id=group_id, platform_id=target_platform_id
             )
 
             if not result.get("success"):
                 reason = result.get("reason", "unknown")
-                logger.info(f"群 {group_id} 增量分析跳过: {reason}")
+                logger.info(f"Bỏ qua phân tích tăng dần nhóm {group_id}: {reason}")
                 return result
 
-            # 增量分析只累积数据，不发送报告
+            # Phân tích tăng dần chỉ tích luỹ dữ liệu, không gửi báo cáo.
             batch_summary = result.get("batch_summary", {})
             logger.info(
-                f"群 {group_id} 增量分析完成: "
-                f"消息数={result.get('messages_count', 0)}, "
-                f"话题={batch_summary.get('topics_count', 0)}, "
-                f"金句={batch_summary.get('quotes_count', 0)}"
+                f"Phân tích tăng dần nhóm {group_id} hoàn tất: "
+                f"tin nhắn={result.get('messages_count', 0)}, "
+                f"chủ đề={batch_summary.get('topics_count', 0)}, "
+                f"trích dẫn={batch_summary.get('quotes_count', 0)}"
             )
             return result
 
         except DuplicateGroupTaskError:
-            # group_lock 抛出的 DuplicateGroupTaskError 表示任务正在运行，优雅跳过
-            logger.debug(f"群 {group_id} 增量分析因并发锁冲突而跳过（已在运行）")
+            # Tác vụ đang chạy; bỏ qua an toàn.
+            logger.debug(f"Bỏ qua phân tích tăng dần nhóm {group_id} do xung đột khoá")
             return {"success": False, "reason": "already_running"}
         except Exception as e:
-            logger.error(f"群 {group_id} 增量分析执行失败: {e}", exc_info=True)
+            logger.error(
+                f"Phân tích tăng dần nhóm {group_id} thất bại: {e}", exc_info=True
+            )
             return {"success": False, "reason": str(e)}
         finally:
-            logger.debug(f"群 {group_id} 增量分析流程结束")
+            logger.debug(f"Kết thúc quy trình tăng dần nhóm {group_id}")
 
     # ================================================================
-    # 增量最终报告（单群）与回退逻辑
+    # Báo cáo tăng dần cuối cho một nhóm và logic fallback
     # ================================================================
 
     async def _perform_incremental_final_report_for_group_with_timeout(
         self, group_id: str, target_platform_id: str | None = None
     ):
-        """带超时及回退机制的增量最终报告生成。
+        """Tạo báo cáo tăng dần cuối với timeout và fallback.
 
-        若增量汇报失败（非 '消息不足' 或 '正在运行' 导致的），
-        且启用了自动回退，则将该群转由传统模式执行全量分析。
+        Nếu báo cáo thất bại vì lý do khác thiếu tin nhắn hoặc đang chạy,
+        chuyển sang phân tích đầy đủ khi fallback tự động được bật.
         """
         try:
             result = await asyncio.wait_for(
@@ -672,15 +702,15 @@ class AutoScheduler:
                 timeout=1800,
             )
 
-            # 判定是否需要触发回退 (例如：无增量数据等)
+            # Xác định có cần fallback hay không, ví dụ không có dữ liệu tăng dần.
             if isinstance(result, dict) and not result.get("success"):
                 reason = result.get("reason", "")
                 if reason in ("below_threshold", "already_running"):
-                    return result  # 正常跳过，无需回退
+                    return result  # Bỏ qua bình thường, không cần fallback.
                 if self.config_manager.get_incremental_fallback_enabled():
                     logger.warning(
-                        f"群 {group_id} 增量最终报告失败 (reason={reason})，"
-                        f"正在回退到传统全量分析..."
+                        f"Báo cáo tăng dần cuối nhóm {group_id} thất bại "
+                        f"(reason={reason}); đang fallback về phân tích đầy đủ..."
                     )
                     return await self._fallback_to_traditional(
                         group_id, target_platform_id
@@ -689,27 +719,31 @@ class AutoScheduler:
             return result
 
         except asyncio.TimeoutError:
-            logger.error(f"群 {group_id} 最终报告超时（30分钟）")
+            logger.error(f"Báo cáo cuối nhóm {group_id} quá hạn 30 phút")
             if self.config_manager.get_incremental_fallback_enabled():
-                logger.warning(f"群 {group_id} 增量报告超时，正在回退到传统全量分析...")
+                logger.warning(
+                    f"Báo cáo tăng dần nhóm {group_id} quá hạn; đang fallback về phân tích đầy đủ..."
+                )
                 return await self._fallback_to_traditional(group_id, target_platform_id)
             return {"success": False, "reason": "timeout"}
 
         except Exception as e:
-            logger.error(f"群 {group_id} 最终报告任务执行失败: {e}")
+            logger.error(f"Tác vụ báo cáo cuối nhóm {group_id} thất bại: {e}")
             if self.config_manager.get_incremental_fallback_enabled():
-                logger.warning(f"群 {group_id} 增量报告异常，正在回退到传统全量分析...")
+                logger.warning(
+                    f"Báo cáo tăng dần nhóm {group_id} gặp lỗi; đang fallback về phân tích đầy đủ..."
+                )
                 return await self._fallback_to_traditional(group_id, target_platform_id)
             return {"success": False, "reason": str(e)}
 
     async def _fallback_to_traditional(
         self, group_id: str, target_platform_id: str | None = None
     ):
-        """回退操作：在增量报告失败时，执行传统的全量拉取分析。"""
+        """Fallback về phân tích đầy đủ khi báo cáo tăng dần thất bại."""
         try:
             logger.info(
-                f"⬆️ 群 {group_id} 回退到传统全量分析 "
-                f"(Platform: {target_platform_id or 'Auto'})"
+                f"⬆️ Nhóm {group_id} fallback về phân tích đầy đủ "
+                f"(nền tảng: {target_platform_id or 'Tự động'})"
             )
             await self._perform_auto_analysis_for_group_with_timeout(
                 group_id, target_platform_id
@@ -717,7 +751,7 @@ class AutoScheduler:
             return {"success": True, "fallback": True}
         except Exception as fallback_err:
             logger.error(
-                f"群 {group_id} 回退传统分析也失败: {fallback_err}",
+                f"Fallback phân tích đầy đủ nhóm {group_id} cũng thất bại: {fallback_err}",
                 exc_info=True,
             )
             return {"success": False, "reason": f"fallback_failed: {fallback_err}"}
@@ -725,9 +759,9 @@ class AutoScheduler:
     async def _perform_incremental_final_report_for_group(
         self, group_id: str, target_platform_id: str | None = None
     ):
-        """为指定群生成增量最终报告（业务逻辑委派给 AnalysisApplicationService）"""
+        """Tạo báo cáo tăng dần cuối qua AnalysisApplicationService."""
         try:
-            # 解析可读群名以生成语义化的 TraceID
+            # Dùng tên nhóm dễ đọc để tạo TraceID có nghĩa.
             group_name = await self._get_group_name_safe(group_id, target_platform_id)
             trace_id = TraceContext.generate(prefix="report", group_name=group_name)
             TraceContext.set(trace_id)
@@ -736,27 +770,28 @@ class AutoScheduler:
                 return
 
             logger.info(
-                f"开始为群 {group_id} 生成增量最终报告 "
-                f"(Platform: {target_platform_id or 'Auto'})"
+                f"Bắt đầu tạo báo cáo tăng dần cuối cho nhóm {group_id} "
+                f"(nền tảng: {target_platform_id or 'Tự động'})"
             )
 
-            # 检查平台状态
+            # Kiểm tra trạng thái nền tảng.
             if not self.bot_manager.is_ready_for_auto_analysis():
-                logger.warning(f"群 {group_id} 最终报告跳过：bot管理器未就绪")
+                logger.warning(
+                    f"Bỏ qua báo cáo cuối nhóm {group_id}: trình quản lý bot chưa sẵn sàng"
+                )
                 return {"success": False, "reason": "bot_not_ready"}
 
-            # 委派给应用层服务执行最终报告用例
-            # AnalysisApplicationService 内部已处理群锁 (group_lock)
+            # AnalysisApplicationService xử lý use case và khoá nhóm.
             result = await self.analysis_service.execute_incremental_final_report(
                 group_id=group_id, platform_id=target_platform_id
             )
 
             if not result.get("success"):
                 reason = result.get("reason", "unknown")
-                logger.info(f"群 {group_id} 最终报告跳过: {reason}")
+                logger.info(f"Bỏ qua báo cáo cuối nhóm {group_id}: {reason}")
                 return result
 
-            # 获取分析结果及适配器，分发报告
+            # Lấy kết quả, adapter và phân phối báo cáo.
             analysis_result = result["analysis_result"]
             adapter = result["adapter"]
 
@@ -768,7 +803,7 @@ class AutoScheduler:
                 else target_platform_id,
             )
 
-            # 清理过期批次（保留 2 倍窗口范围的数据作为缓冲）
+            # Dọn batch quá hạn, giữ dữ liệu bằng hai lần cửa sổ làm buffer.
             try:
                 analysis_days = self.config_manager.get_analysis_days()
                 before_ts = time_mod.time() - (analysis_days * 2 * 24 * 3600)
@@ -779,70 +814,77 @@ class AutoScheduler:
                     )
                     if cleaned > 0:
                         logger.info(
-                            f"群 {group_id} 报告发送后清理了 {cleaned} 个过期批次"
+                            f"Đã dọn {cleaned} batch quá hạn sau khi gửi báo cáo nhóm {group_id}"
                         )
             except Exception as cleanup_err:
                 logger.warning(
-                    f"群 {group_id} 过期批次清理失败（不影响报告）: {cleanup_err}"
+                    f"Dọn batch quá hạn của nhóm {group_id} thất bại, "
+                    f"không ảnh hưởng báo cáo: {cleanup_err}"
                 )
 
-            logger.info(f"群 {group_id} 增量最终报告发送成功")
+            logger.info(f"Gửi báo cáo tăng dần cuối nhóm {group_id} thành công")
             return result
 
         except DuplicateGroupTaskError:
-            # group_lock 抛出的 DuplicateGroupTaskError 表示任务正在运行，优雅跳过
-            logger.debug(f"群 {group_id} 最终报告因并发锁冲突而跳过（已在运行）")
+            # Tác vụ đang chạy; bỏ qua an toàn.
+            logger.debug(f"Bỏ qua báo cáo cuối nhóm {group_id} do xung đột khoá")
             return {"success": False, "reason": "already_running"}
         except Exception as e:
-            logger.error(f"群 {group_id} 最终报告执行失败: {e}", exc_info=True)
+            logger.error(f"Báo cáo cuối nhóm {group_id} thất bại: {e}", exc_info=True)
             return {"success": False, "reason": str(e)}
         finally:
-            logger.debug(f"群 {group_id} 最终报告流程结束")
+            logger.debug(f"Kết thúc quy trình báo cáo cuối nhóm {group_id}")
 
     # ================================================================
-    # 群列表获取（基础设施层）
+    # Lấy danh sách nhóm ở tầng infrastructure
     # ================================================================
 
     async def _get_all_groups(self) -> list[tuple[str, str]]:
         """
-        获取所有bot实例所在的群列表（使用 PlatformAdapter）
+        Lấy danh sách nhóm của mọi bot instance qua PlatformAdapter.
 
         Returns:
             list[tuple[str, str]]: [(platform_id, group_id), ...]
         """
         all_groups = set()
 
-        # 1. [韧性增强] 进入扫描前，尝试最后一次实时发现机器人
-        # 这确保了即使冷启动初始化失败，定时任务触发时仍能刷新状态
+        # 1. Thử khám phá bot lần cuối trước khi quét.
+        # Nhờ đó tác vụ định kỳ vẫn làm mới trạng thái nếu cold start thất bại.
         if hasattr(self.bot_manager, "auto_discover_bot_instances"):
             try:
                 await self.bot_manager.auto_discover_bot_instances()
             except Exception as e:
-                logger.warning(f"[AutoScheduler] 周期性扫描中的平台发现失败: {e}")
+                logger.warning(
+                    f"[AutoScheduler] Khám phá nền tảng khi quét định kỳ thất bại: {e}"
+                )
 
         bot_ids = list(self.bot_manager._bot_instances.keys())
 
         if not bot_ids:
             logger.warning(
-                "[AutoScheduler] 分析周期开启，但全局未发现任何在线 Bot。任务将跳过。"
+                "[AutoScheduler] Lịch phân tích đã bật nhưng không có bot online; bỏ qua tác vụ."
             )
             return []
 
-        logger.info(f"[AutoScheduler] 正在扫描 {len(bot_ids)} 个平台的群聊资源...")
+        logger.info(
+            f"[AutoScheduler] Đang quét tài nguyên nhóm trên {len(bot_ids)} nền tảng..."
+        )
 
         for platform_id, bot_instance in self.bot_manager._bot_instances.items():
-            # 检查该平台是否启用了此插件
+            # Kiểm tra plugin có được bật trên nền tảng này không.
             if not self.bot_manager.is_plugin_enabled(
                 platform_id, "astrbot_plugin_qq_group_daily_analysis"
             ):
-                logger.debug(f"平台 {platform_id} 未启用此插件，跳过获取群列表")
+                logger.debug(
+                    f"Plugin chưa bật trên nền tảng {platform_id}; bỏ qua danh sách nhóm"
+                )
                 continue
 
             try:
-                # 1. 优先从 BotManager 获取已创建的适配器
+                # 1. Ưu tiên adapter đã được BotManager tạo.
                 adapter = self.bot_manager.get_adapter(platform_id)
 
-                # 2. 如果没有，尝试临时创建（降级方案）
+                # 2. Tạo tạm adapter làm phương án dự phòng.
                 platform_name = None
                 if not adapter:
                     platform_name = self.bot_manager._detect_platform_name(bot_instance)
@@ -856,7 +898,7 @@ class AutoScheduler:
                             },
                         )
 
-                # 3. 使用适配器获取群列表
+                # 3. Lấy danh sách nhóm qua adapter.
                 if adapter:
                     try:
                         groups = await adapter.get_group_list()
@@ -866,7 +908,7 @@ class AutoScheduler:
                             if str(group_id).strip()
                         ]
 
-                        # 获取平台名称（仅用于日志）
+                        # Lấy tên nền tảng chỉ để ghi log.
                         p_name = None
                         if hasattr(adapter, "get_platform_name"):
                             try:
@@ -878,17 +920,24 @@ class AutoScheduler:
                             all_groups.add((platform_id, str(group_id)))
 
                         logger.info(
-                            f"平台 {platform_id} ({p_name or 'unknown'}) 成功获取 {len(groups)} 个群组"
+                            f"Nền tảng {platform_id} ({p_name or 'không rõ'}) "
+                            f"đã lấy thành công {len(groups)} nhóm"
                         )
                         continue
 
                     except Exception as e:
-                        logger.warning(f"适配器 {platform_id} 获取群列表失败: {e}")
+                        logger.warning(
+                            f"Adapter {platform_id} lấy danh sách nhóm thất bại: {e}"
+                        )
 
-                # 4. 降级：无法通过适配器获取
-                logger.debug(f"平台 {platform_id} 无法通过适配器获取群列表")
+                # 4. Adapter không lấy được danh sách nhóm.
+                logger.debug(
+                    f"Nền tảng {platform_id} không lấy được danh sách nhóm qua adapter"
+                )
 
             except Exception as e:
-                logger.error(f"平台 {platform_id} 获取群列表异常: {e}")
+                logger.error(
+                    f"Lấy danh sách nhóm trên nền tảng {platform_id} gặp lỗi: {e}"
+                )
 
         return list(all_groups)

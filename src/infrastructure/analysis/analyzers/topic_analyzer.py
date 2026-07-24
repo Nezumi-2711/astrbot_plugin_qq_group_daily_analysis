@@ -1,7 +1,4 @@
-"""
-话题分析模块
-专门处理群聊话题分析
-"""
+"""Module phân tích chủ đề trò chuyện nhóm."""
 
 import re
 from datetime import datetime
@@ -17,21 +14,18 @@ from .base_analyzer import BaseAnalyzer
 
 
 class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
-    """
-    话题分析器
-    专门处理群聊话题的提取和分析
-    """
+    """Trích xuất và phân tích chủ đề trò chuyện nhóm."""
 
     def get_provider_id_key(self) -> str:
-        """获取 Provider ID 配置键名"""
+        """Lấy tên key cấu hình Provider ID."""
         return "topic_provider_id"
 
     def get_data_type(self) -> str:
-        """获取数据类型标识"""
+        """Lấy định danh loại dữ liệu."""
         return "Chủ đề"
 
     def get_max_count(self) -> int:
-        """获取最大话题数量，增量模式下使用覆盖值"""
+        """Lấy số chủ đề tối đa, ưu tiên giá trị override ở chế độ gia tăng."""
         if self._incremental_max_count is not None:
             return self._incremental_max_count
         return self.config_manager.get_max_topics()
@@ -44,42 +38,42 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
 
     def build_prompt(self, data: list[dict]) -> str:
         """
-        构建话题分析提示词
+        Xây dựng prompt phân tích chủ đề.
 
         Args:
-            messages: 群聊消息列表
+            data: Danh sách tin nhắn nhóm.
 
         Returns:
-            提示词字符串
+            Chuỗi prompt.
         """
-        # 验证输入数据格式
+        # Xác thực định dạng input.
         if not isinstance(data, list):
-            logger.error(f"build_prompt 期望列表，但收到: {type(data)}")
+            logger.error(f"build_prompt cần list nhưng nhận được: {type(data)}")
             return ""
 
-        # 检查消息列表是否为空
+        # Kiểm tra danh sách tin nhắn rỗng.
         if not data:
-            logger.warning("build_prompt 收到空消息列表")
+            logger.warning("build_prompt nhận danh sách tin nhắn rỗng")
             return ""
 
-        # 提取文本消息
+        # Trích xuất tin nhắn văn bản.
         text_messages = []
         for i, msg in enumerate(data):
-            # 确保msg是字典类型，避免'str' object has no attribute 'get'错误
+            # Bỏ qua msg không phải dict để tránh lỗi thuộc tính get.
             if not isinstance(msg, dict):
                 continue
 
             try:
                 sender = msg.get("sender", {})
-                # 确保sender是字典类型，避免'str' object has no attribute 'get'错误
+                # Bỏ qua sender không phải dict.
                 if not isinstance(sender, dict):
                     continue
 
-                # 获取发送者ID并过滤机器人消息
+                # Lấy ID người gửi và lọc tin nhắn bot.
                 user_id = str(sender.get("user_id", ""))
                 bot_self_ids = self.config_manager.get_bot_self_ids()
 
-                # 跳过机器人自己的消息
+                # Bỏ qua tin nhắn của bot.
                 if bot_self_ids and user_id in [str(uid) for uid in bot_self_ids]:
                     continue
 
@@ -88,7 +82,7 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
 
                 message_list = msg.get("message", [])
 
-                # 提取文本内容，可能分布在多个 content 中
+                # Nội dung văn bản có thể nằm trong nhiều phần content.
                 text_parts = []
                 for j, content in enumerate(message_list):
                     if not isinstance(content, dict):
@@ -101,21 +95,21 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
                         if text:
                             text_parts.append(text)
                     elif content_type == "at":
-                        # 处理 @ 消息，转换为文本
+                        # Chuyển mention thành văn bản.
                         at_data = content.get("data", {})
-                        # 兼容不同平台的 ID 字段
+                        # Tương thích trường ID giữa các nền tảng.
                         at_id = at_data.get("id") or at_data.get("user_id")
                         if at_id:
                             at_text = f"@{at_id}"
                             text_parts.append(at_text)
                     elif content_type == "reply":
-                        # 处理回复消息，添加标记
+                        # Thêm nhãn cho tin nhắn trả lời.
                         reply_id = content.get("data", {}).get("id", "")
                         if reply_id:
-                            reply_text = f"[回复:{reply_id}]"
+                            reply_text = f"[Trả lời:{reply_id}]"
                             text_parts.append(reply_text)
 
-                # 合并所有文本部分
+                # Gộp mọi phần văn bản.
                 combined_text = "".join(text_parts).strip()
 
                 if (
@@ -123,7 +117,7 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
                     and len(combined_text) > 2
                     and not combined_text.startswith("/")
                 ):
-                    # 清理消息内容
+                    # Làm sạch nội dung tin nhắn.
                     cleaned_text = combined_text.replace("“", '"').replace("”", '"')
                     cleaned_text = cleaned_text.replace("‘", "'").replace("’", "'")
                     cleaned_text = cleaned_text.replace("\n", " ").replace("\r", " ")
@@ -140,16 +134,18 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
                     )
             except Exception as e:
                 logger.error(
-                    f"build_prompt 处理第 {i + 1} 条消息时出错: {e}", exc_info=True
+                    f"build_prompt lỗi khi xử lý tin nhắn thứ {i + 1}: {e}",
+                    exc_info=True,
                 )
                 continue
 
         if not text_messages:
-            logger.warning("build_prompt 没有提取到有效的文本消息，返回空prompt")
+            logger.warning(
+                "build_prompt không trích xuất được tin nhắn hợp lệ; trả về prompt rỗng"
+            )
             return ""
 
-        # 构建消息文本
-        # 使用用户提供的 ID-Only 格式: [HH:MM] [用户ID]: 消息内容
+        # Dựng văn bản theo định dạng chỉ ID: [HH:MM] [ID người dùng]: nội dung.
         messages_text = "\n".join(
             [
                 f"[{msg['time']}] [{msg['user_id']}]: {msg['content']}"
@@ -159,7 +155,7 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
 
         max_topics = self.get_max_count()
 
-        # 从配置读取 prompt 模板（默认使用 "default" 风格）
+        # Đọc template prompt từ cấu hình.
         prompt_template = self.config_manager.get_topic_analysis_prompt()
 
         if prompt_template:
@@ -169,98 +165,104 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
                     max_topics=max_topics,
                     messages_text=messages_text,
                 )
-                logger.info("使用配置中的话题分析提示词")
+                logger.info("Đang dùng prompt phân tích chủ đề trong cấu hình")
                 return prompt
             except Exception as e:
-                logger.warning(f"应用话题分析提示词失败: {e}")
+                logger.warning(f"Áp dụng prompt phân tích chủ đề thất bại: {e}")
 
-        logger.warning("未找到有效的话题分析提示词配置，请检查配置文件")
+        logger.warning(
+            "Không tìm thấy prompt phân tích chủ đề hợp lệ; hãy kiểm tra cấu hình"
+        )
         return ""
 
     def extract_with_regex(self, result_text: str, max_count: int) -> list[dict]:
         """
-        使用正则表达式提取话题信息
+        Trích xuất thông tin chủ đề bằng regex.
 
         Args:
-            result_text: LLM响应文本
-            max_count: 最大话题数量
+            result_text: Văn bản phản hồi LLM.
+            max_count: Số chủ đề tối đa.
 
         Returns:
-            话题数据列表
+            Danh sách dữ liệu chủ đề.
         """
         return extract_topics_with_regex(result_text, max_count)
 
     def create_data_objects(self, data_list: list[dict]) -> list[SummaryTopic]:
         """
-        创建话题对象列表
+        Tạo danh sách object chủ đề.
 
         Args:
-            topics_data: 原始话题数据列表
+            data_list: Danh sách dữ liệu chủ đề thô.
 
         Returns:
-            SummaryTopic对象列表
+            Danh sách object SummaryTopic.
         """
         logger.debug(
-            f"create_data_objects 开始处理，输入数据数量: {len(data_list) if data_list else 0}"
+            f"create_data_objects bắt đầu, số mục input: {len(data_list) if data_list else 0}"
         )
-        logger.debug(f"输入数据类型: {type(data_list)}")
+        logger.debug(f"Loại dữ liệu input: {type(data_list)}")
 
         try:
             topics = []
             max_topics = self.get_max_count()
 
-            logger.debug(f"处理前 {max_topics} 条话题数据")
+            logger.debug(f"Đang xử lý tối đa {max_topics} chủ đề đầu")
 
             for i, topic_data in enumerate(data_list[:max_topics]):
-                logger.debug(f"处理第 {i + 1} 条话题数据，类型: {type(topic_data)}")
+                logger.debug(f"Đang xử lý chủ đề thứ {i + 1}, loại: {type(topic_data)}")
 
-                # 确保topic_data是字典类型，避免'str' object has no attribute 'get'错误
+                # Bỏ qua dữ liệu chủ đề không phải dict.
                 if not isinstance(topic_data, dict):
                     logger.warning(
-                        f"跳过非字典类型的话题数据: {type(topic_data)} - {topic_data}"
+                        f"Bỏ qua dữ liệu chủ đề không phải dict: {type(topic_data)} - {topic_data}"
                     )
                     continue
 
                 try:
-                    # 确保数据格式正确
+                    # Chuẩn hoá định dạng dữ liệu.
                     topic_name = topic_data.get("topic", "").strip()
                     contributors = topic_data.get("contributors", [])
                     detail = topic_data.get("detail", "").strip()
 
                     logger.debug(
-                        f"话题数据 - 名称: {topic_name}, 参与者: {contributors}, 详情: {detail[:50]}..."
+                        f"Chủ đề - tên: {topic_name}, người tham gia: {contributors}, chi tiết: {detail[:50]}..."
                     )
 
-                    # 验证必要字段
+                    # Xác thực các trường bắt buộc.
                     if not topic_name or not detail:
-                        logger.warning(f"话题数据格式不完整，跳过: {topic_data}")
+                        logger.warning(
+                            f"Dữ liệu chủ đề không đầy đủ, bỏ qua: {topic_data}"
+                        )
                         continue
 
-                    # 确保参与者列表有效
+                    # Đảm bảo danh sách người tham gia hợp lệ.
                     if not contributors or not isinstance(contributors, list):
-                        contributors = ["群友"]
+                        contributors = ["Thành viên nhóm"]
                     else:
-                        # 清理参与者名称
+                        # Làm sạch tên người tham gia.
                         contributors = [
                             str(c).strip() for c in contributors if c and str(c).strip()
-                        ] or ["群友"]
+                        ] or ["Thành viên nhóm"]
 
                     topics.append(
                         SummaryTopic(
                             topic=topic_name,
-                            contributors=contributors[:5],  # 最多5个参与者
+                            contributors=contributors[:5],  # Tối đa 5 người tham gia.
                             detail=detail,
                         )
                     )
                 except Exception as e:
-                    logger.error(f"处理第 {i + 1} 条话题数据时出错: {e}", exc_info=True)
+                    logger.error(
+                        f"Lỗi khi xử lý chủ đề thứ {i + 1}: {e}", exc_info=True
+                    )
                     continue
 
-            logger.debug(f"create_data_objects 完成，创建了 {len(topics)} 个话题对象")
+            logger.debug(f"create_data_objects hoàn tất, đã tạo {len(topics)} chủ đề")
             return topics
 
         except Exception as e:
-            logger.error(f"创建话题对象失败: {e}", exc_info=True)
+            logger.error(f"Tạo object chủ đề thất bại: {e}", exc_info=True)
             return []
 
     def validate_parsed_data(
@@ -270,18 +272,18 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
 
     def extract_text_messages(self, messages: list[dict]) -> list[dict]:
         """
-        从已清理的消息中提取文本消息用于话题分析。
+        Trích xuất tin nhắn văn bản đã làm sạch để phân tích chủ đề.
 
         Args:
-            messages: 已由 MessageCleaner 处理过的 legacy 消息列表
+            messages: Danh sách tin nhắn legacy đã qua MessageCleaner.
 
         Returns:
-            提取的文本消息列表
+            Danh sách tin nhắn văn bản được trích xuất.
         """
         text_messages = []
 
         for msg in messages:
-            # 获取发送者显示名
+            # Lấy tên hiển thị người gửi.
             sender = msg.get("sender", {})
             nickname = InfoUtils.get_user_nickname(self.config_manager, sender)
             msg_time = datetime.fromtimestamp(msg.get("time", 0)).strftime("%H:%M")
@@ -289,9 +291,9 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
             for content in msg.get("message", []):
                 if content.get("type") == "text":
                     text = content.get("data", {}).get("text", "").strip()
-                    # 已经在 MessageCleaner 中处理过基本的垃圾内容
+                    # Nội dung rác cơ bản đã được MessageCleaner xử lý.
                     if text:
-                        # 简单的额外清理
+                        # Làm sạch bổ sung đơn giản.
                         cleaned_text = text.replace("\n", " ").replace("\r", " ")
                         cleaned_text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned_text)
 
@@ -312,42 +314,46 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
         session_id: str | None = None,
     ) -> tuple[list[SummaryTopic], TokenUsage]:
         """
-        分析群聊话题
+        Phân tích chủ đề trò chuyện nhóm.
 
         Args:
-            messages: 群聊消息列表
-            umo: 模型唯一标识符
-            session_id: 会话ID (用于调试模式)
+            messages: Danh sách tin nhắn nhóm.
+            umo: Định danh UMO.
+            session_id: ID phiên dùng trong debug mode.
 
         Returns:
-            (话题列表, Token使用统计)
+            Tuple danh sách chủ đề và thống kê token.
         """
         try:
             logger.debug(
-                f"analyze_topics 开始处理，消息数量: {len(messages) if messages else 0}"
+                f"analyze_topics bắt đầu, số tin nhắn: {len(messages) if messages else 0}"
             )
-            logger.debug(f"消息类型: {type(messages)}")
+            logger.debug(f"Loại dữ liệu tin nhắn: {type(messages)}")
             if messages:
                 logger.debug(
-                    f"第一条消息类型: {type(messages[0]) if messages else '无'}"
+                    f"Loại tin nhắn đầu tiên: {type(messages[0]) if messages else 'không có'}"
                 )
-                logger.debug(f"第一条消息内容: {messages[0] if messages else '无'}")
+                logger.debug(
+                    f"Nội dung tin nhắn đầu tiên: {messages[0] if messages else 'không có'}"
+                )
 
-            # 检查是否有有效的文本消息
+            # Kiểm tra tin nhắn văn bản hợp lệ.
             text_messages = self.extract_text_messages(messages)
-            logger.debug(f"提取到 {len(text_messages)} 条文本消息")
+            logger.debug(f"Đã trích xuất {len(text_messages)} tin nhắn văn bản")
 
             if not text_messages:
-                logger.info("没有有效的文本消息，返回空结果")
+                logger.info("Không có tin nhắn văn bản hợp lệ; trả về kết quả rỗng")
                 return [], TokenUsage()
 
-            logger.info(f"开始分析 {len(text_messages)} 条文本消息中的话题")
-            logger.debug(f"文本消息类型: {type(text_messages)}")
+            logger.info(f"Bắt đầu phân tích chủ đề từ {len(text_messages)} tin nhắn")
+            logger.debug(f"Loại dữ liệu tin nhắn văn bản: {type(text_messages)}")
             if text_messages:
-                logger.debug(f"第一条文本消息类型: {type(text_messages[0])}")
-                logger.debug(f"第一条文本消息内容: {text_messages[0]}")
+                logger.debug(
+                    f"Loại tin nhắn văn bản đầu tiên: {type(text_messages[0])}"
+                )
+                logger.debug(f"Nội dung tin nhắn văn bản đầu tiên: {text_messages[0]}")
 
-            # 建立 ID 到昵称的映射表
+            # Lập bảng ánh xạ ID sang nickname.
             id_to_nickname = {}
             for msg in text_messages:
                 sender = msg.get("sender")
@@ -355,15 +361,15 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
                 if sender and user_id:
                     id_to_nickname[user_id] = sender
 
-            # 直接传入原始消息，让 build_prompt 方法处理
+            # Truyền tin nhắn gốc để build_prompt xử lý.
             topics, usage = await self.analyze(messages, umo, session_id)
 
-            # 后处理：contributors 此时包含的是 ID，需要映射回昵称
+            # Hậu xử lý: ánh xạ contributor ID về nickname.
             for topic in topics:
-                raw_ids = topic.contributors  # LLM 返回的是 ID 列表
+                raw_ids = topic.contributors  # LLM trả về danh sách ID.
 
-                # 填充 contributor_ids。QQ 官方 member_openid 并非纯数字，
-                # 因此仅接受本批次已知用户或已配置机器人 ID，而不是用 isdigit 过滤。
+                # member_openid QQ Official không chỉ gồm số; chỉ nhận ID đã biết
+                # trong batch hoặc ID bot cấu hình thay vì lọc bằng isdigit.
                 bot_ids = {str(uid) for uid in self.config_manager.get_bot_self_ids()}
                 known_ids = set(id_to_nickname) | bot_ids
                 valid_ids = []
@@ -373,13 +379,13 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
                         valid_ids.append(uid)
                 topic.contributor_ids = valid_ids
 
-                # 映射回昵称用于显示
+                # Ánh xạ về nickname để hiển thị.
                 resolved_names = []
                 for uid in valid_ids:
-                    # 尝试从当前批次消息映射
+                    # Thử ánh xạ từ batch hiện tại.
                     name = id_to_nickname.get(uid)
                     if not name:
-                        # 尝试去全局配置里找 (e.g. 机器人自己)
+                        # Thử tìm trong cấu hình toàn cục, ví dụ bot.
                         if uid in bot_ids:
                             name = "Bot"
                         else:
@@ -391,5 +397,5 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic, list[dict]]):
             return topics, usage
 
         except Exception as e:
-            logger.error(f"话题分析失败: {e}", exc_info=True)
+            logger.error(f"Phân tích chủ đề thất bại: {e}", exc_info=True)
             return [], TokenUsage()

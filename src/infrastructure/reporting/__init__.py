@@ -1,7 +1,4 @@
-"""
-报告生成模块
-包含HTML、图片、文本报告生成功能
-"""
+"""Module tạo báo cáo HTML, ảnh và văn bản."""
 
 from .generators import ReportGenerator
 from .templates import HTMLTemplates

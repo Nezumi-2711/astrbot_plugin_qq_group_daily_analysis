@@ -1,7 +1,4 @@
-"""
-分析模块
-包含LLM分析功能
-"""
+"""Module phân tích, chứa chức năng phân tích bằng LLM."""
 
 from .llm_analyzer import LLMAnalyzer
 

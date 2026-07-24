@@ -2,9 +2,9 @@ class InfoUtils:
     @staticmethod
     def get_user_nickname(config_manager, sender) -> str:
         """
-        获取用户昵称
+        Lấy biệt danh thành viên.
 
-        优先使用nickname字段,如果为空则使用card(群名片)字段
+        Ưu tiên trường nickname; nếu rỗng thì dùng card (tên trong nhóm).
         """
         enable_user_card = config_manager.get_enable_user_card()
         if enable_user_card:

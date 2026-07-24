@@ -1,6 +1,7 @@
 """
-报告生成接口 - 领域层
-定义分析报告生成的抽象契约
+Giao diện tạo báo cáo thuộc tầng domain.
+
+Định nghĩa hợp đồng trừu tượng cho chức năng tạo báo cáo phân tích.
 """
 
 from abc import ABC, abstractmethod
@@ -8,9 +9,7 @@ from typing import Any
 
 
 class IReportGenerator(ABC):
-    """
-    报告生成器接口
-    """
+    """Giao diện trình tạo báo cáo."""
 
     @abstractmethod
     async def generate_image_report(
@@ -24,7 +23,7 @@ class IReportGenerator(ABC):
         hide_user_names: bool = False,
         allow_alphanumeric_user_ids: bool = False,
     ) -> tuple[str | None, str | None]:
-        """生成图片报告"""
+        """Tạo báo cáo hình ảnh."""
         pass
 
     @abstractmethod
@@ -38,15 +37,15 @@ class IReportGenerator(ABC):
         hide_user_names: bool = False,
         allow_alphanumeric_user_ids: bool = False,
     ) -> tuple[str | None, str | None]:
-        """生成 HTML 报告"""
+        """Tạo báo cáo HTML."""
         pass
 
     @abstractmethod
     def generate_text_report(self, analysis_result: dict) -> str:
-        """生成文本报告"""
+        """Tạo báo cáo văn bản."""
         pass
 
     @abstractmethod
     async def close(self):
-        """释放资源"""
+        """Giải phóng tài nguyên."""
         pass

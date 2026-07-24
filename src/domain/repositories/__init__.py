@@ -1,4 +1,4 @@
-# 仓储接口
+# Các giao diện repository
 from .avatar_repository import IAvatarRepository
 from .message_repository import IGroupInfoRepository, IMessageRepository, IMessageSender
 from .visualization_repository import IActivityVisualizer
