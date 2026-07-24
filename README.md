@@ -230,40 +230,40 @@ _✨ 一个基于 AstrBot 的智能群聊分析插件，支持 **OneBot** (NapCa
 
 ### 基础命令
 
-#### 群分析
+#### Phân tích nhóm
 ```
-/群分析 [天数]
+/phantichnhom [số ngày]
 ```
-- 分析群聊近期活动
-- 天数可选，默认为1天
-- 例如：`/群分析 3` 分析最近3天的群聊
+- Phân tích hoạt động trò chuyện gần đây của nhóm.
+- Số ngày là tùy chọn, mặc định là 1 ngày.
+- Ví dụ: `/phantichnhom 3` phân tích 3 ngày gần nhất.
 
-#### 增量状态
+#### Trạng thái phân tích gia tăng
 ```
-/增量状态
+/tangcuong
 ```
-- 查看当前增量分析的实时状态
-- 显示当前滑动窗口内的分析次数、消息数、话题数等统计
-- **仅在启用增量分析模式时可用**
+- Xem trạng thái hiện tại của phân tích gia tăng.
+- Hiển thị số lần phân tích, tin nhắn và chủ đề trong cửa sổ trượt.
+- Chỉ khả dụng khi đã bật chế độ phân tích gia tăng.
 
-#### 分析设置
+#### Cài đặt phân tích
 ```
-/分析设置 [操作]
+/caidat [thao tác]
 ```
-- `enable`: 为当前群启用分析功能
-- `disable`: 为当前群禁用分析功能  
-- `status`: 查看当前群的启用状态
-- 例如：`/分析设置 enable`
+- `enable`: bật phân tích cho nhóm hiện tại.
+- `disable`: tắt phân tích cho nhóm hiện tại.
+- `status`: xem trạng thái của nhóm hiện tại.
+- Ví dụ: `/caidat enable`.
 
-#### 模板设置
+#### Cài đặt mẫu báo cáo
 ```
-/查看模板
-/设置模板 [模板名称或序号]
+/xemmau
+/maubc [tên mẫu hoặc số thứ tự]
 ```
-- `/查看模板`: 查看所有可用模板及预览图
-- `/设置模板`: 查看当前模板和可用模板列表
-- `/设置模板 [序号]`: 切换到指定序号的模板
-- 例如：`/设置模板 1` 或 `/设置模板 scrapbook`
+- `/xemmau`: xem tất cả mẫu và ảnh xem trước.
+- `/maubc`: xem mẫu hiện tại và danh sách mẫu khả dụng.
+- `/maubc [số thứ tự]`: chuyển sang mẫu tương ứng.
+- Ví dụ: `/maubc 1` hoặc `/maubc scrapbook`.
 
 ## 平台支持与要求
 

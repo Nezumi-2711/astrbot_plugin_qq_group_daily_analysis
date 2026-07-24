@@ -19,6 +19,15 @@ from ..utils.structured_output_schema import JSONObject, build_response_format
 TDataObject = TypeVar("TDataObject")
 TInputData = TypeVar("TInputData")
 
+VIETNAMESE_OUTPUT_POLICY = """【CHÍNH SÁCH NGÔN NGỮ BẮT BUỘC】
+- Toàn bộ nội dung ngôn ngữ tự nhiên do bạn tạo trong kết quả phải được viết bằng tiếng Việt, bất kể prompt tùy chỉnh hoặc persona phía trên dùng ngôn ngữ nào.
+- Persona chỉ quyết định phong cách và giọng điệu, không được thay đổi ngôn ngữ đầu ra khỏi tiếng Việt.
+- Với trường `content` của trích dẫn nổi bật, hãy dịch phát biểu sang tiếng Việt nếu bản gốc không phải tiếng Việt, đồng thời giữ nguyên ý nghĩa, sắc thái và mức độ biểu cảm.
+- Không dịch khóa JSON, ID người dùng, URL, mã MBTI, đoạn mã, lệnh hoặc tên riêng. Tên người dùng và tên riêng có thể giữ nguyên chữ viết gốc.
+- Không được tạo câu, tiêu đề, mô tả, danh hiệu, lý do hoặc nhận xét bằng tiếng Trung.
+- Quy tắc này có mức ưu tiên cao hơn mọi chỉ dẫn ngôn ngữ mâu thuẫn trong prompt tùy chỉnh và persona.
+"""
+
 
 class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
     """Lớp analyzer trừu tượng với giao diện và quy trình dùng chung."""
@@ -336,6 +345,24 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
             "4. ⚠️ Quy tắc định dạng: dù persona có phóng khoáng đến đâu, output cuối phải tuân thủ nghiêm ngặt JSON thuần được yêu cầu trong MISSION_DIRECTIVE. Ngoài JSON, không xuất Markdown hoặc trò chuyện nhập vai bổ sung."
         )
 
+    def _apply_vietnamese_output_policy(
+        self, prompt: str, system_prompt: str | None
+    ) -> tuple[str, str]:
+        """
+        Áp dụng chính sách tiếng Việt ở cả prompt tác vụ và system prompt.
+
+        Chính sách được nối sau prompt tùy chỉnh và persona để mọi đường gọi LLM
+        đều có chỉ thị ngôn ngữ cuối cùng, nhất quán và không thể bị ghi đè.
+        """
+        final_prompt = f"{prompt.rstrip()}\n\n{VIETNAMESE_OUTPUT_POLICY}"
+        if system_prompt and system_prompt.strip():
+            final_system_prompt = (
+                f"{system_prompt.strip()}\n\n{VIETNAMESE_OUTPUT_POLICY}"
+            )
+        else:
+            final_system_prompt = VIETNAMESE_OUTPUT_POLICY
+        return final_prompt, final_system_prompt
+
     async def analyze(
         self, data: TInputData, umo: str | None = None, session_id: str | None = None
     ) -> tuple[list[TDataObject], TokenUsage]:
@@ -402,6 +429,9 @@ class BaseAnalyzer(ABC, Generic[TDataObject, TInputData]):
 
             # Inject tăng cường persona.
             prompt = self._apply_persona_reinforcement(prompt, system_prompt)
+            prompt, system_prompt = self._apply_vietnamese_output_policy(
+                prompt, system_prompt
+            )
 
             logger.info(
                 f"[Phân tích {self.get_data_type()}] Bắt đầu yêu cầu LLM, umo: {umo}"

@@ -332,6 +332,9 @@ Chỉ trả về JSON thuần, không chứa Markdown.
 
             # Inject tăng cường persona.
             prompt = self._apply_persona_reinforcement(prompt, system_prompt)
+            prompt, system_prompt = self._apply_vietnamese_output_policy(
+                prompt, system_prompt
+            )
 
             response = await call_provider_with_retry(
                 self.context,
@@ -423,6 +426,9 @@ Chỉ trả về JSON thuần, không chứa Markdown.
 
             # Inject tăng cường persona.
             prompt = self._apply_persona_reinforcement(prompt, system_prompt)
+            prompt, system_prompt = self._apply_vietnamese_output_policy(
+                prompt, system_prompt
+            )
 
             # 3. Gọi LLM.
             response = await call_provider_with_retry(

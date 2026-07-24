@@ -171,7 +171,7 @@ async def verify_rendering(source: str):
     }
 
     render_payload = await generator._prepare_render_data(
-        analysis_result, mock_get_user_avatar
+        analysis_result, avatar_url_getter=mock_get_user_avatar
     )
     html = generator.html_templates.render_template(
         "image_template.html", **render_payload
@@ -181,7 +181,7 @@ async def verify_rendering(source: str):
     Path(filename).write_text(html, encoding="utf-8")
 
     # Verification
-    expected_lang = "zh-CN" if source == "Mainland" else "zh-Hant"
+    expected_lang = "vi"
     expected_font = (
         "https://fonts.loli.net"
         if source == "Mainland"

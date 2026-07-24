@@ -489,7 +489,7 @@ class GroupDailyAnalysis(Star):
                 except OSError:
                     pass
 
-    @filter.command("phantichnhom", alias={"group_analysis", "群分析"})
+    @filter.command("phantichnhom", alias={"group_analysis"})
     @filter.permission_type(PermissionType.ADMIN)
     async def analyze_group_daily(
         self, event: AstrMessageEvent, days: int | None = None
@@ -609,8 +609,8 @@ class GroupDailyAnalysis(Star):
         except Exception as e:
             logger.error(f"Phân tích nhóm thất bại: {e}", exc_info=True)
             yield event.plain_result(
-                f"❌ Phân tích thất bại: {str(e)}. Vui lòng kiểm tra kết nối "
-                "mạng, cấu hình LLM hoặc liên hệ quản trị viên"
+                "❌ Phân tích thất bại. Vui lòng kiểm tra kết nối mạng, "
+                "cấu hình LLM hoặc liên hệ quản trị viên"
             )
         finally:
             if current_task:
@@ -772,7 +772,7 @@ class GroupDailyAnalysis(Star):
             return await adapter.send_text_report(group_id, tr, fallback_content=fr)
         return await adapter.send_text_report(group_id, tr)
 
-    @filter.command("dinhdang", alias={"set_format", "设置格式"})
+    @filter.command("dinhdang", alias={"set_format"})
     @filter.permission_type(PermissionType.ADMIN)
     async def set_output_format(self, event: AstrMessageEvent, format_input: str = ""):
         """
@@ -828,7 +828,10 @@ Cách dùng: /dinhdang [tên hoặc số thứ tự], ví dụ: /dinhdang image,
                         f"✅ Định dạng đầu ra đã đặt thành: {', '.join(parts)}"
                     )
                 except Exception as e:
-                    yield event.plain_result(f"❌ Cài đặt thất bại: {e}")
+                    logger.error(
+                        f"Cài đặt nhiều định dạng thất bại: {e}", exc_info=True
+                    )
+                    yield event.plain_result("❌ Cài đặt định dạng thất bại")
                 return
 
         if not target_format:
@@ -845,9 +848,10 @@ Cách dùng: /dinhdang [tên hoặc số thứ tự], ví dụ: /dinhdang image,
                 f"✅ Định dạng đầu ra đã đặt thành: {target_format}"
             )
         except Exception as e:
-            yield event.plain_result(f"❌ Cài đặt thất bại: {e}")
+            logger.error(f"Cài đặt định dạng thất bại: {e}", exc_info=True)
+            yield event.plain_result("❌ Cài đặt định dạng thất bại")
 
-    @filter.command("maubc", alias={"set_template", "设置模板"})
+    @filter.command("maubc", alias={"set_template"})
     @filter.permission_type(PermissionType.ADMIN)
     async def set_report_template(
         self, event: AstrMessageEvent, template_input: str = ""
@@ -897,7 +901,7 @@ Cách dùng: /maubc [tên mẫu hoặc số thứ tự]
         self.config_manager.set_report_template(template_name)
         yield event.plain_result(f"✅ Mẫu báo cáo đã đặt thành: {template_name}")
 
-    @filter.command("xemmau", alias={"view_templates", "查看模板"})
+    @filter.command("xemmau", alias={"view_templates"})
     @filter.permission_type(PermissionType.ADMIN)
     async def view_templates(self, event: AstrMessageEvent):
         """
@@ -939,7 +943,7 @@ Cách dùng: /maubc [tên mẫu hoặc số thứ tự]
         )
         yield event.chain_result([preview_nodes])
 
-    @filter.command("caidat", alias={"analysis_settings", "分析设置"})
+    @filter.command("caidat", alias={"analysis_settings"})
     @filter.permission_type(PermissionType.ADMIN)
     async def analysis_settings(self, event: AstrMessageEvent, action: str = "status"):
         """
@@ -996,8 +1000,10 @@ Cách dùng: /maubc [tên mẫu hoặc số thứ tự]
                     "📊 Phân tích cho nhóm này đang chạy, vui lòng thử lại sau nhé~"
                 )
             except Exception as e:
+                logger.error(f"Kiểm tra phân tích tự động thất bại: {e}", exc_info=True)
                 yield event.plain_result(
-                    f"❌ Kiểm tra phân tích tự động thất bại: {str(e)}"
+                    "❌ Kiểm tra phân tích tự động thất bại. Vui lòng kiểm tra "
+                    "cấu hình và nhật ký hệ thống"
                 )
 
         elif action == "incremental_debug":
@@ -1068,7 +1074,7 @@ Cách dùng: /maubc [tên mẫu hoặc số thứ tự]
     💡 Định dạng đầu ra được hỗ trợ: image, text (ảnh có biểu đồ hoạt động)
     💡 Lệnh khác: /dinhdang, /tangcuong""")
 
-    @filter.command("tangcuong", alias={"incremental_status", "增量状态"})
+    @filter.command("tangcuong", alias={"incremental_status"})
     @filter.permission_type(PermissionType.ADMIN)
     async def incremental_status(self, event: AstrMessageEvent):
         """Xem trạng thái phân tích gia tăng trong cửa sổ trượt."""

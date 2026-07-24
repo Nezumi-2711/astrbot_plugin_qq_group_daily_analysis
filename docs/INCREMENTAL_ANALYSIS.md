@@ -167,8 +167,8 @@ similarity = len(chars_a & chars_b) / len(chars_a | chars_b)
 
 | 命令 | 说明 |
 |------|------|
-| `/增量状态` | 查看当前滑动窗口内的增量分析累积情况 |
-| `/分析设置 status` | 查看完整设置状态（含增量分析配置） |
+| `/tangcuong` | 查看当前滑动窗口内的增量分析累积情况 |
+| `/caidat status` | 查看完整设置状态（含增量分析配置） |
 
 ## 文件清单
 
@@ -182,5 +182,5 @@ similarity = len(chars_a & chars_b) / len(chars_a | chars_b)
 | `src/infrastructure/scheduler/auto_scheduler.py` | 基础设施 | 双模式调度（传统+增量）+ 报告后过期批次清理 |
 | `src/infrastructure/config/config_manager.py` | 基础设施 | 10个增量配置 getter |
 | `src/application/services/analysis_application_service.py` | 应用 | 增量分析（存批次）+ 最终报告（窗口查询+合并）|
-| `main.py` | 入口 | 接线 + `/增量状态` 命令（滑动窗口查询）|
+| `main.py` | 入口 | 接线 + `/tangcuong` 命令（滑动窗口查询）|
 | `_conf_schema.json` | 配置 | 增量分析配置 Schema |

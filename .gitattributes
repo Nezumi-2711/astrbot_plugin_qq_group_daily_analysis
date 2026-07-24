@@ -13,3 +13,6 @@ scripts/         export-ignore
 
 ### 测试文件 — 生产包不需要
 tests/           export-ignore
+
+### Các template ATRI hiện dùng CRLF; không coi CR cuối dòng là khoảng trắng thừa
+src/infrastructure/reporting/templates/ATRI/*.html whitespace=cr-at-eol

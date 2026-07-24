@@ -10,6 +10,7 @@ Thiết kế key KV:
 - Timestamp tin nhắn phân tích cuối: incr_last_ts_{group_id}
 """
 
+import asyncio
 from typing import Any
 
 from ...domain.entities.incremental_state import IncrementalBatch
@@ -28,6 +29,8 @@ class IncrementalStore:
     INDEX_PREFIX = "incr_batch_index"
     BATCH_PREFIX = "incr_batch"
     LAST_TS_PREFIX = "incr_last_ts"
+    LANGUAGE_MIGRATION_PREFIX = "incr_language_migration"
+    LANGUAGE_MIGRATION_VERSION = "vi_v1"
 
     def __init__(self, star_instance: Any):
         """
@@ -37,6 +40,7 @@ class IncrementalStore:
             star_instance: Instance Star dùng để truy cập KV storage.
         """
         self.plugin = star_instance
+        self._language_migration_locks: dict[str, asyncio.Lock] = {}
 
     # ================================================================
     # Xây dựng key
@@ -53,6 +57,45 @@ class IncrementalStore:
     def _last_ts_key(self, group_id: str) -> str:
         """Tạo key timestamp của tin nhắn phân tích cuối."""
         return f"{self.LAST_TS_PREFIX}_{group_id}"
+
+    def _language_migration_key(self, group_id: str) -> str:
+        """Tạo key đánh dấu migration dữ liệu phân tích sang tiếng Việt."""
+        return f"{self.LANGUAGE_MIGRATION_PREFIX}_{group_id}"
+
+    async def _ensure_vietnamese_data_migration(self, group_id: str) -> None:
+        """
+        Xoá batch cũ một lần để kết quả tiếng Trung không lọt vào báo cáo mới.
+
+        Tin nhắn gốc không bị xoá. Con trỏ được đặt lại để lần phân tích tiếp theo
+        có thể xây dựng lại cửa sổ gia tăng hoàn toàn bằng tiếng Việt.
+        """
+        marker_key = self._language_migration_key(group_id)
+        marker = await self.plugin.get_kv_data(marker_key, None)
+        if marker == self.LANGUAGE_MIGRATION_VERSION:
+            return
+
+        lock = self._language_migration_locks.setdefault(group_id, asyncio.Lock())
+        async with lock:
+            marker = await self.plugin.get_kv_data(marker_key, None)
+            if marker == self.LANGUAGE_MIGRATION_VERSION:
+                return
+
+            index = await self._get_index(group_id)
+            deleted_count = 0
+            for entry in index:
+                batch_id = str(entry.get("batch_id", "")).strip()
+                if not batch_id:
+                    continue
+                await self.plugin.put_kv_data(self._batch_key(group_id, batch_id), None)
+                deleted_count += 1
+
+            await self._save_index(group_id, [])
+            await self.plugin.put_kv_data(self._last_ts_key(group_id), 0)
+            await self.plugin.put_kv_data(marker_key, self.LANGUAGE_MIGRATION_VERSION)
+            logger.info(
+                f"Đã làm mới dữ liệu gia tăng sang tiếng Việt: nhóm {group_id}, "
+                f"đã xoá {deleted_count} batch cũ và đặt lại con trỏ"
+            )
 
     # ================================================================
     # Thao tác index batch
@@ -118,6 +161,7 @@ class IncrementalStore:
         batch_key = self._batch_key(group_id, batch.batch_id)
 
         try:
+            await self._ensure_vietnamese_data_migration(group_id)
             # 1. Lưu dữ liệu batch
             await self.plugin.put_kv_data(batch_key, batch.to_dict())
 
@@ -163,6 +207,7 @@ class IncrementalStore:
         Returns:
             Danh sách batch trong cửa sổ, tăng dần theo timestamp.
         """
+        await self._ensure_vietnamese_data_migration(group_id)
         index = await self._get_index(group_id)
 
         # Lọc batch trong phạm vi cửa sổ.
@@ -223,6 +268,7 @@ class IncrementalStore:
         """
         key = self._last_ts_key(group_id)
         try:
+            await self._ensure_vietnamese_data_migration(group_id)
             data = await self.plugin.get_kv_data(key, 0)
             return int(data) if data else 0
         except Exception as e:
@@ -244,6 +290,7 @@ class IncrementalStore:
         """
         key = self._last_ts_key(group_id)
         try:
+            await self._ensure_vietnamese_data_migration(group_id)
             await self.plugin.put_kv_data(key, timestamp)
             logger.debug(
                 f"Đã cập nhật timestamp phân tích cuối: nhóm {group_id}, ts={timestamp}"
@@ -272,6 +319,7 @@ class IncrementalStore:
         Returns:
             Số batch đã xoá.
         """
+        await self._ensure_vietnamese_data_migration(group_id)
         index = await self._get_index(group_id)
         if not index:
             return 0
@@ -328,6 +376,7 @@ class IncrementalStore:
         Returns:
             Tổng số batch.
         """
+        await self._ensure_vietnamese_data_migration(group_id)
         index = await self._get_index(group_id)
         return len(index)
 
@@ -343,6 +392,7 @@ class IncrementalStore:
         Returns:
             Danh sách tóm tắt batch tăng dần theo thời gian.
         """
+        await self._ensure_vietnamese_data_migration(group_id)
         index = await self._get_index(group_id)
         # Sắp xếp tăng dần theo timestamp.
         index.sort(key=lambda x: x.get("timestamp", 0))

@@ -1,6 +1,18 @@
 from __future__ import annotations
 
+import re
+
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+
+HAN_CHARACTER_PATTERN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+
+
+def _require_vietnamese_text(value: object) -> str:
+    """Chuẩn hoá và từ chối nội dung sinh còn chứa chữ Hán."""
+    text = str(value).strip()
+    if HAN_CHARACTER_PATTERN.search(text):
+        raise ValueError("Nội dung sinh phải được viết bằng tiếng Việt")
+    return text
 
 
 class TopicItemModel(BaseModel):
@@ -13,7 +25,7 @@ class TopicItemModel(BaseModel):
     @field_validator("topic", "detail", mode="before")
     @classmethod
     def _normalize_text(cls, value: object) -> str:
-        return str(value).strip()
+        return _require_vietnamese_text(value)
 
     @field_validator("contributors", mode="before")
     @classmethod
@@ -37,10 +49,15 @@ class UserTitleItemModel(BaseModel):
     mbti: str
     reason: str
 
-    @field_validator("name", "user_id", "title", "mbti", "reason", mode="before")
+    @field_validator("name", "user_id", "mbti", mode="before")
     @classmethod
-    def _normalize_text(cls, value: object) -> str:
+    def _normalize_identity(cls, value: object) -> str:
         return str(value).strip()
+
+    @field_validator("title", "reason", mode="before")
+    @classmethod
+    def _normalize_generated_text(cls, value: object) -> str:
+        return _require_vietnamese_text(value)
 
 
 class GoldenQuoteItemModel(BaseModel):
@@ -50,10 +67,15 @@ class GoldenQuoteItemModel(BaseModel):
     sender: str
     reason: str
 
-    @field_validator("content", "sender", "reason", mode="before")
+    @field_validator("sender", mode="before")
     @classmethod
-    def _normalize_text(cls, value: object) -> str:
+    def _normalize_identity(cls, value: object) -> str:
         return str(value).strip()
+
+    @field_validator("content", "reason", mode="before")
+    @classmethod
+    def _normalize_generated_text(cls, value: object) -> str:
+        return _require_vietnamese_text(value)
 
 
 class QualityDimensionModel(BaseModel):
@@ -66,7 +88,7 @@ class QualityDimensionModel(BaseModel):
     @field_validator("name", "comment", mode="before")
     @classmethod
     def _normalize_text(cls, value: object) -> str:
-        return str(value).strip()
+        return _require_vietnamese_text(value)
 
 
 class QualityReviewModel(BaseModel):
@@ -80,7 +102,7 @@ class QualityReviewModel(BaseModel):
     @field_validator("title", "subtitle", "summary", mode="before")
     @classmethod
     def _normalize_text(cls, value: object) -> str:
-        return str(value).strip()
+        return _require_vietnamese_text(value)
 
 
 def validate_topic_items(
