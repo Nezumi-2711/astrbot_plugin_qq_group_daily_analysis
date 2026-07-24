@@ -1,4 +1,4 @@
-"""Persistent registry of groups observed by event-driven platforms."""
+"""Registry bền vững của các nhóm được quan sát qua sự kiện nền tảng."""
 
 import asyncio
 from datetime import datetime, timezone
@@ -6,7 +6,7 @@ from typing import Any
 
 
 class PlatformGroupRegistry:
-    """Keep a small, platform-scoped list of groups seen in incoming events."""
+    """Lưu danh sách nhỏ các nhóm đã thấy trong sự kiện theo từng nền tảng."""
 
     _KV_KEY = "platform_seen_groups_v1"
     _LEGACY_TELEGRAM_KEY = "telegram_seen_groups_v1"
@@ -46,9 +46,9 @@ class PlatformGroupRegistry:
                 platform_map = {}
                 platforms[platform_key] = platform_map
 
-            # Existing groups only need to be remembered in memory. The
-            # registry is used for group discovery, so rewriting last_seen and
-            # the full KV document for every message creates unnecessary I/O.
+            # Các nhóm đã tồn tại chỉ cần được ghi nhớ trong bộ nhớ. Registry
+            # được dùng để phát hiện nhóm, vì vậy việc ghi lại last_seen và
+            # toàn bộ tài liệu KV sau mỗi tin nhắn sẽ tạo ra I/O không cần thiết.
             if group_key in platform_map:
                 self._known_groups.add(identity)
                 return
